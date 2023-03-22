@@ -106,6 +106,12 @@ $(GDB) $(exaros_elf)
 target extended-remote localhost:1234
 ```
 
+有一定概率这个 `init` 文件不会被加载，因为不太安全，此时可以在 `~/.config/gdb/gdbinit` 中加入如下指令即可
+
+```shell
+add-auto-load-safe-path <progject->/.gdbinit
+```
+
 `gdb` 的命令如下
 
 | 命令               | 缩写   | 含义                                 |
