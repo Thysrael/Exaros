@@ -1,5 +1,11 @@
 # Platform
 
+## Platform
+
+plateform 这个词是“硬件平台的意思”，可以看做是多种硬件构成的一种集合，在 RISCV 手册中介绍了其覆盖的范围：
+
+> A RISC-V hardware platform can contain one or more RISC-V-compatible processing cores together with other non-RISC-V-compatible cores, fixed-function accelerators, various physical memory structures, I/O devices, and an interconnect structure to allow the components to communicate.
+
 ## Virt
 
 ### doc
@@ -57,3 +63,11 @@ static const MemMapEntry virt_memmap[] = {
     [VIRT_DRAM] =         { 0x80000000,           0x0 },
 }; 
 ```
+
+
+
+
+
+## Reference
+
+- [QEMU 代码与 RISCV 'virt' 平台 ZSBL 分析](https://gitee.com/tinylab/riscv-linux/blob/master/articles/20220911-qemu-riscv-zsbl.md#https://gitee.com/link?target=https%3A%2F%2Fjuejin.cn%2Fpost%2F6891922292075397127)
