@@ -3,4 +3,8 @@
         "editor.formatOnSave": true
     },
     "editor.formatOnSave": true,
+    "files.associations": {
+        "type.h": "c",
+        "driver.h": "c"
+    },
 }

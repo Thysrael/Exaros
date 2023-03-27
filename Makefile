@@ -12,7 +12,7 @@ exaros_sys	:= 	$(target_dir)/exaros_sys.txt
 modules := 	$(kernel_dir)
 objects := $(kernel_dir)/*/*.o 
 
-.PHONY: build clean $(modules) run
+.PHONY: all clean $(modules) run
 
 DEBUG 	:= n
 ifeq ($(MAKECMDGOALS), debug)
@@ -20,7 +20,7 @@ ifeq ($(MAKECMDGOALS), debug)
 endif
 
 all: $(modules)
-	mkdir $(target_dir)
+	mkdir -p $(target_dir) 
 	$(LD) -o $(exaros_elf) -T $(linkscript) $(LDFLAGS) $(objects)
 	$(OBJDUMP) -alD $(exaros_elf) > $(exaros_sys)
 	$(OBJCOPY) -O binary $(exaros_elf) $(exaros_bin)
@@ -38,16 +38,16 @@ clean:
 	rm $(exaros_bin)
 
 
-run: clean build
+run: clean all
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS)
 
-asm: clean build
+asm: clean all
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -d in_asm
 
-int: clean build 
+int: clean all
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -d int
 
-debug: clean build
+debug: clean all
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -s -S
 
 gdb: 
