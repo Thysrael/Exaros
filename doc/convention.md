@@ -35,3 +35,17 @@ qs-doc-boot_sbi
 ```
 
 在开发完成后，请先在 `dev` 上 `pull` 来更新 `dev`（其他人有可能已经更新到了 `dev`），然后再在你的分支上 `merge dev`，最后再在 `dev` 上 `merge` 你的分支，避免你无法在 `dev` 分支上解决冲突。  
+
+`commit message` 风格不做约束。
+
+---
+
+
+
+## doc
+
+文档应该更新在 `doc` 中：
+
+- 文件名：全小写 + 下划线
+- 图片路径：统一在 `doc/img/`
+- 图片命名：应当为 `file_name-num` 的形式，如 `boot-3.png` 。
