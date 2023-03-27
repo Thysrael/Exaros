@@ -14,11 +14,9 @@
 
 ## Git Branch
 
-维护 `main` 和 `dev` 两个稳定分支。
+维护 `main` 一个稳定分支。
 
-其中 `main` 分支为最稳定版本分支，由 qs 管理，请不要从这个分支 `branch` 或者 `merge` 。
-
-`dev` 分支为 `branch` 的主分支，每次开发新的特征，请在 `dev` 分支上执行
+`main` 分支为 `branch` 的主分支，每次开发新的特征，请在 `main` 分支上执行
 
 ```shell
 git checkout -b branch_name
