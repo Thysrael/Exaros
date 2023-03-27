@@ -70,4 +70,5 @@ static const MemMapEntry virt_memmap[] = {
 
 ## Reference
 
+- [QEMU virt](https://www.qemu.org/docs/master/system/riscv/virt.html)
 - [QEMU 代码与 RISCV 'virt' 平台 ZSBL 分析](https://gitee.com/tinylab/riscv-linux/blob/master/articles/20220911-qemu-riscv-zsbl.md#https://gitee.com/link?target=https%3A%2F%2Fjuejin.cn%2Fpost%2F6891922292075397127)
