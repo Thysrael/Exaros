@@ -1,5 +1,6 @@
 #include <driver.h>
 
+#define BUF_SIZE 256
 #define IsDigit(x) (((x) >= '0') && ((x) <= '9'))
 
 static void printChar(char *buf, char c, int length, int ladjust);
@@ -179,7 +180,7 @@ static void printNum(char *buf, unsigned long u, int base, int negFlag,
 
 static void print(const char *fmt, va_list ap)
 {
-    char buf[128];
+    char buf[BUF_SIZE];
 
     int i, c;
     char *s;
