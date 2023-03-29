@@ -1,2 +1,4 @@
 os.bin
 /target/
+*.o 
+*.d
