@@ -20,7 +20,7 @@ ifeq ($(MAKECMDGOALS), debug)
 endif
 
 all: $(modules)
-	mkdir $(target_dir)
+	mkdir -p $(target_dir)
 	$(LD) -o $(exaros_elf) -T $(linkscript) $(LDFLAGS) $(objects)
 	$(OBJDUMP) -alD $(exaros_elf) > $(exaros_sys)
 	$(OBJCOPY) -O binary $(exaros_elf) $(exaros_bin)
@@ -34,20 +34,19 @@ clean:
 		do 											\
 			$(MAKE) --directory=$$module clean;		\
 		done;										\
-	rm -rf *.o *~ $(target_dir)/*
+	rm -rf *.o *~ $(target_dir)
 	rm $(exaros_bin)
 
-
-run: clean build
+run: 
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS)
 
-asm: clean build
+asm: 
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -d in_asm
 
-int: clean build 
+int:  
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -d int
 
-debug: clean build
+debug: 
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -s -S
 
 gdb: 

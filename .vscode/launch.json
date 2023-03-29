@@ -1,0 +1,34 @@
+//launch.json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "gdb",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/exaros.elf",
+            "args": [],
+            "stopAtEntry": true,
+            "cwd": "${workspaceFolder}",
+            "miDebuggerServerAddress": "localhost:1234",
+            //这里实际上可以用各种能调试的 gdb，如果找不到你可以使用which gdb-multiarch
+            //但要注意的是，为了能在ubuntu20.04调出寄存器，强烈建议使用 riscv64 的 gdb 
+            "miDebuggerPath": "/usr/bin/gdb-multiarch",
+            // "environment": [],
+            // "externalConsole": false,
+            "MIMode": "gdb",
+            // "setupCommands": [
+            //     {
+            //         "description": "pretty printing",
+            //         "text": "-enable-pretty-printing",
+            //         "ignoreFailures": true,
+            //     },
+            // ],
+            //用于gdb调试的工具，可以发现gdb出错的原因
+            // "logging": {
+            //     "engineLogging": true,
+            //     "programOutput": true,
+            // }
+        }
+    ]
+}

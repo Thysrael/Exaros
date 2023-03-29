@@ -1,6 +1,13 @@
 {
-    "[c]": {
-        "editor.formatOnSave": true
-    },
-    "editor.formatOnSave": true,
+	"[c]": {
+		"editor.formatOnSave": true
+	},
+	"editor.formatOnSave": true,
+	"files.associations": {
+		"sbi.h": "c",
+		"types.h": "c",
+		"mem_layout.h": "c",
+		"driver.h": "c",
+		"riscv.h": "c"
+	}
 }

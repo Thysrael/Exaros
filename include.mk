@@ -27,7 +27,8 @@ CFLAGS 	+= -mcmodel=medany
 LDFLAGS	:= -z max-page-size=4096
 
 # qemu options
-QFLAGS 	:= machine virt 
+QFLAGS 	:= -machine virt 
+QFLAGS	+= -smp 2
 QFLAGS	+= -bios default
 QFLAGS	+= -m 128M
 QFLAGS	+= -nographic

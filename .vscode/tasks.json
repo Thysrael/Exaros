@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "exarosDebug",
+            "type": "shell",
+            "isBackground": true,
+            "command": "make debug",
+            "problemMatcher": [
+                {
+                    "pattern": [
+                        {
+                            "regexp": ".",
+                            "file": 1,
+                            "location": 2,
+                            "message": 3
+                        }
+                    ],
+                    "background": {
+                        "beginsPattern": ".*Now run 'gdb' in another window.",
+                        "endsPattern": "."
+                    }
+                }
+            ]
+        }
+    ]
+}
