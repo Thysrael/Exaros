@@ -7,7 +7,6 @@
 		"sbi.h": "c",
 		"types.h": "c",
 		"driver.h": "c",
-		"riscv.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",
@@ -20,4 +19,13 @@
     	"@copyright Copyright (c) {year}"
   	],
 	"doxdocgen.generic.briefTemplate": "@brief {text}",
+	"multiCommand.commands": [
+        {
+            "command": "multiCommand.enterExec",
+            "sequence": [
+                "repl.action.acceptInput",
+                {"command": "editor.action.insertSnippet", "args": {"snippet": "-exec "}}
+            ]
+        }
+    ]
 }

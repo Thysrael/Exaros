@@ -1,7 +1,8 @@
 # 对于主核和副核分别进行启动，主核启动包括清空 BSS
 
 #include <mem_layout.h>
-#include <riscv.h>
+
+#define CORE_NUM 2
 
     .section .entry
     .globl _start
