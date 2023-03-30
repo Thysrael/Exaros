@@ -1,49 +1,33 @@
-## TODO
 
- - [x] `TRAMPOLINE`（进程相关）
- - [ ] 进程内核栈（进程相关）
-   - [ ] 进程内核栈的位置
-   - [ ] 进程内核栈的大小
-   - [ ] 进程内核栈的排布
- - [x] 内核态页表（M-MODE 需要分页吗？如果要的话切换页表？感觉像是 S-MODE 和 U-MODE 线程维护不同的页表)
+## 流程
 
-Q：`stap` 不同的 `MODE` 指向哪里？\
-A：TODO\
-A：感觉上只是代表开没开？\
-A：在板子上和 qemu 上有不同的表现：硬件 MMU 和软件 MMU？
+1. S-MODE 创建内核页表
+2. S-MODE 填写 `satp` 寄存器，开启分页
+3. 在 S-MODE 和 U-MODE，MMU 按照 `satp.MODE` 自动进行地址翻译
 
-Q：PPN 和物理地址是一一对应的吗？\
-A：是的。PPN，Page Control Unit 和 Page 都是一一对应的
+## 相关特权级
 
-Q：M-MODE 需要分页吗？\
-A：M-MODE 无分页机制，直接访问对应物理地址
+* M-MODE：无分页（直接映射）
+* S-MODE：控制和使用分页，MMU 在此等级能访问物理地址
+* U-MODE：使用分页，MMU 在此等级不能访问物理地址
 
-Q：S-MODE MMU 如何完成翻译？\
-A：S-MODE MMU 位于物理和虚拟的边界，它能够直接读取/修改物理地址
-
-Q：U-MODE MMU 无法访问物理空间，那么它如何完成地址翻译工作？\
-A：U-MODE MMU 在需要访问物理地址的时候，需要通过系统调用从更高的特权级请求读取操作
-
-VM (Virtual Memory) 中的地址被称为 VA (Virtual Address)\
-每个 VA 都与 PA (Physical Address) 相互对应，VA 的解析方法和分页方式有关
-
-页表是如何建立虚拟地址和物理地址的对应的？
-VA 是 VM 的直接地址吗？（）
-
-> TODO
-
-`SFENCE.VMA` 刷新 TLB，具体使用情景不完全（Section 4.2.1？）
-
-* 切换页表
-* ？？
-
-## 寄存器
+## 相关寄存器
 
 ### Supervisor Address Translation and Protection (satp) Register
 
 * `MODE`：当前地址转换方案
 * `ASID`：地址空间标识符，用于切换进程页表
 * `PPN(Physical Page indeX)`：根页表 PPN
+
+![satp MODE](img/memory-0.png)
+
+## 相关命令
+
+### SFENCE.VMA
+
+SFENCE.VMA 用于刷新与地址转换相关的本地硬件缓存
+
+详见 [RISC-V Privileged Architecture](https://github.com/riscv/riscv-isa-manual/releases/download/Priv-v1.12/riscv-privileged-20211203.pdf) 4.2.1
 
 ## 内存布局
 
@@ -85,38 +69,28 @@ static const MemMapEntry virt_memmap[] = {
   * 内核地址：`0x80200000~kernelEnd`
   * 空闲地址`kernelEnd~PHYSICAL_MEMORY_TOP`
 
-在 `S-MODE` 开启分页管理内存
+### S-MODE 内核地址空间
 
-### `S-MODE` 内核地址空间
+![xv6KernelAddressSpace](img/memory-1.png)
 
-![xv6 中的内核地址空间](img/memory-KernelAddressSpace-xv6.png)
-
-由于 `S-MODE` 拥有访问物理地址几乎全部权限，我们将大部分的地址设为直接映射，
+由于 S-MODE 拥有访问物理地址几乎全部权限，我们将大部分的地址设为直接映射，
 即虚拟地址和物理地址相等。这保证了访问物理内存和外设的简易性。
 
 采取直接映射的部分有：
 
 * MMIO
-  * 具体部分交给外设板块
-* 大部分 RAM
+* kernel
 
-特殊地址（和用户线程相关的地址）采取非直接映射：
+特殊地址（用户线程相关的地址 & 需要复用的地址）采取非直接映射：
 
-> TODO
+* trampoline
+* kernel stack pages
 
-* 静态
-  * `TRAMPOLINE`(于 `trap` 中介绍)
-  * ...
-* 动态
-  * 线程根页表
-  * 线程内核栈
-  * ...
+### U-MODE 用户地址空间
 
-### `U-MODE` 用户地址空间
+![xv6UserAddressSpace](img/memory-2.png)
 
-![xv6 中的用户地址空间](img/memory-UserAddressSpace-xv6.png)
-
-我们的用户地址空间将在 `process` 中进行介绍
+用户地址空间将在 process 部分进行详细介绍
 
 ### 问题
 
@@ -130,7 +104,7 @@ Page-based 39-bit virtual addressing
 
 将 39 位虚拟地址映射到 56 位物理地址
 
-![Sv39](img/memory-Sv39.png)
+![Sv39](img/memory-3.png)
 
 在 RISC-V 中，PTE 有两种：
 
@@ -139,7 +113,7 @@ Page-based 39-bit virtual addressing
 
 根据 `RWX` 位决定
 
-![](img/memory-PTE-RWX.png)
+![RWX](img/memory-4.png)
 
 位于任何级的 PTE 都可能成为叶 PTE，非最低级的 PTE 作为叶 PTE 时则会形成一个超级页
 
@@ -163,23 +137,58 @@ Page-based 39-bit virtual addressing
 
 ## 函数介绍
 
-> TODO
-
 * pageWalk()
 * pageLookUp()
 * pageInsert()
 * ...
 
+## Q&A
+
+Q：`satp.MODE` 有何意义\
+A：填写 `satp.MODE` 后，MMU 自动按照规则将虚拟地址翻译为物理地址。\
+如果该虚拟地址还未分配，则触发缺页异常并且由异常处理程序分配物理空间。
+
+Q：PPN 和物理地址是一一对应的吗？\
+A：是的。PPN，Page Control Unit 和 Page 都是一一对应的
+
+Q：M-MODE 需要分页吗？\
+A：M-MODE 无分页机制，直接访问对应物理地址
+
+Q：S-MODE MMU 如何完成翻译？\
+A：S-MODE MMU 位于物理和虚拟的边界，它能够直接读取/修改物理地址
+
+Q：U-MODE MMU 无法访问物理空间，那么它如何完成地址翻译工作？\
+A：U-MODE MMU 在需要访问物理地址的时候，需要通过系统调用从更高的特权级请求读取操作
+
 ## 附录
 
 附录介绍了一些此处出现，其他地方会介绍但是还未介绍的内容
 
-### TRAMPOLINE
+### Trampoline
 
-在 RISC-V中，`trampoline` 是一小段代码，用于在特权模式之间进行跳转。
+A：M-MODE 无分页机制，直接访问对应物理地址
+在 RISC-V中，trampoline 是一小段代码，用于在特权模式之间进行跳转。
 
-> 当进程进入 Trap 时，内核会运行 `trampoline` 中的代码，并且将寄存器信息保存在 `Trapframe` 页面中。
+> 当进程进入 Trap 时，内核会运行 trampoline 中的代码，并且将寄存器信息保存在 trapframe 页面中。
 
 U-MODE MMU 无法访问物理地址，将会产生异常。异常被捕获后进入 Trap，
-由 `trampoline` 中系统调用保存现场提升权限（在这里是 S-MODE）并处理异常（返回物理地址对应数据）
+由 trampoline 中系统调用保存现场提升权限（在这里是 S-MODE）并处理异常（返回物理地址对应数据）
 
+## Reference
+
+* [xv6 Guide](https://pdos.csail.mit.edu/6.828/2022/xv6/book-riscv-rev3.pdf)
+  * Chapter 3 Page Tables
+
+* [xv6-book翻译(自用)第三章](https://zhuanlan.zhihu.com/p/434095914)
+
+* [RISC-V Privileged Architecture](https://github.com/riscv/riscv-isa-manual/releases/download/Priv-v1.12/riscv-privileged-20211203.pdf)
+  * Chapter 4 Supervisor-Level ISA, Version 1.12
+    * Section 1 Supervisor Instructions
+      * Subsection 11  Supervisor Address Translation and Protection (satp) Register
+    * Section 2 Supervisor Instructions
+    * Section 3 Sv32: Page-Based 32-bit Virtual-Memory Systems
+    * Section 4 Sv39: Page-Based 39-bit Virtual-Memory System
+
+* [SiFive FU740-C000 Manual v1p6](https://sifive.cdn.prismic.io/sifive/1a82e600-1f93-4f41-b2d8-86ed8b16acba_fu740-c000-manual-v1p6.pdf)
+  * Chapter 4 U74 RISC-V Core
+    * Section 7 Virtual Memory Support
