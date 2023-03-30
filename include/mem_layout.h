@@ -1,3 +1,11 @@
+/**
+ * @file mem_layout.h
+ * @brief 内存布局常量
+ * @date 2023-03-30
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #ifndef _MEMORY_LAYOUT_H_
 #define _MEMORY_LAYOUT_H_
 

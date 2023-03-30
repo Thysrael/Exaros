@@ -8,5 +8,16 @@
 		"types.h": "c",
 		"driver.h": "c",
 		"riscv.h": "c"
-	}
+	},
+	"doxdocgen.file.fileOrder": [
+		"file",
+		"brief",
+		"date",
+		"empty",
+		"copyright"
+	],
+	"doxdocgen.file.copyrightTag": [
+    	"@copyright Copyright (c) {year}"
+  	],
+	"doxdocgen.generic.briefTemplate": "@brief {text}",
 }

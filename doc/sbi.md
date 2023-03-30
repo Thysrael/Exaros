@@ -20,7 +20,7 @@ RISC-V 程序的行为取决于其运行的执行环境。RISC-V 执行环境接
 
 ## Legacy Extension
 
-SBI 因为被 the RISC-V Unix class platform specification 纳入规范，所以在规格上面发生了一些变化。现有的SBI规范将被考虑为遗留扩展。其他的SBI特性集将是基于基础规范的独立扩展，每个扩展将成为一个子规范。
+SBI 因为被 the RISC-V Unix class platform specification 纳入规范，所以在规格上面发生了一些变化。现有的 SBI 规范将被考虑为遗留扩展。其他的 SBI 特性集将是基于基础规范的独立扩展，每个扩展将成为一个子规范。
 
 我们是使用的正是遗留拓展（Legacy Extension）。它的调用规范和基础拓展不一样。
 

@@ -1,6 +1,19 @@
+/**
+ * @file driver.h
+ * @brief UART, SD 驱动
+ * @date 2023-03-30
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include <types.h>
 #include <sbi.h>
 
+/**
+ * @brief 打印字符
+ *
+ * @param c 待打印字符
+ */
 inline void putchar(char c)
 {
     register u64 a0 asm("a0") = (u64)c;
@@ -11,6 +24,11 @@ inline void putchar(char c)
                  : "memory");
 };
 
+/**
+ * @brief 从控制台获取字符
+ *
+ * @return int 获取到的字符
+ */
 inline int getchar()
 {
     register u64 a7 asm("a7") = (u64)SBI_CONSOLE_GETCHAR;
