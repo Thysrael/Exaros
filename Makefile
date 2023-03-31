@@ -46,7 +46,7 @@ asm:
 int:  
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -d int
 
-debug: 
+debug: all
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -s -S
 
 gdb: 

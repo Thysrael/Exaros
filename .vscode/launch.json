@@ -16,7 +16,7 @@
             "miDebuggerPath": "/usr/local/bin/riscv64-unknown-elf-gdb",
             // "environment": [],
             // "externalConsole": false,
-            // "preLaunchTask": "exarosDebug",
+            "preLaunchTask": "exarosDebug",
             "MIMode": "gdb",
             "setupCommands": [
                 {
