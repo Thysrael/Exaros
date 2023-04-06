@@ -1,3 +1,6 @@
+#ifndef __DRIVER_H__
+#define __DRIVER_H__
+
 #include <types.h>
 #include <sbi.h>
 
@@ -27,3 +30,5 @@ void _panic_(const char *, int, const char *, const char *, ...) __attribute__((
 void _assert_(const char *, int, const char *, u64);
 #define panic(...) _panic_(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define assert(x) _assert_(__FILE__, __LINE__, __func__, (x))
+
+#endif
