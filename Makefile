@@ -22,7 +22,7 @@ endif
 all: $(modules)
 	mkdir -p $(target_dir)
 	$(LD) -o $(exaros_elf) -T $(linkscript) $(LDFLAGS) $(objects)
-	$(OBJDUMP) -alD $(exaros_elf) > $(exaros_sys)
+	$(OBJDUMP) -alDS $(exaros_elf) > $(exaros_sys)
 	$(OBJCOPY) -O binary $(exaros_elf) $(exaros_bin)
 
 
