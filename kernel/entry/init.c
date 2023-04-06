@@ -9,6 +9,7 @@
 #include <types.h>
 #include <driver.h>
 #include <riscv.h>
+#include <memory.h>
 
 /**
  * @brief boot banner, `train` style character drawing.
@@ -48,4 +49,6 @@ void main(u64 hartId)
     setTp(hartId);
     clearBSS();
     printk("Hello, Exaros!\n");
+    memoryInit();
+    printk("Memory init finished!\n");
 }

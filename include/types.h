@@ -43,4 +43,7 @@ typedef __builtin_va_list va_list;
         __a >= __b ? __a : __b; \
     })
 
+#define ROUND(a, n) (((((u64)(a)) + (n)-1)) & ~((n)-1))
+#define ROUNDDOWN(a, n) (((u64)(a)) & ~((n)-1))
+
 #endif
