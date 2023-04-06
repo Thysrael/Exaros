@@ -23,11 +23,11 @@ void bzero(void *start, u32 len);
 void memoryInit()
 {
     freePageInit();
-    printk("finish freePageInit\n");
+    // printk("finish freePageInit\n");
     kernelPageInit();
-    printk("finish kernelPageInit\n");
+    // printk("finish kernelPageInit\n");
     pageStart();
-    printk("finish pageStart\n");
+    // printk("finish pageStart\n");
 }
 
 /**
@@ -93,7 +93,6 @@ void kernelPageInit()
     //     pageMap(kernelPageDirectory, va, pa,
     //             PTE_READ_BIT | PTE_WRITE_BIT);
     // }
-
     va = pa = (u64)textStart;
     size = (u64)textEnd - (u64)textStart;
     for (i = 0; i < size; i += PAGE_SIZE)
@@ -132,10 +131,8 @@ void kernelPageInit()
  */
 void pageStart()
 {
-    printk("before open\n");
+    sfenceVma();
     writeSatp(MAKE_SATP(SV39, PA2PPN(kernelPageDirectory)));
-    /* TODO TLB refill */
-    printk("after open\n");
     sfenceVma();
 }
 
@@ -156,19 +153,15 @@ i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
     i32 ret;
     va = ALIGN_DOWN(va, PAGE_SIZE);
     pa = ALIGN_DOWN(pa, PAGE_SIZE);
-    // perm |= PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
+    perm |= PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
     ret = pageWalk(pgdir, va, false, &pte);
-    if (ret < 0)
-    {
-        return ret;
-    }
-    if (pte && PTE_VALID(*pte))
+    if ((pte != NULL) && PTE_VALID(*pte))
     {
         printk("Panic: remap\n");
         return -1;
     }
     ret = pageWalk(pgdir, va, true, &pte);
-    if (ret < 0)
+    if (ret)
     {
         return ret;
     }
@@ -229,13 +222,13 @@ Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte)
 {
     u64 *pte;
     Page *page;
-    pageWalk(pgdir, va, 0, &pte);
+    pageWalk(pgdir, va, false, &pte);
     if ((pte == NULL) || !PTE_VALID(*pte))
     {
         return NULL;
     }
     page = pte2Page(*pte);
-    if (ppte)
+    if (ppte != NULL)
     {
         *ppte = pte;
     }
@@ -254,29 +247,33 @@ Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte)
  */
 i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte)
 {
-    u64 *pte = pgdir;
-    u32 levels = 3;
+    // printk("---- Walk begin\n");
+    // printk("va: 0x%lx\n", va);
+
+    u64 *pte = pgdir + VAPPN(va, 2);
     Page *page = NULL;
-    do {
-        levels--;
-        pte += VAPPN(va, levels);
+    for (int i = 1; i >= 0; i--)
+    {
+        // printk("*PTE: 0x%lx\n", pte);
+        // printk("PTE: 0x%lx\n", *pte);
         if (!PTE_VALID(*pte))
         {
-            if (create)
-            {
-                pageAlloc(&page);
-                page->ref++;
-                *pte = page2Pte(page) | PTE_VALID_BIT;
-            }
-            else
+            if (!create)
             {
                 *ppte = NULL;
+                // printk("---- Walk End\n");
                 return -1;
             }
+            pageAlloc(&page);
+            page->ref++;
+            *pte = page2Pte(page) | PTE_VALID_BIT;
         }
-        pte = (u64 *)PTE2PA(*pte);
-    } while (levels);
+        // printk("new PTE: 0x%lx\n", *pte);
+        // printk("new PTE PA: 0x%lx\n", PTE2PA(*pte));
+        pte = (u64 *)PTE2PA(*pte) + VAPPN(va, i);
+    }
     *ppte = pte;
+    // printk("---- Walk End\n");
     return 0;
 }
 
@@ -284,10 +281,10 @@ i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte)
  * @brief
  * 分配一个空闲物理页
  *
- * @param new 页管理块二级指针
+ * @param ppage 页管理块二级指针
  * @return i32 非零值不正常退出
  */
-i32 pageAlloc(Page **new)
+i32 pageAlloc(Page **ppage)
 {
     Page *page;
     if (LIST_EMPTY(&freePageList))
@@ -297,7 +294,7 @@ i32 pageAlloc(Page **new)
     page = LIST_FIRST(&freePageList);
     LIST_REMOVE(page, link);
     bzero((void *)page2PA(page), PAGE_SIZE);
-    *new = page;
+    *ppage = page;
     return 0;
 }
 
