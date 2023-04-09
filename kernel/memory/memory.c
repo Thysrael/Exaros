@@ -20,6 +20,12 @@ i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte);
 i32 pageAlloc(Page **new);
 void bzero(void *start, u32 len);
 
+/**
+ * @brief 初始化虚拟页表系统
+ * 1. 建立并插入空闲页管理块
+ * 2. 建立内核页表
+ * 3. 开启分页
+ */
 void memoryInit()
 {
     freePageInit();
@@ -139,7 +145,6 @@ void pageStart()
 /**
  * @brief
  * 插入 va -> pa 的映射
- * 无需考虑对应页
  *
  * @param pgdir 一级页表指针
  * @param va 虚拟地址
@@ -210,7 +215,7 @@ i32 pageFree(Page *page)
 }
 
 /**
- * @brief 查询指向 va 对应最后一级页表项的指针
+ * @brief 查询 va 对应最后一级页表项的指针
  * 返回 va 对应的 page
  *
  * @param pgdir 一级页表指针
@@ -236,7 +241,7 @@ Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte)
 }
 
 /**
- * @brief 查询指向 va 对应最后一级页表项的指针
+ * @brief 查询 va 对应最后一级页表项的指针
  * 查询过程中根据 create 插入页表
  *
  * @param pgdir 一级页表指针
