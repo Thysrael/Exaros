@@ -1,5 +1,6 @@
 #include <driver.h>
 #include <riscv.h>
+#include <yield.h>
 #include <thread.h>
 
 /**
@@ -43,28 +44,29 @@ int handleInterrupt()
     switch (exceptionCode)
     {
     case INTERRUPT_SEI:
-        // user external interrupt
-        int irq = interruptServed();
-        if (irq == UART_IRQ)
-        {
-            int c = getchar();
-            if (c != -1)
-            {
-                consoleInterrupt(c);
-            }
-        }
-        else if (irq == DISK_IRQ)
-        {
-            // todo
-        }
-        else if (irq)
-        {
-            panic("unexpected interrupt irq = %d\n", irq);
-        }
-        if (irq)
-        {
-            interruptCompleted(irq);
-        }
+        // todo
+        // // user external interrupt
+        // int irq = interruptServed();
+        // if (irq == UART_IRQ)
+        // {
+        //     int c = getchar();
+        //     if (c != -1)
+        //     {
+        //         consoleInterrupt(c);
+        //     }
+        // }
+        // else if (irq == DISK_IRQ)
+        // {
+        //     // todo
+        // }
+        // else if (irq)
+        // {
+        //     panic("unexpected interrupt irq = %d\n", irq);
+        // }
+        // if (irq)
+        // {
+        //     interruptCompleted(irq);
+        // }
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI:
@@ -93,7 +95,7 @@ void kernelHandler()
 
     printk("[kernelHandler] scause: %x, stval: %x, sepc: %x, sip: %x", scause, stval, sepc, sip);
 
-    Trapframe *trapframe = getHartTrapFrame();
+    // Trapframe *trapframe = getHartTrapFrame();
 
     // 打印 trapFrame
     // printTrapframe(trapframe);
@@ -215,50 +217,52 @@ void userTrapReturn()
  *
  * @param tf
  */
-// void printTrapframe(Trapframe *tf)
-// {
-//     printf(" a0: %lx\n \
-// a1: %lx\n \
-// a2: %lx\n \
-// a3: %lx\n \
-// a4: %lx\n \
-// a5: %lx\n \
-// a6: %lx\n \
-// a7: %lx\n \
-// t0: %lx\n \
-// t1: %lx\n \
-// t2: %lx\n \
-// t3: %lx\n \
-// t4: %lx\n \
-// t5: %lx\n \
-// t6: %lx\n \
-// s0: %lx\n \
-// s1: %lx\n \
-// s2: %lx\n \
-// s3: %lx\n \
-// s4: %lx\n \
-// s5: %lx\n \
-// s6: %lx\n \
-// s7: %lx\n \
-// s8: %lx\n \
-// s9: %lx\n \
-// s10: %lx\n \
-// s11: %lx\n \
-// ra: %lx\n \
-// sp: %lx\n \
-// gp: %lx\n \
-// tp: %lx\n \
-// epc: %lx\n \
-// kernelSp: %lx\n \
-// kernelSatp: %lx\n \
-// trapHandler: %lx\n \
-// kernelHartId: %lx\n",
-//            tf->a0, tf->a1, tf->a2, tf->a3, tf->a4,
-//            tf->a5, tf->a6, tf->a7, tf->t0, tf->t1,
-//            tf->t2, tf->t3, tf->t4, tf->t5, tf->t6,
-//            tf->s0, tf->s1, tf->s2, tf->s3, tf->s4,
-//            tf->s5, tf->s6, tf->s7, tf->s8, tf->s9,
-//            tf->s10, tf->s11, tf->ra, tf->sp, tf->gp,
-//            tf->tp, tf->epc, tf->kernelSp, tf->kernelSatp,
-//            tf->trapHandler, tf->kernelHartId);
-// }
+/*
+void printTrapframe(Trapframe *tf)
+{
+    printf(" a0: %lx\n \
+a1: %lx\n \
+a2: %lx\n \
+a3: %lx\n \
+a4: %lx\n \
+a5: %lx\n \
+a6: %lx\n \
+a7: %lx\n \
+t0: %lx\n \
+t1: %lx\n \
+t2: %lx\n \
+t3: %lx\n \
+t4: %lx\n \
+t5: %lx\n \
+t6: %lx\n \
+s0: %lx\n \
+s1: %lx\n \
+s2: %lx\n \
+s3: %lx\n \
+s4: %lx\n \
+s5: %lx\n \
+s6: %lx\n \
+s7: %lx\n \
+s8: %lx\n \
+s9: %lx\n \
+s10: %lx\n \
+s11: %lx\n \
+ra: %lx\n \
+sp: %lx\n \
+gp: %lx\n \
+tp: %lx\n \
+epc: %lx\n \
+kernelSp: %lx\n \
+kernelSatp: %lx\n \
+trapHandler: %lx\n \
+kernelHartId: %lx\n",
+           tf->a0, tf->a1, tf->a2, tf->a3, tf->a4,
+           tf->a5, tf->a6, tf->a7, tf->t0, tf->t1,
+           tf->t2, tf->t3, tf->t4, tf->t5, tf->t6,
+           tf->s0, tf->s1, tf->s2, tf->s3, tf->s4,
+           tf->s5, tf->s6, tf->s7, tf->s8, tf->s9,
+           tf->s10, tf->s11, tf->ra, tf->sp, tf->gp,
+           tf->tp, tf->epc, tf->kernelSp, tf->kernelSatp,
+           tf->trapHandler, tf->kernelHartId);
+}
+*/

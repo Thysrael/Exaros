@@ -33,6 +33,20 @@
 #define VIRTIO ((u64)0x10001000)
 #define PLIC ((u64)0x0c000000)
 
+#define VIRT_OFFSET 0x3F00000000L
+#define PLIC_V (PLIC + VIRT_OFFSET)
+
 #define TRAMPOLINE (VA_MAX - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
+
+// qemu puts programmable interrupt controller here.
+#define PLIC_PRIORITY (PLIC_V + 0x0)
+#define PLIC_PENDING (PLIC_V + 0x1000)
+#define PLIC_MENABLE(hart) (PLIC_V + 0x2000 + (hart)*0x100)
+#define PLIC_SENABLE(hart) (PLIC_V + 0x2080 + (hart)*0x100)
+#define PLIC_MPRIORITY(hart) (PLIC_V + 0x200000 + (hart)*0x2000)
+#define PLIC_SPRIORITY(hart) (PLIC_V + 0x201000 + (hart)*0x2000)
+#define PLIC_MCLAIM(hart) (PLIC_V + 0x200004 + (hart)*0x2000)
+#define PLIC_SCLAIM(hart) (PLIC_V + 0x201004 + (hart)*0x2000)
+
 #endif

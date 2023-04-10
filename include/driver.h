@@ -49,8 +49,4 @@ void _assert_(const char *, int, const char *, u64);
 #define panic(...) _panic_(__FILE__, __LINE__, __func__, __VA_ARGS__)
 #define assert(x) _assert_(__FILE__, __LINE__, __func__, (x))
 
-<<<<<<< HEAD
-#endif
-    == == == =
 #endif /* _DRIVER_H_ */
-    >>>>>>> 49bca9db7ac5e4c62a6010aa8b0835c96e30ffc3

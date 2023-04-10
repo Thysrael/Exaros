@@ -1,6 +1,6 @@
 INCLUDES := -I../../include
 
-target = trap.o
+target = trap.o user_trap.o kernel_trap.o
 
 .PHONY: build clean
 

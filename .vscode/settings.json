@@ -9,7 +9,8 @@
 		"driver.h": "c",
 		"riscv.h": "c",
 		"thread.h": "c",
-		"trap.h": "c"
+		"trap.h": "c",
+		"mem_layout.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

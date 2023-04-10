@@ -2,7 +2,9 @@
 #define _TRAP_H_
 
 #include <thread.h>
+#include <types.h>
 #include <riscv.h>
+#include <mem_layout.h>
 
 #define SCAUSE_INTERRUPT (1UL << 63)
 #define SCAUSE_EXCEPTION_CODE ((1UL << 63) - 1)
@@ -43,7 +45,7 @@
 
 inline static u32 interruptServed()
 {
-    int hart = readTp(); // thread id
+    u64 hart = readTp(); // thread id
     // #ifndef QEMU
     return *(u32 *)PLIC_MCLAIM(hart);
     // #else
@@ -52,8 +54,12 @@ inline static u32 interruptServed()
 }
 
 void trapInit();
-void kernelTrap();
+int handleInterrupt();
 void kernelHandler();
+void kernelTrap();
+void userHandler();
+void userTrap();
+void userTrapReturn();
 // void printTrapframe(Trapframe *tf);
 
 #endif

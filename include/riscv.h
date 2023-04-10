@@ -11,7 +11,6 @@
 
 #include <types.h>
 #include <driver.h>
-#include <trap.h>
 
 #define CORE_NUM 2
 
@@ -137,7 +136,7 @@ static inline void writeStval(u64 x)
     WRITE_CSR("stval", x);
 }
 
-static inline void readTp(u64 x)
+static inline u64 readTp()
 {
     u64 x;
     asm volatile("mv %0, tp"
