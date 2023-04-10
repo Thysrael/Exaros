@@ -129,4 +129,25 @@ static inline void writeStval(u64 x)
     WRITE_CSR("stval", x);
 }
 
+static inline void readTp(u64 x)
+{
+    u64 x;
+    asm volatile("mv %0, tp"
+                 : "=r"(x));
+    return x;
+}
+
+/**
+ * @brief are devide interrupts enabled?
+ *
+ * @return true
+ * @return false
+ */
+static inline bool intr_get()
+{
+    u64 x = readSstatus();
+    // not enabled
+    return (x & SSTATUS_SIE) != 0;
+}
+
 #endif

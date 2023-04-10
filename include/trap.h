@@ -1,6 +1,9 @@
 #ifndef _TRAP_H_
 #define _TRAP_H_
 
+#include <thread.h>
+#include <riscv.h>
+
 #define SCAUSE_INTERRUPT (1UL << 63)
 #define SCAUSE_EXCEPTION_CODE ((1UL << 63) - 1)
 
@@ -34,8 +37,23 @@
 #define SIE_STIE (1L << INTERRUPT_STI) // Supervisor software interrupt
 #define SIE_SEIE (1L << INTERRUPT_SEI) // Supervisor software interrupt
 
+#define TIMER_INTERRUPT 2
+#define EXTERNAL_TRAP 1
+#define UNKNOWN_DEVICE 0
+
+inline static u32 interruptServed()
+{
+    int hart = readTp(); // thread id
+    // #ifndef QEMU
+    return *(u32 *)PLIC_MCLAIM(hart);
+    // #else
+    //     return *(u32 *)PLIC_SCLAIM(hart);
+    // #endif
+}
+
 void trapInit();
 void kernelTrap();
 void kernelHandler();
+// void printTrapframe(Trapframe *tf);
 
 #endif

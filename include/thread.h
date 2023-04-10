@@ -1,3 +1,5 @@
+#ifndef _THREAD_H_
+#define _THREAD_H_
 
 typedef struct Trapframe
 {
@@ -70,3 +72,5 @@ typedef struct Trapframe
     u64 ft10;
     u64 ft11;
 } Trapframe;
+
+#endif

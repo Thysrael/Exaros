@@ -38,14 +38,14 @@ kernelTrap:
     sd t5, 232(sp)
     sd t6, 240(sp)
 
-    // 调用异常处理函数
+    # 调用异常处理函数
     call kernelHandler
 
     ld ra, 0(sp)
     ld sp, 8(sp)
     ld gp, 16(sp)
-    // tp 寄存器要在线程切换的时候修改，所以这里不需要恢复？
-    // not this, in case we moved CPUs: ld tp, 24(sp)
+    # tp 寄存器要在线程切换的时候修改，所以这里不需要恢复？
+    # not this, in case we moved CPUs: ld tp, 24(sp)
     ld t0, 32(sp)
     ld t1, 40(sp)
     ld t2, 48(sp)
