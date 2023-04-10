@@ -6,7 +6,7 @@ GCC		:= $(CROSS_COMPILE)gcc
 OBJDUMP := $(CROSS_COMPILE)objdump
 OBJCOPY	:= $(CROSS_COMPILE)objcopy
 LD 		:= $(CROSS_COMPILE)ld
-GDB		:= gdb-multiarch
+GDB		:= $(CROSS_COMPILE)gdb
 QEMU	:= qemu-system-riscv64
 
 # gcc options

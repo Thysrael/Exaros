@@ -10,5 +10,30 @@
 		"riscv.h": "c",
 		"thread.h": "c",
 		"trap.h": "c"
-	}
+	},
+	"doxdocgen.file.fileOrder": [
+		"file",
+		"brief",
+		"date",
+		"empty",
+		"copyright"
+	],
+	"doxdocgen.file.copyrightTag": [
+		"@copyright Copyright (c) {year}"
+	],
+	"doxdocgen.generic.briefTemplate": "@brief {text}",
+	"multiCommand.commands": [
+		{
+			"command": "multiCommand.enterExec",
+			"sequence": [
+				"repl.action.acceptInput",
+				{
+					"command": "editor.action.insertSnippet",
+					"args": {
+						"snippet": "-exec "
+					}
+				}
+			]
+		}
+	]
 }

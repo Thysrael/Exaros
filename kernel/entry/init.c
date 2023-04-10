@@ -1,17 +1,20 @@
+/**
+ * @file init.c
+ * @brief 对于主核和副核分别进行启动，主核启动包括清空 BSS
+ * @date 2023-03-30
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include <types.h>
 #include <driver.h>
+#include <riscv.h>
+#include <memory.h>
 
-static inline void clearBSS()
-{
-    extern u64 bssStart[];
-    extern u64 bssEnd[];
-    for (u64 *i = bssStart; i < bssEnd; i++)
-    {
-        *i = 0;
-    }
-}
-
-// the banner
+/**
+ * @brief boot banner, `train` style character drawing.
+ *
+ */
 // char *banner =
 //     "\n\t\033[34mU\033[0m _____ \033[34mU\033[0m   __  __       _         ____        \033[34mU\033[0m  ___ \033[34mU\033[0m   ____     \n"
 //     "\t\033[34m\\\033[0m| ___\033[32m\"\033[0m|\033[34m/\033[0m   \\ \\/\033[32m\"\033[0m/   \033[34mU\033[0m  /\033[32m\"\033[0m\\  \033[34mU\033[0m  \033[34mU\033[0m |  _\033[32m\"\033[0m\\ \033[34mU\033[0m      \033[34m\\\033[0m/\033[32m\"\033[0m_ \\\033[34m/\033[0m  / __\033[32m\"\033[0m| \033[34mU\033[0m  \n"
@@ -21,8 +24,31 @@ static inline void clearBSS()
 //     "\t \033[33m<<   >>  \033[31m,-,\033[33m>> \\\\\033[31m_\033[33m   \\\\    >>    //   \\\\\033[31m_\033[33m        \\\\      \033[31m)(  (__) \n"
 //     "\t(__) (__)  \\_)  (__) (__)  (__)  (__)  (__)      (__)    (__)\033[0m      \n\n";
 
+/**
+ * @brief 清空 BSS 段
+ *
+ */
+static inline void clearBSS()
+{
+    // from kernel.lds
+    extern u64 bssStart[];
+    extern u64 bssEnd[];
+    for (u64 *i = bssStart; i < bssEnd; i++)
+    {
+        *i = 0;
+    }
+}
+
+/**
+ * @brief 对于主副核采用不同的启动策略
+ *
+ * @param hartId 核 ID
+ */
 void main(u64 hartId)
 {
+    setTp(hartId);
     clearBSS();
     printk("Hello, Exaros!\n");
+    memoryInit();
+    printk("Memory init finished!\n");
 }

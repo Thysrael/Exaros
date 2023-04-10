@@ -1,4 +1,5 @@
 #include <driver.h>
+#include <riscv.h>
 
 #define BUF_SIZE 256
 #define IsDigit(x) (((x) >= '0') && ((x) <= '9'))
@@ -11,6 +12,12 @@ static inline void putBuffer(const char *s);
 static void print(const char *fmt, va_list ap);
 static void panicPrintf(const char *fmt, ...);
 
+/**
+ * @brief kernel 的格式化输出函数
+ *
+ * @param fmt 格式化字符串
+ * @param ... 可变参数
+ */
 void printk(const char *fmt, ...)
 {
     va_list ap;
@@ -19,9 +26,18 @@ void printk(const char *fmt, ...)
     va_end(ap);
 }
 
+/**
+ * @brief PANIC 的内部函数，可以打印 HARTID，行数等信息
+ *
+ * @param file 文件名
+ * @param line 文件行数
+ * @param func 函数名
+ * @param fmt 格式化字符串
+ * @param ... 可变参数
+ */
 void _panic_(const char *file, int line, const char *func, const char *fmt, ...)
 {
-    panicPrintf("panic at %s: %d in %s(): ", file, line, func);
+    panicPrintf("hartId %d panic at %s: %d in %s(): ", getTp(), file, line, func);
     va_list ap;
     va_start(ap, fmt);
     print(fmt, ap);
@@ -31,6 +47,14 @@ void _panic_(const char *file, int line, const char *func, const char *fmt, ...)
         ;
 }
 
+/**
+ * @brief ASSERT 的内部函数，可以打印多种信息
+ *
+ * @param file 文件名
+ * @param line 所在行数
+ * @param func 所在函数
+ * @param statement 断言条件
+ */
 void _assert_(const char *file, int line, const char *func, u64 statement)
 {
     if (!statement)

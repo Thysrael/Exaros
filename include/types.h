@@ -1,3 +1,11 @@
+/**
+ * @file types.h
+ * @brief 拓展 C 语言类型系统
+ * @date 2023-03-30
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
@@ -9,6 +17,8 @@ typedef int __attribute__((__mode__(QI))) i8;
 typedef int __attribute__((__mode__(HI))) i16;
 typedef int __attribute__((__mode__(SI))) i32;
 typedef int __attribute__((__mode__(DI))) i64;
+
+typedef u8 bool;
 
 #define true 1
 #define false 0
@@ -32,5 +42,8 @@ typedef __builtin_va_list va_list;
         typeof(_b) __b = (_b);  \
         __a >= __b ? __a : __b; \
     })
+
+#define ROUND(a, n) (((((u64)(a)) + (n)-1)) & ~((n)-1))
+#define ROUNDDOWN(a, n) (((u64)(a)) & ~((n)-1))
 
 #endif

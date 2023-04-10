@@ -1,3 +1,11 @@
+/**
+ * @file sbi.h
+ * @brief 关于 SBI 的常量、 SBI 调用
+ * @date 2023-03-30
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #ifndef _SBI_H_
 #define _SBI_H_
 
