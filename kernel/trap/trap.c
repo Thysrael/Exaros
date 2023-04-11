@@ -2,6 +2,7 @@
 #include <riscv.h>
 #include <yield.h>
 #include <thread.h>
+#include <trap.h>
 
 /**
  * @brief 初始化异常处理

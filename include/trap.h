@@ -1,3 +1,11 @@
+/**
+ * @file trap.h
+ * @brief 异常和中断的编号，以及处理函数
+ * @date 2023-04-11
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #ifndef _TRAP_H_
 #define _TRAP_H_
 
