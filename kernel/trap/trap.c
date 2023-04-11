@@ -13,19 +13,24 @@
  */
 void trapInit()
 {
-    printk("Trap init start...");
+    printk("Trap init start...\n");
 
     // 1. 设置 stvec 寄存器到中断处理函数
     writeStvec((u64)kernelTrap);
 
     // 2. 设置 sie 寄存器，使能中断
-    writeSie(readSie() | SIE_SSIE | SIE_STIE | SIE_SSIE);
+    writeSie(readSie() | SIE_SEIE | SIE_STIE | SIE_SSIE);
 
     // 3. 设置 sip（当前待处理的中断） 为 0
     writeSip(0);
 
     // 4. 设置 sstatus 的 SIE, SPIE
     writeSstatus(readSstatus() | SSTATUS_SIE | SSTATUS_SPIE);
+
+    // 初始化时钟（为了防止输出太多东西，可以暂时注释掉）
+    // setNextTimeout();
+
+    printk("Trap init end.\n");
 }
 
 /**
@@ -40,7 +45,6 @@ int handleInterrupt()
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
 
     assert(scause & SCAUSE_INTERRUPT);
-
     // 处理中断
     switch (exceptionCode)
     {
@@ -70,9 +74,9 @@ int handleInterrupt()
         // }
         return EXTERNAL_TRAP;
         break;
-    case INTERRUPT_STI:
+    case INTERRUPT_STI: // s timer interrupt
         // user timer interrupt
-        // timerTick();
+        timerTick();
         // todo timer?
         return TIMER_INTERRUPT;
         break;
@@ -94,7 +98,7 @@ void kernelHandler()
     u64 sip = readSip();
     u64 sstatus = readSstatus();
 
-    printk("[kernelHandler] scause: %x, stval: %x, sepc: %x, sip: %x", scause, stval, sepc, sip);
+    printk("[kernelHandler] scause: %x, stval: %x, sepc: %x, sip: %x\n", scause, stval, sepc, sip);
 
     // Trapframe *trapframe = getHartTrapFrame();
 

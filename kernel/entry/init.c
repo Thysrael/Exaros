@@ -10,6 +10,7 @@
 #include <driver.h>
 #include <riscv.h>
 #include <memory.h>
+#include <trap.h>
 
 /**
  * @brief boot banner, `train` style character drawing.
@@ -51,4 +52,5 @@ void main(u64 hartId)
     printk("Hello, Exaros!\n");
     memoryInit();
     printk("Memory init finished!\n");
+    trapInit();
 }

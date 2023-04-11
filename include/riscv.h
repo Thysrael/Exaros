@@ -36,8 +36,17 @@
                  : "r"(src));       \
 })
 
-static inline u64
-readSstatus()
+static inline u64 readRealTime()
+{
+    u64 x;
+    // asm volatile("csrr %0, time" : "=r" (x) );
+    // this instruction will trap in SBI
+    asm volatile("rdtime %0"
+                 : "=r"(x));
+    return x;
+}
+
+static inline u64 readSstatus()
 {
     u64 x;
     READ_CSR(x, "sstatus");

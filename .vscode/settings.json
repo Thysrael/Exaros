@@ -11,7 +11,8 @@
 		"thread.h": "c",
 		"trap.h": "c",
 		"mem_layout.h": "c",
-		"yield.h": "c"
+		"yield.h": "c",
+		"process.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

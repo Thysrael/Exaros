@@ -70,4 +70,24 @@ void userTrap();
 void userTrapReturn();
 // void printTrapframe(Trapframe *tf);
 
+// about timer
+#define TIMER_INTERVAL 200000
+
+typedef struct TimeSpec
+{
+    u64 second;
+    long nanoSecond;
+} TimeSpec;
+
+typedef struct IntervalTimer
+{
+    TimeSpec interval;
+    TimeSpec expiration;
+} IntervalTimer;
+
+void setNextTimeout();
+void timerTick();
+void setTimer(IntervalTimer new);
+IntervalTimer getTimer();
+
 #endif
