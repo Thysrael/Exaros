@@ -10,7 +10,8 @@
 		"riscv.h": "c",
 		"thread.h": "c",
 		"trap.h": "c",
-		"mem_layout.h": "c"
+		"mem_layout.h": "c",
+		"yield.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

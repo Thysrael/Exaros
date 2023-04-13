@@ -1,3 +1,11 @@
+/**
+ * @file thread.h
+ * @brief 关于线程的常量、结构体、函数声明
+ * @date 2023-04-11
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #ifndef _THREAD_H_
 #define _THREAD_H_
 
