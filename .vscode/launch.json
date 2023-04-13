@@ -11,7 +11,7 @@
             "stopAtEntry": true,
             "cwd": "${workspaceFolder}",
             "miDebuggerServerAddress": "localhost:1234",
-            //这里实际上可以用各种能调试的 gdb，如果找不到你可以使用which gdb-multiarch
+            //这里实际上可以用各种能调试的 gdb，如果找不到你可以使用 which gdb-multiarch
             //但要注意的是，为了能在ubuntu20.04调出寄存器，强烈建议使用 riscv64 的 gdb 
             "miDebuggerPath": "/usr/local/bin/riscv64-unknown-elf-gdb",
             // "environment": [],
