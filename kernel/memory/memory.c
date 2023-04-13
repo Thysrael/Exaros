@@ -73,32 +73,20 @@ void kernelPageInit()
     extern char textStart[];
     extern char textEnd[];
     extern char kernelEnd[];
-    // extern char trampoline[];
-    // extern char trapframe[];
+    extern char trampoline[];
+
+    pageMap(kernelPageDirectory, CLINT, CLINT,
+            PTE_READ_BIT | PTE_WRITE_BIT);
+
+    pageMap(kernelPageDirectory, PLIC, PLIC,
+            PTE_READ_BIT | PTE_WRITE_BIT);
 
     pageMap(kernelPageDirectory, UART0, UART0,
             PTE_READ_BIT | PTE_WRITE_BIT);
 
-    // pageMap(kernelPageDirectory, UART0, UART0,
-    //         PTE_READ_BIT | PTE_WRITE_BIT);
-
     pageMap(kernelPageDirectory, VIRTIO, VIRTIO,
             PTE_READ_BIT | PTE_WRITE_BIT);
 
-    // xv6 中无
-    // va = pa + VIRT_OFFSET; 参考
-    // va = pa = (u64)CLINT;
-    // for(; va < CLINT + 0x10000; va += PAGE_SIZE, pa += PAGE_SIZE) {
-    //     pageMap(kernelPageDirectory, va, pa,
-    //         PTE_READ_BIT | PTE_WRITE_BIT);
-    // }
-
-    // va = pa = (u64)PLIC; xv6
-    // va = pa + VIRT_OFFSET; 参考
-    // for(; va < (u64)textEnd; va += PAGE_SIZE, pa += PAGE_SIZE) {
-    //     pageMap(kernelPageDirectory, va, pa,
-    //             PTE_READ_BIT | PTE_WRITE_BIT);
-    // }
     va = pa = (u64)textStart;
     size = (u64)textEnd - (u64)textStart;
     for (i = 0; i < size; i += PAGE_SIZE)
@@ -115,25 +103,28 @@ void kernelPageInit()
                 PTE_READ_BIT | PTE_WRITE_BIT);
     }
 
-    // va = pa = (u64)kernelEnd;
-    // size = (u64)PHYSICAL_MEMORY_END - (u64)kernelEnd;
-    // for (i = 0; i < size; i += PAGE_SIZE)
-    // {
-    //     pageMap(kernelPageDirectory, va + i, pa + i,
-    //             PTE_READ_BIT | PTE_WRITE_BIT);
-    // }
+    va = pa = (u64)kernelEnd;
+    size = (u64)PHYSICAL_MEMORY_END - (u64)kernelEnd;
+    for (i = 0; i < size; i += PAGE_SIZE)
+    {
+        pageMap(kernelPageDirectory, va + i, pa + i,
+                PTE_READ_BIT | PTE_WRITE_BIT);
+    }
 
-    /* 将处于内核的 TRAMPOLINE 和 TRAPFRAME 暴露到特定地址 */
-    // 需要在写进程切换的时候定义 trampoline 和 trapframe
-    // pageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
-    //     PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    // pageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
-    //     PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    /**
+     * 映射 trampoline
+     * 注意到 trampoline 本身位于 Kernel text 被直接映射一次
+     * 再映射到高位一次
+     */
+    pageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
+            PTE_READ_BIT | PTE_EXECUTE_BIT);
 }
 
 /**
- * @brief 开启分页
- *
+ * @brief
+ * 开启分页：
+ * 1. 写 stap 寄存器
+ * 2. 刷新 TLB
  */
 void pageStart()
 {
