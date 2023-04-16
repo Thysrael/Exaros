@@ -9,17 +9,6 @@ Page pages[PAGE_NUM];
 PageList freePageList;
 extern u64 kernelPageDirectory[];
 
-void freePageInit();
-void kernelPageInit();
-void pageStart();
-i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm);
-i32 pageRemove(u64 *pgdir, u64 va);
-i32 pageFree(Page *page);
-Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte);
-i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte);
-i32 pageAlloc(Page **new);
-void bzero(void *start, u32 len);
-
 /**
  * @brief 初始化虚拟页表系统
  * 1. 建立并插入空闲页管理块
@@ -301,6 +290,18 @@ i32 pageAlloc(Page **ppage)
     bzero((void *)page2PA(page), PAGE_SIZE);
     *ppage = page;
     return 0;
+}
+
+void bcopy(void *src, void *dst, u32 len)
+{
+    void *finish = src + len;
+
+    while (src < finish)
+    {
+        *(u8 *)dst = *(u8 *)src;
+        src++;
+        dst++;
+    }
 }
 
 // 记得切换为 memset

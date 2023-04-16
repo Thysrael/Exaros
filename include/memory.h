@@ -46,6 +46,18 @@ typedef struct Page
     u32 hardId;
 } Page;
 
+void freePageInit();
+void kernelPageInit();
+void pageStart();
+i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm);
+i32 pageRemove(u64 *pgdir, u64 va);
+i32 pageFree(Page *page);
+Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte);
+i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte);
+i32 pageAlloc(Page **new);
+void bzero(void *start, u32 len);
+void bcopy(void *src, void *dst, u32 len);
+
 /**
  * @brief page 2 Page iNdex
  *
