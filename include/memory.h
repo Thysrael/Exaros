@@ -19,8 +19,9 @@
 #define PTE_EXECUTE_BIT ((u64)1 << 3)  /* 可运行位 */
 #define PTE_USER_BIT ((u64)1 << 4)     /* 可在 User-MODE 访问位 */
 #define PTE_GLOBAL_BIT ((u64)1 << 5)   /* 全局访问位 */
-#define PTE_ACCESSED_BIT ((u64)1 << 6) /* 被访问位（读/写/取） */
-#define PTE_DIRTY_BIT ((u64)1 << 7)    /* 被修改位（写） */
+#define PTE_ACCESSED_BIT ((u64)1 << 6) /* 被访问位（读/写/取），恒 1 */
+#define PTE_DIRTY_BIT ((u64)1 << 7)    /* 被修改位（写），恒 1*/
+#define PTE_COW_BIT ((u64)1 << 8)      /* Copy on Write 位 */
 #define PTE_PERM_WIDTH (10)
 
 #define PTE_VALID(pte) ((u64)pte & PTE_VALID_BIT) /* 0: 无效 */
@@ -50,7 +51,7 @@ typedef struct Page
  * @brief page 2 Page iNdex
  *
  * @param page
- * @return u64
+ * @return u64 Page iNdex
  */
 __attribute__((unused)) static u64 page2PN(Page *page)
 {
@@ -59,10 +60,10 @@ __attribute__((unused)) static u64 page2PN(Page *page)
 }
 
 /**
- * @brief page 2 Page iNdex
+ * @brief Page iNdex 2 page
  *
- * @param page
- * @return u64
+ * @param pn Page iNdex
+ * @return Page*
  */
 __attribute__((unused)) static Page *pn2Page(u64 pn)
 {
@@ -74,7 +75,7 @@ __attribute__((unused)) static Page *pn2Page(u64 pn)
  * @brief page 2 Physical Address
  *
  * @param page
- * @return * page
+ * @return u64 Physical Address
  */
 __attribute__((unused)) static u64 page2PA(Page *page)
 {
@@ -85,7 +86,7 @@ __attribute__((unused)) static u64 page2PA(Page *page)
  * @brief page 2 Page Table Entry
  *
  * @param page
- * @return u64
+ * @return u64 PPN part of PTE
  */
 __attribute__((unused)) static u64 page2Pte(Page *page)
 {
@@ -95,8 +96,8 @@ __attribute__((unused)) static u64 page2Pte(Page *page)
 /**
  * @brief physical address 2 Page iNdex
  *
- * @param page
- * @return u64
+ * @param pa
+ * @return u64 Page iNdex
  */
 __attribute__((unused)) static u64 pa2PN(u64 pa)
 {
@@ -110,8 +111,8 @@ __attribute__((unused)) static u64 pa2PN(u64 pa)
 /**
  * @brief physical address 2 Page
  *
- * @param page
- * @return u64
+ * @param pa
+ * @return Page*
  */
 __attribute__((unused)) static Page *pa2Page(u64 pa)
 {
@@ -130,5 +131,7 @@ __attribute__((unused)) static Page *pte2Page(u64 pte)
 }
 
 void memoryInit();
+i32 pageAlloc(Page **new);
+i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm);
 
 #endif /* _MEMORY_H_ */

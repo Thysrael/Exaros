@@ -12,7 +12,7 @@ extern u64 kernelPageDirectory[];
 void freePageInit();
 void kernelPageInit();
 void pageStart();
-i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm);
+i32 kernelPageMap(u64 *pgdir, u64 va, u64 pa, u64 perm);
 i32 pageRemove(u64 *pgdir, u64 va);
 i32 pageFree(Page *page);
 Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte);
@@ -40,11 +40,13 @@ void memoryInit()
  * @brief 初始化空闲 page 列表
  * 注意，可管理的物理空间为
  * [PHYSICAL_MEMORY_BASE, PHYSICAL_MEMORY_END)
- * 其他地址无需真实 page 管理，添加映射即可
+ * 其他地址无需真实 page 管理，直接添加映射
  *
  * 而 TLB 管理的物理空间为
  * [0x0, PHYSICAL_MEMORY_END)
  * 注意两者 PPN 的区别
+ *
+ * 为设置映射时的 pageAlloc 提供可用页
  */
 void freePageInit()
 {
@@ -73,42 +75,42 @@ void kernelPageInit()
     extern char textStart[];
     extern char textEnd[];
     extern char kernelEnd[];
-    extern char trampoline[];
+    // extern char trampoline[];
 
-    pageMap(kernelPageDirectory, CLINT, CLINT,
-            PTE_READ_BIT | PTE_WRITE_BIT);
+    kernelPageMap(kernelPageDirectory, CLINT, CLINT,
+                  PTE_READ_BIT | PTE_WRITE_BIT);
 
-    pageMap(kernelPageDirectory, PLIC, PLIC,
-            PTE_READ_BIT | PTE_WRITE_BIT);
+    kernelPageMap(kernelPageDirectory, PLIC, PLIC,
+                  PTE_READ_BIT | PTE_WRITE_BIT);
 
-    pageMap(kernelPageDirectory, UART0, UART0,
-            PTE_READ_BIT | PTE_WRITE_BIT);
+    kernelPageMap(kernelPageDirectory, UART0, UART0,
+                  PTE_READ_BIT | PTE_WRITE_BIT);
 
-    pageMap(kernelPageDirectory, VIRTIO, VIRTIO,
-            PTE_READ_BIT | PTE_WRITE_BIT);
+    kernelPageMap(kernelPageDirectory, VIRTIO, VIRTIO,
+                  PTE_READ_BIT | PTE_WRITE_BIT);
 
     va = pa = (u64)textStart;
     size = (u64)textEnd - (u64)textStart;
     for (i = 0; i < size; i += PAGE_SIZE)
     {
-        pageMap(kernelPageDirectory, va + i, pa + i,
-                PTE_READ_BIT | PTE_EXECUTE_BIT);
+        kernelPageMap(kernelPageDirectory, va + i, pa + i,
+                      PTE_READ_BIT | PTE_EXECUTE_BIT);
     }
 
     va = pa = (u64)textEnd;
     size = (u64)kernelEnd - (u64)textEnd;
     for (i = 0; i < size; i += PAGE_SIZE)
     {
-        pageMap(kernelPageDirectory, va + i, pa + i,
-                PTE_READ_BIT | PTE_WRITE_BIT);
+        kernelPageMap(kernelPageDirectory, va + i, pa + i,
+                      PTE_READ_BIT | PTE_WRITE_BIT);
     }
 
     va = pa = (u64)kernelEnd;
     size = (u64)PHYSICAL_MEMORY_END - (u64)kernelEnd;
     for (i = 0; i < size; i += PAGE_SIZE)
     {
-        pageMap(kernelPageDirectory, va + i, pa + i,
-                PTE_READ_BIT | PTE_WRITE_BIT);
+        kernelPageMap(kernelPageDirectory, va + i, pa + i,
+                      PTE_READ_BIT | PTE_WRITE_BIT);
     }
 
     /**
@@ -116,15 +118,15 @@ void kernelPageInit()
      * 注意到 trampoline 本身位于 Kernel text 被直接映射一次
      * 再映射到高位一次
      */
-    pageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
-            PTE_READ_BIT | PTE_EXECUTE_BIT);
+    // kernelPageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
+    //               PTE_READ_BIT | PTE_EXECUTE_BIT);
 }
 
 /**
- * @brief
- * 开启分页：
- * 1. 写 stap 寄存器
- * 2. 刷新 TLB
+ * @brief 开启分页：
+ * 1. 刷新 TLB
+ * 2. 写 stap 寄存器
+ * 3. 刷新 TLB
  */
 void pageStart()
 {
@@ -134,36 +136,29 @@ void pageStart()
 }
 
 /**
- * @brief
- * 插入 va -> pa 的映射
+ * @brief 插入 va -> pa 的映射
+ * 不处理 pa 对应 page ref
  *
  * @param pgdir 一级页表指针
  * @param va 虚拟地址
  * @param pa 物理地址
  * @param perm 权限参数
- * @return i32 非零值不正常退出
+ * @return i32 非 0 异常
  */
-i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
+i32 kernelPageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
 {
     u64 *pte;
-    i32 ret;
     va = ALIGN_DOWN(va, PAGE_SIZE);
     pa = ALIGN_DOWN(pa, PAGE_SIZE);
     perm |= PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
-    ret = pageWalk(pgdir, va, false, &pte);
+    try(pageWalk(pgdir, va, false, &pte));
     if ((pte != NULL) && PTE_VALID(*pte))
     {
-        printk("Panic: remap\n");
-        return -1;
+        panic("Remapping");
+        return -E_UNSPECIFIED;
     }
-    ret = pageWalk(pgdir, va, true, &pte);
-    if (ret)
-    {
-        return ret;
-    }
+    try(pageWalk(pgdir, va, true, &pte));
     *pte = PA2PTE(pa) | perm | PTE_VALID_BIT;
-    /* pa 对应页管理块未进行操作
-    因为这个块本身只有 OS 访问 */
     return 0;
 }
 
@@ -172,7 +167,7 @@ i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
  *
  * @param pgdir
  * @param va
- * @return i32 非 0 则删除失败
+ * @return i32 非 0 删除失败
  */
 i32 pageRemove(u64 *pgdir, u64 va)
 {
@@ -181,7 +176,6 @@ i32 pageRemove(u64 *pgdir, u64 va)
     if (pte == NULL)
     {
         return -1;
-        // TODO
     }
     page->ref--;
     pageFree(page);
@@ -190,10 +184,10 @@ i32 pageRemove(u64 *pgdir, u64 va)
 }
 
 /**
- * @brief 释放空闲页
+ * @brief 尝试释放空闲页
  *
  * @param page 页管理块指针
- * @return i32 非零则释放失败
+ * @return i32 非 0 释放失败
  */
 i32 pageFree(Page *page)
 {
@@ -218,7 +212,7 @@ Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte)
 {
     u64 *pte;
     Page *page;
-    pageWalk(pgdir, va, false, &pte);
+    panic_on(pageWalk(pgdir, va, false, &pte));
     if ((pte == NULL) || !PTE_VALID(*pte))
     {
         return NULL;
@@ -239,46 +233,36 @@ Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte)
  * @param va 虚拟地址
  * @param create 是否在页表中插入新页
  * @param pte 最后一级 PTE 二级指针
- * @return i32 非零则查询失败
+ * @return i32 非 0 异常
  */
 i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte)
 {
-    // printk("---- Walk begin\n");
-    // printk("va: 0x%lx\n", va);
-
     u64 *pte = pgdir + VAPPN(va, 2);
     Page *page = NULL;
     for (int i = 1; i >= 0; i--)
     {
-        // printk("*PTE: 0x%lx\n", pte);
-        // printk("PTE: 0x%lx\n", *pte);
         if (!PTE_VALID(*pte))
         {
             if (!create)
             {
                 *ppte = NULL;
-                // printk("---- Walk End\n");
-                return -1;
+                return 0;
             }
-            pageAlloc(&page);
+            try(pageAlloc(&page));
             page->ref++;
             *pte = page2Pte(page) | PTE_VALID_BIT;
         }
-        // printk("new PTE: 0x%lx\n", *pte);
-        // printk("new PTE PA: 0x%lx\n", PTE2PA(*pte));
         pte = (u64 *)PTE2PA(*pte) + VAPPN(va, i);
     }
     *ppte = pte;
-    // printk("---- Walk End\n");
     return 0;
 }
 
 /**
- * @brief
- * 分配一个空闲物理页
+ * @brief 分配一个空闲物理页
  *
  * @param ppage 页管理块二级指针
- * @return i32 非零值不正常退出
+ * @return i32 非 0 异常
  */
 i32 pageAlloc(Page **ppage)
 {
@@ -319,4 +303,37 @@ void bzero(void *start, u32 len)
     {
         *(u8 *)start++ = 0;
     }
+}
+
+/**
+ * @brief 给 va 插入映射的新页 pp
+ * 自动处理 page ref
+ *
+ * @param pgdir 一级页表指针
+ * @param va 被映射的虚拟地址
+ * @param pp 映射的物理页管理块
+ * @param perm 权限位
+ * @return i32 非 0 异常
+ */
+i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
+{
+    u64 *pte;
+    perm |= PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
+    try(pageWalk(pgdir, va, false, &pte));
+    if (pte && PTE_VALID(*pte))
+    {
+        if (pte2Page(*pte) != pp)
+        {
+            pageRemove(pgdir, va);
+        }
+        else
+        {
+            *pte = page2Pte(pp) | perm | PTE_VALID_BIT;
+            return 0;
+        }
+    }
+    try(pageWalk(pgdir, va, true, &pte));
+    *pte = page2Pte(pp) | perm | PTE_VALID_BIT;
+    pp->ref++;
+    return 0;
 }
