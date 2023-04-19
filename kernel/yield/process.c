@@ -13,14 +13,15 @@
 #include <mem_layout.h>
 #include <error.h>
 #include <yield.h>
+#include <trap.h>
 #include <elf.h>
 
 Process processes[PROCESS_TOTAL_NUMBER];
 ProcessList freeProcesses, usedProcesses;
 ProcessList scheduleList[2];
 Process *currentProcess[CORE_NUM] = {0};
-static int processTimeCount[CORE_NUM] = {0, 0, 0, 0, 0};
-static int processBelongList[CORE_NUM] = {0, 0, 0, 0, 0};
+static int processTimeCount[CORE_NUM] = {0};
+static int processBelongList[CORE_NUM] = {0};
 
 /**
  * @brief 获取当前这个核正在运行的进程
@@ -49,6 +50,7 @@ void processInit()
 {
     printk("ProcessInit start...\n");
 
+    printk("processes address:%lx\n", (u64)(&processes));
     LIST_INIT(&freeProcesses);
     LIST_INIT(&scheduleList[0]);
     LIST_INIT(&scheduleList[1]);
@@ -95,21 +97,21 @@ void processDestory(Process *p)
 
 void processFree(Process *p)
 {
-    pgdirFree(p->pgdir);
+    // todo
+    // pgdirFree(p->pgdir);
     p->state = ZOMBIE; // 进程已结束，但是未被父进程获取返回值
 
     // todo 写好文件系统之后要在这里释放掉进程占用的文件资源
 
-    kernelProcessCpuTimeEnd();
-    if (p->parentId > 0)
-    {
-        Process *parentProcess;
-        int r = pid2Process(p->parentId, &parentProcess, 0);
-        if (r == 0)
-        {
-            wakeup(parentProcess);
-        }
-    }
+    // if (p->parentId > 0)
+    // {
+    //     Process *parentProcess;
+    //     pid2Process(p->parentId, &parentProcess, 0);
+    //     // if (r == 0)
+    //     // {
+    //     //     wakeup(parentProcess);
+    //     // }
+    // }
 }
 
 /**
@@ -195,8 +197,8 @@ int setupProcess(Process *p)
 
     extern char trampoline[];
     extern char trapframe[];
-    pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     return 0;
 }
 
@@ -212,7 +214,7 @@ int processAlloc(Process **new, u64 parentId)
     }
     p = LIST_FIRST(&freeProcesses);
     LIST_REMOVE(p, link);
-    if ((r = setup(p)) < 0)
+    if ((r = setupProcess(p)) < 0)
     {
         return r;
     }
@@ -230,7 +232,7 @@ int processAlloc(Process **new, u64 parentId)
 void processCreatePriority(u8 *binary, u32 size, u32 priority)
 {
     Process *p;
-    int r = processAlloc(*p, 0);
+    int r = processAlloc(&p, 0);
     if (r)
         return;
     p->priority = priority;
@@ -242,6 +244,8 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
     p->trapframe.epc = entryPoint;
 
     LIST_INSERT_TAIL(&scheduleList[0], p, scheduleLink);
+
+    printk("created a process.\n");
 }
 
 u64 getHartKernelTopSp()
@@ -252,7 +256,6 @@ u64 getHartKernelTopSp()
 
 void processRun(Process *p)
 {
-    static volatile int first = 0;
     Trapframe *trapframe = getHartTrapFrame();
     if (currentProcess[getTp()])
     {
@@ -260,17 +263,24 @@ void processRun(Process *p)
     }
     p->state = RUNNING;
 
+    printk("%lx\n", trapframe);
     int hartid = getTp();
     currentProcess[hartid] = p;
 
     // 切换页表
     // 拷贝 trapframe
-    bcopy(&(currentProcess[getTp()]->trapframe), trapframe, sizeof(Trapframe));
+
+    printk("%lx\n", trapframe);
+    printk("address: %lx\n", (u64) & (currentProcess[getTp()]->trapframe));
+    bcopy(&(currentProcess[hartid]->trapframe), trapframe, sizeof(Trapframe));
+
+    printk("123");
     u64 sp = getHartKernelTopSp(p);
     asm volatile("ld sp, 0(%0)"
                  :
                  : "r"(&sp)
                  : "memory");
+    printk("123");
     userTrapReturn();
 }
 
@@ -281,6 +291,7 @@ void processRun(Process *p)
  */
 void yield()
 {
+    printk("yield\n");
     int hartId = getTp();
     int count = processTimeCount[hartId];
     int point = processBelongList[hartId];
@@ -304,10 +315,11 @@ void yield()
             LIST_REMOVE(process, scheduleLink);
             count = 1;
         }
+        printk("finding a process to yield...\n");
     }
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    // printf("hartID %d yield process %lx\n", hartId, process->id);
+    printk("hartID %d yield process %lx\n", hartId, process->processId);
     processRun(process);
 }

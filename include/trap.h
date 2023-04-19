@@ -86,6 +86,22 @@ typedef struct IntervalTimer
     TimeSpec expiration;
 } IntervalTimer;
 
+/*
+
+VA_TOP     ----------------------
+ 4096           异常处理的代码
+TRAMPOLINE ----------------------
+ 4096           对应每个核的 trapframe
+TRAPFRAME  ----------------------
+*/
+
+/**
+ * @brief 获取当前核的 trapframe 地址
+ *
+ * @return Trapframe*
+ */
+Trapframe *getHartTrapFrame();
+
 void setNextTimeout();
 void timerTick();
 void setTimer(IntervalTimer new);

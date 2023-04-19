@@ -50,7 +50,7 @@ typedef struct Page
 void freePageInit();
 void kernelPageInit();
 void pageStart();
-i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm);
+i32 kernelPageMap(u64 *pgdir, u64 va, u64 pa, u64 perm);
 i32 pageRemove(u64 *pgdir, u64 va);
 i32 pageFree(Page *page);
 Page *pageLookup(u64 *pgdir, u64 va, u64 **ppte);

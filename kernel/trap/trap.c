@@ -4,6 +4,11 @@
 #include <process.h>
 #include <trap.h>
 
+Trapframe *getHartTrapFrame()
+{
+    return (Trapframe *)(TRAPFRAME + getTp() * sizeof(Trapframe));
+}
+
 /**
  * @brief 初始化异常处理
  * 1. 设置 stvec 寄存器到中断处理函数
@@ -98,7 +103,7 @@ void kernelHandler()
     u64 sip = readSip();
     u64 sstatus = readSstatus();
 
-    printk("[kernelHandler] scause: %x, stval: %x, sepc: %x, sip: %x\n", scause, stval, sepc, sip);
+    printk("[kernelHandler] scause: %x, stval: %lx, sepc: %x, sip: %x\n", scause, stval, sepc, sip);
 
     // Trapframe *trapframe = getHartTrapFrame();
 
@@ -198,13 +203,14 @@ void userTrapReturn()
     int hartId = getTp();
 
     // stvec 是中断处理的入口地址
-    w_stvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
+    printk("set stvet to %lx", TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
+    writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
     Trapframe *trapframe = getHartTrapFrame();
 
-    trapframe->kernelSp = getThreadTopSp(myThread());
+    // trapframe->kernelSp = getThreadTopSp(myThread());
     trapframe->trapHandler = (u64)userHandler;
-    trapframe->kernelHartId = getTp();
+    trapframe->kernelHartId = hartId;
 
     u64 sstatus = readSstatus();
 
@@ -217,11 +223,11 @@ void userTrapReturn()
     u64 satp = MAKE_SATP(SV39, PA2PPN((myProcess()->pgdir)));
 
     u64 fn = TRAMPOLINE + ((u64)userReturn - (u64)trampoline);
-    u64 *pte;
-    u64 pa = pageLookup(currentProcess[hartId]->pgdir, TRAMPOLINE - PAGE_SIZE, &pte);
+    // u64 *pte;
+    // u64 pa = pageLookup(currentProcess[hartId]->pgdir, TRAMPOLINE, &pte);
 
     // printf("out tp: %lx\n", trapframe->tp);
-    printf("return to user!\n");
+    printk("return to user!\n");
     ((void (*)(u64, u64))fn)((u64)trapframe, satp);
 }
 
@@ -232,7 +238,7 @@ void userTrapReturn()
  */
 void printTrapframe(Trapframe *tf)
 {
-    printf(" a0: %lx\n \
+    printk(" a0: %lx\n \
     a1: %lx\n \
     a2: %lx\n \
     a3: %lx\n \

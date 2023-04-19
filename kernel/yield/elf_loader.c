@@ -27,17 +27,18 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     Process *pcs = (Process *)process;
     Page *page = NULL;
     u64 offset = va - ALIGN_DOWN(va, PAGE_SIZE);
-    u64 i, j, r;
+    u64 i, r = 0;
+    u64 *j;
 
     if (offset > 0)
     {
-        page = pa2Page(pageLookup(pcs->pgdir, va, &j));
+        page = pageLookup(pcs->pgdir, va, &j);
 
         if (page == NULL)
         {
             if (pageAlloc(&page) < 0) return -E_NO_MEM;
-            pageMap(pcs->pgdir, va, page2PA(page),
-                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+            kernelPageMap(pcs->pgdir, va, page2PA(page),
+                          PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
         }
         r = MIN(binSize, PAGE_SIZE - offset);
         bcopy(binary, (void *)page2PA(page) + offset, r);
@@ -46,20 +47,20 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     {
         if (pageAlloc(&page) != 0) return -E_NO_MEM;
 
-        pageMap(pcs->pgdir, va + i, page2PA(page),
-                PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+        kernelPageMap(pcs->pgdir, va + i, page2PA(page),
+                      PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
         r = MIN(PAGE_SIZE, binSize - i);
         bcopy(binary + i, (void *)page2PA(page), r);
     }
     offset = va + i - ALIGN_DOWN(va + i, PAGE_SIZE);
     if (offset > 0)
     {
-        page = pa2Page(pageLookup(pcs->pgdir, va + i, &j));
+        page = pageLookup(pcs->pgdir, va + i, &j);
         if (page == NULL)
         {
             if (pageAlloc(&page) < 0) return -E_NO_MEM;
-            pageMap(pcs->pgdir, va + i, page2PA(page),
-                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+            kernelPageMap(pcs->pgdir, va + i, page2PA(page),
+                          PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
         }
         r = MIN(segmentSize - i, PAGE_SIZE - offset);
         bzero((void *)page2PA(page) + offset, r);
@@ -68,10 +69,10 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     {
         if (pageAlloc(&page) != 0)
             return -E_NO_MEM;
-        pageInsert(pcs->pgdir, va + i, page2pa(page),
+        pageInsert(pcs->pgdir, va + i, page,
                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
         r = MIN(PAGE_SIZE, segmentSize - i);
-        bzero((void *)page2pa(page), r);
+        bzero((void *)page2PA(page), r);
     }
     return 0;
 }
@@ -112,4 +113,5 @@ int loadElf(u8 *binary, int size, u64 *entry, void *process)
         }
         phTable += entrySize;
     }
+    return 0;
 }

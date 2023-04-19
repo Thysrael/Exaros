@@ -1,6 +1,6 @@
 INCLUDES := -I../../include
 
-target = start.o init.o
+target = start.o init.o processA.b.o
 
 .PHONY: build clean
 

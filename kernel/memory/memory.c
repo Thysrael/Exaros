@@ -106,10 +106,12 @@ void kernelPageInit()
     // 需要在写进程切换的时候定义 trampoline 和 trapframe
     extern char trampoline[];
     extern char trapframe[];
-    pageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
-            PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    pageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
-            PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    kernelPageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    kernelPageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+
+    printk("tpl:%lx, tpframe:%lx\n", trampoline, trapframe);
 
     /**
      * 映射 trampoline
@@ -279,12 +281,15 @@ i32 pageAlloc(Page **ppage)
 void bcopy(void *src, void *dst, u32 len)
 {
     void *finish = src + len;
+    printk("bcopy %lx %lx %lx\n", (u64)src, (u64)dst, len);
+    printk("finish: %lx\n", (u64)finish);
 
     while (src < finish)
     {
         *(u8 *)dst = *(u8 *)src;
         src++;
         dst++;
+        // printk("%lx\n", (u64)src);
     }
 }
 

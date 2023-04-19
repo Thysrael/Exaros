@@ -12,12 +12,20 @@
 #include <types.h>
 #include <yield.h>
 #include <queue.h>
+#include <memory.h>
 
 #define LOG_PROCESS_NUM 10
 #define PROCESS_TOTAL_NUMBER (1 << LOG_PROCESS_NUM)
 
 typedef LIST_HEAD(ProcessList, Process) ProcessList;
 #define PROCESS_OFFSET(processId) ((processId) & (PROCESS_TOTAL_NUMBER - 1))
+
+#define PROCESS_CREATE_PRIORITY(x, y)                                \
+    {                                                                \
+        extern u8 binary##x##Start[];                                \
+        extern int binary##x##Size;                                  \
+        processCreatePriority(binary##x##Start, binary##x##Size, y); \
+    }
 
 // 进程状态
 enum ProcessState
