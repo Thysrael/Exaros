@@ -1,4 +1,4 @@
-os.bin
+kernel-qemu
 /target/
 *.o 
 *.d

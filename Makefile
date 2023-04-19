@@ -6,7 +6,7 @@ target_dir	:= 	target
 
 linkscript	:= 	$(link_dir)/kernel.lds
 exaros_elf	:=	$(target_dir)/exaros.elf
-exaros_bin	:=	os.bin
+exaros_bin	:=	kernel-qemu
 exaros_sys	:= 	$(target_dir)/exaros_sys.txt
 
 modules := 	$(kernel_dir)

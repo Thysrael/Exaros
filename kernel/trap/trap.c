@@ -1,5 +1,4 @@
 #include <driver.h>
-#include <riscv.h>
 #include <yield.h>
 #include <mem_layout.h>
 #include <process.h>
