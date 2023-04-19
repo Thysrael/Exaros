@@ -26,6 +26,7 @@ le: list entry
         NULL                        \
     }
 
+// 链表项
 #define LIST_ENTRY(name, type)                                        \
     struct name                                                       \
     {                                                                 \
@@ -81,6 +82,25 @@ le: list entry
         (head)->lh_first = (elm);                                    \
         (elm)->field.le_prev = &(head)->lh_first;                    \
     } while (/*CONSTCOND*/ 0)
+
+#define LIST_INSERT_TAIL(head, elm, field)                                           \
+    do {                                                                             \
+        if (LIST_FIRST((head)) != NULL)                                              \
+        {                                                                            \
+            LIST_NEXT((elm), field) = LIST_FIRST((head));                            \
+            while (LIST_NEXT(LIST_NEXT((elm), field), field) != NULL)                \
+            {                                                                        \
+                LIST_NEXT((elm), field) = LIST_NEXT(LIST_NEXT((elm), field), field); \
+            }                                                                        \
+            LIST_NEXT(LIST_NEXT((elm), field), field) = (elm);                       \
+            (elm)->field.le_prev = &LIST_NEXT(LIST_NEXT((elm), field), field);       \
+            LIST_NEXT((elm), field) = NULL;                                          \
+        }                                                                            \
+        else                                                                         \
+        {                                                                            \
+            LIST_INSERT_HEAD((head), (elm), field);                                  \
+        }                                                                            \
+    } while (0)
 
 #define LIST_REMOVE(elm, field)                       \
     do {                                              \

@@ -1,3 +1,15 @@
+
+# 开一页的 trapframe
+    .section .trapframe
+    .globl trapframe
+    .align 12
+trapframe:
+    .space 4096
+
+
+	.section .trampoline
+    .globl trampoline
+    .align 12
 trampoline:
     .global userTrap
     .align 2
@@ -10,3 +22,6 @@ userTrap:
     # 恢复寄存器
     
     sret
+
+
+userReturn:

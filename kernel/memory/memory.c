@@ -114,10 +114,12 @@ void kernelPageInit()
 
     /* 将处于内核的 TRAMPOLINE 和 TRAPFRAME 暴露到特定地址 */
     // 需要在写进程切换的时候定义 trampoline 和 trapframe
-    // pageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
-    //     PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    // pageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
-    //     PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    extern char trampoline[];
+    extern char trapframe[];
+    pageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
+            PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
+            PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 }
 
 /**

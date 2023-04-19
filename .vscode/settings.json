@@ -12,7 +12,11 @@
 		"trap.h": "c",
 		"mem_layout.h": "c",
 		"yield.h": "c",
-		"process.h": "c"
+		"process.h": "c",
+		"elf.h": "c",
+		"error.h": "c",
+		"memory.h": "c",
+		"features.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",
@@ -38,5 +42,6 @@
 				}
 			]
 		}
-	]
+	],
+	"C_Cpp.errorSquiggles": "enabled"
 }

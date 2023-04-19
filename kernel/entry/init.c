@@ -10,6 +10,7 @@
 #include <driver.h>
 #include <riscv.h>
 #include <memory.h>
+#include <process.h>
 #include <trap.h>
 
 /**
@@ -52,5 +53,8 @@ void main(u64 hartId)
     printk("Hello, Exaros!\n");
     memoryInit();
     printk("Memory init finished!\n");
+
+    processInit();
+
     trapInit();
 }

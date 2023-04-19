@@ -1,7 +1,8 @@
 #include <driver.h>
 #include <riscv.h>
 #include <yield.h>
-#include <thread.h>
+#include <mem_layout.h>
+#include <process.h>
 #include <trap.h>
 
 /**
@@ -72,12 +73,12 @@ int handleInterrupt()
         // {
         //     interruptCompleted(irq);
         // }
+        printk("external interrupt");
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
         // user timer interrupt
         timerTick();
-        // todo timer?
         return TIMER_INTERRUPT;
         break;
     default:
@@ -184,6 +185,8 @@ void userHandler()
     userTrapReturn();
 }
 
+extern Process *currentProcess[CORE_NUM];
+
 /**
  * @brief 从 userHandler 返回到用户态
  * 这里和进程关系比较大，写完进程再改
@@ -191,30 +194,36 @@ void userHandler()
  */
 void userTrapReturn()
 {
-    // extern char trampoline[];
+    extern char trampoline[];
 
-    // // stvec 是中断处理的入口地址
-    // w_stvec(TRAMPOLINE_BASE + ((u64)userVector - (u64)trampoline));
+    int hartId = getTp();
 
-    // Trapframe *trapframe = getHartTrapFrame();
+    // stvec 是中断处理的入口地址
+    w_stvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
-    // trapframe->kernelSp = getThreadTopSp(myThread());
-    // trapframe->trapHandler = (u64)userTrap;
-    // trapframe->kernelHartId = r_tp();
+    Trapframe *trapframe = getHartTrapFrame();
 
-    // handleSignal(myThread());
+    trapframe->kernelSp = getThreadTopSp(myThread());
+    trapframe->trapHandler = (u64)userHandler;
+    trapframe->kernelHartId = getTp();
 
-    // // bcopy(&(currentProcess->trapframe), trapframe, sizeof(Trapframe));
+    u64 sstatus = readSstatus();
 
-    // u64 sstatus = r_sstatus();
-    // sstatus &= ~SSTATUS_SPP;
-    // sstatus |= SSTATUS_SPIE;
-    // w_sstatus(sstatus);
-    // u64 satp = MAKE_SATP(myProcess()->pgdir);
-    // u64 fn = TRAMPOLINE_BASE + ((u64)userReturn - (u64)trampoline);
-    // // printf("out tp: %lx\n", trapframe->tp);
-    // // printf("return to user!\n");
-    // ((void (*)(u64, u64))fn)((u64)trapframe, satp);
+    // spp 位置零，spie 位置 1 （spp 表示进入异常的前一个状态的特权级别，0:u, 1:s
+    sstatus &= ~SSTATUS_SPP;
+    sstatus |= SSTATUS_SPIE;
+
+    writeSstatus(sstatus);
+
+    u64 satp = MAKE_SATP(SV39, PA2PPN((myProcess()->pgdir)));
+
+    u64 fn = TRAMPOLINE + ((u64)userReturn - (u64)trampoline);
+    u64 *pte;
+    u64 pa = pageLookup(currentProcess[hartId]->pgdir, TRAMPOLINE - PAGE_SIZE, &pte);
+
+    // printf("out tp: %lx\n", trapframe->tp);
+    printf("return to user!\n");
+    ((void (*)(u64, u64))fn)((u64)trapframe, satp);
 }
 
 /**
@@ -222,45 +231,44 @@ void userTrapReturn()
  *
  * @param tf
  */
-/*
 void printTrapframe(Trapframe *tf)
 {
     printf(" a0: %lx\n \
-a1: %lx\n \
-a2: %lx\n \
-a3: %lx\n \
-a4: %lx\n \
-a5: %lx\n \
-a6: %lx\n \
-a7: %lx\n \
-t0: %lx\n \
-t1: %lx\n \
-t2: %lx\n \
-t3: %lx\n \
-t4: %lx\n \
-t5: %lx\n \
-t6: %lx\n \
-s0: %lx\n \
-s1: %lx\n \
-s2: %lx\n \
-s3: %lx\n \
-s4: %lx\n \
-s5: %lx\n \
-s6: %lx\n \
-s7: %lx\n \
-s8: %lx\n \
-s9: %lx\n \
-s10: %lx\n \
-s11: %lx\n \
-ra: %lx\n \
-sp: %lx\n \
-gp: %lx\n \
-tp: %lx\n \
-epc: %lx\n \
-kernelSp: %lx\n \
-kernelSatp: %lx\n \
-trapHandler: %lx\n \
-kernelHartId: %lx\n",
+    a1: %lx\n \
+    a2: %lx\n \
+    a3: %lx\n \
+    a4: %lx\n \
+    a5: %lx\n \
+    a6: %lx\n \
+    a7: %lx\n \
+    t0: %lx\n \
+    t1: %lx\n \
+    t2: %lx\n \
+    t3: %lx\n \
+    t4: %lx\n \
+    t5: %lx\n \
+    t6: %lx\n \
+    s0: %lx\n \
+    s1: %lx\n \
+    s2: %lx\n \
+    s3: %lx\n \
+    s4: %lx\n \
+    s5: %lx\n \
+    s6: %lx\n \
+    s7: %lx\n \
+    s8: %lx\n \
+    s9: %lx\n \
+    s10: %lx\n \
+    s11: %lx\n \
+    ra: %lx\n \
+    sp: %lx\n \
+    gp: %lx\n \
+    tp: %lx\n \
+    epc: %lx\n \
+    kernelSp: %lx\n \
+    kernelSatp: %lx\n \
+    trapHandler: %lx\n \
+    kernelHartId: %lx\n",
            tf->a0, tf->a1, tf->a2, tf->a3, tf->a4,
            tf->a5, tf->a6, tf->a7, tf->t0, tf->t1,
            tf->t2, tf->t3, tf->t4, tf->t5, tf->t6,
@@ -270,4 +278,3 @@ kernelHartId: %lx\n",
            tf->tp, tf->epc, tf->kernelSp, tf->kernelSatp,
            tf->trapHandler, tf->kernelHartId);
 }
-*/

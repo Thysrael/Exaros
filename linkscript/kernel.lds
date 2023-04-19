@@ -15,15 +15,18 @@ SECTIONS
         *(.text .text.*)
         . = ALIGN(4K);
 
-        /* _trampoline = .;
+         _trampoline = .;
+        *(.trapframe)
+        . = ALIGN(4K);
         *(.trampoline)
         . = ALIGN(4K);
-        ASSERT(. - _trampoline == 8192, "error: trampoline not have two page");
+        ASSERT(. - _trampoline == 8192, "error: trampoline+trapframe not have two page");
 
-        _signalTrampoline = .;
+        /* _signalTrampoline = .;
         *(.signalTrampoline)
         . = ALIGN(4K);
-        ASSERT(. - _signalTrampoline == 4096, "error: signal trampoline not one page"); */
+        ASSERT(. - _signalTrampoline == 4096, "error: signal trampoline not one page");  */
+        
         PROVIDE(textEnd = .);
     }
     . = ALIGN(4K);

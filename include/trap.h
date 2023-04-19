@@ -9,7 +9,7 @@
 #ifndef _TRAP_H_
 #define _TRAP_H_
 
-#include <thread.h>
+#include <process.h>
 #include <types.h>
 #include <riscv.h>
 #include <mem_layout.h>
@@ -67,6 +67,7 @@ void kernelHandler();
 void kernelTrap();
 void userHandler();
 void userTrap();
+void userReturn();
 void userTrapReturn();
 // void printTrapframe(Trapframe *tf);
 

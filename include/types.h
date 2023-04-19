@@ -9,6 +9,8 @@
 #ifndef _TYPES_H_
 #define _TYPES_H_
 
+#include <memory.h>
+
 typedef unsigned __attribute__((__mode__(QI))) u8;
 typedef unsigned __attribute__((__mode__(HI))) u16;
 typedef unsigned __attribute__((__mode__(SI))) u32;
@@ -28,6 +30,26 @@ typedef __builtin_va_list va_list;
 #define va_start(ap, param) __builtin_va_start(ap, param)
 #define va_end(ap) __builtin_va_end(ap)
 #define va_arg(ap, type) __builtin_va_arg(ap, type)
+
+/*
+
+VA_TOP     ----------------------
+ 4096           异常处理的代码
+TRAMPOLINE ----------------------
+ 4096           对应每个核的 trapframe
+TRAPFRAME  ----------------------
+
+*/
+
+/**
+ * @brief 获取当前核的 trapframe 地址
+ *
+ * @return Trapframe*
+ */
+Trapframe *getHartTrapFrame()
+{
+    return (Trapframe *)(TRAPFRAME + getTp() * sizeof(Trapframe));
+}
 
 #define MIN(_a, _b)             \
     ({                          \
