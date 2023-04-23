@@ -189,11 +189,10 @@ int setupProcess(Process *p)
     p->state = UNUSED;
     p->retValue = 0;
     p->parentId = 0;
-
-    //   // TODO 这个是干什么的？
-    //     r = pageAlloc(&page);
-    //     extern u64 kernelPageDirectory[];
-    //     pageInsert(kernelPageDirectory, getProcessTopSp(p) - PGSIZE, page2pa(page), PTE_READ | PTE_WRITE | PTE_EXECUTE);
+    //   栈
+    // r = pageAlloc(&page);
+    // extern u64 kernelPageDirectory[];
+    // kernelPageMap(kernelPageDirectory, getProcessTopSp(p) - PGSIZE, page2pa(page), PTE_READ | PTE_WRITE | PTE_EXECUTE);
 
     extern char trampoline[];
     extern char trapframe[];
@@ -222,8 +221,9 @@ int processAlloc(Process **new, u64 parentId)
     p->processId = generateProcessId(p);
     p->state = RUNNABLE;
     p->parentId = parentId;
-    // p->trapframe.kernelSp = getProcessTopSp(p);
-    // p->trapframe.sp = USER_STACK_TOP;
+    p->trapframe.kernelSp = getProcessTopSp(p);
+    // p->trapframe.sp = VA_MAX - 2 * PAGE_SIZE;
+    p->trapframe.sp = TRAMPOLINE;
 
     *new = p;
     return 0;
@@ -274,13 +274,11 @@ void processRun(Process *p)
     printk("address: %lx\n", (u64) & (currentProcess[getTp()]->trapframe));
     bcopy(&(currentProcess[hartid]->trapframe), trapframe, sizeof(Trapframe));
 
-    printk("123");
     u64 sp = getHartKernelTopSp(p);
     asm volatile("ld sp, 0(%0)"
                  :
                  : "r"(&sp)
                  : "memory");
-    printk("123");
     userTrapReturn();
 }
 
@@ -322,4 +320,9 @@ void yield()
     processBelongList[hartId] = point;
     printk("hartID %d yield process %lx\n", hartId, process->processId);
     processRun(process);
+}
+
+u64 getProcessTopSp(Process *p)
+{
+    return KERNEL_PROCESS_SP_TOP - (u64)(p - processes) * 10 * PAGE_SIZE;
 }

@@ -1,6 +1,6 @@
 INCLUDES := -I../../include
 
-target = yield.o process.o elf_loader.o
+target = yield.o process.o elf_loader.o syscall.o
 
 .PHONY: build clean
 

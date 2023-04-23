@@ -3,4 +3,6 @@
 
 #define SYSCALL_PUTCHAR 4
 
+extern void (*syscallVector[])(void);
+
 #endif

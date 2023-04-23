@@ -4,8 +4,14 @@
 .global kernelTrap
 .align 2
 kernelTrap:
+
+    addi a0, x0, 43
+    addi a7, x0, 1
+    ecall
     addi sp, sp, -256
 
+
+    
     sd ra, 0(sp)
     sd sp, 8(sp)
     sd gp, 16(sp)

@@ -166,5 +166,5 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority);
 u64 getHartKernelTopSp();
 void processRun(Process *p);
 void yield();
-
+u64 getProcessTopSp(Process *p);
 #endif

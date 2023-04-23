@@ -29,6 +29,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     u64 offset = va - ALIGN_DOWN(va, PAGE_SIZE);
     u64 i, r = 0;
     u64 *j;
+    u64 perm = PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT;
 
     if (offset > 0)
     {
@@ -37,8 +38,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
         if (page == NULL)
         {
             if (pageAlloc(&page) < 0) return -E_NO_MEM;
-            kernelPageMap(pcs->pgdir, va, page2PA(page),
-                          PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+            kernelPageMap(pcs->pgdir, va, page2PA(page), perm);
         }
         r = MIN(binSize, PAGE_SIZE - offset);
         bcopy(binary, (void *)page2PA(page) + offset, r);
@@ -47,8 +47,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     {
         if (pageAlloc(&page) != 0) return -E_NO_MEM;
 
-        kernelPageMap(pcs->pgdir, va + i, page2PA(page),
-                      PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+        kernelPageMap(pcs->pgdir, va + i, page2PA(page), perm);
         r = MIN(PAGE_SIZE, binSize - i);
         bcopy(binary + i, (void *)page2PA(page), r);
     }
@@ -59,8 +58,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
         if (page == NULL)
         {
             if (pageAlloc(&page) < 0) return -E_NO_MEM;
-            kernelPageMap(pcs->pgdir, va + i, page2PA(page),
-                          PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+            kernelPageMap(pcs->pgdir, va + i, page2PA(page), perm);
         }
         r = MIN(segmentSize - i, PAGE_SIZE - offset);
         bzero((void *)page2PA(page) + offset, r);
@@ -69,8 +67,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     {
         if (pageAlloc(&page) != 0)
             return -E_NO_MEM;
-        pageInsert(pcs->pgdir, va + i, page,
-                   PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+        pageInsert(pcs->pgdir, va + i, page, perm);
         r = MIN(PAGE_SIZE, segmentSize - i);
         bzero((void *)page2PA(page), r);
     }
@@ -113,5 +110,6 @@ int loadElf(u8 *binary, int size, u64 *entry, void *process)
         }
         phTable += entrySize;
     }
+    *entry = ehdr->entry;
     return 0;
 }

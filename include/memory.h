@@ -146,4 +146,7 @@ void memoryInit();
 i32 pageAlloc(Page **new);
 i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm);
 
+void passiveAlloc(u64 *pgdir, u64 va);
+void cowHandler();
+
 #endif /* _MEMORY_H_ */

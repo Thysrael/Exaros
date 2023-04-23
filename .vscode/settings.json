@@ -16,7 +16,9 @@
 		"elf.h": "c",
 		"error.h": "c",
 		"memory.h": "c",
-		"features.h": "c"
+		"features.h": "c",
+		"syscall.h": "c",
+		"print.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

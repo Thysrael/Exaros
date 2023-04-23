@@ -54,12 +54,6 @@ void main(u64 hartId)
     memoryInit();
     printk("Memory init finished!\n");
 
-        // try read trapframe,and print it
-    printk("hello");
-    // 这里，，读不到啊
-    u64 trapframe = *((u64 *)TRAPFRAME);
-    printk("trapframe__:%lx\n", trapframe);
-
     processInit();
 
     trapInit();

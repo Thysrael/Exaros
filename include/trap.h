@@ -69,7 +69,7 @@ void userHandler();
 void userTrap();
 void userReturn();
 void userTrapReturn();
-// void printTrapframe(Trapframe *tf);
+void printTrapframe(Trapframe *tf);
 
 // about timer
 #define TIMER_INTERVAL 200000

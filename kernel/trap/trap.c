@@ -1,8 +1,10 @@
 #include <driver.h>
 #include <yield.h>
 #include <mem_layout.h>
+#include <memory.h>
 #include <process.h>
 #include <trap.h>
+#include "../../include/syscall.h"
 
 Trapframe *getHartTrapFrame()
 {
@@ -143,6 +145,7 @@ void kernelHandler()
     writeSstatus(sstatus);
 }
 
+extern Process *currentProcess[];
 /**
  * @brief 用户态的异常处理函数，处理用户态的异常和中断
  * 处理了中断，系统调用，缺页异常
@@ -154,12 +157,15 @@ void userHandler()
     u64 stval = readStval();
     u64 sepc = readSepc();
     u64 sip = readSip();
+    Trapframe *tf = getHartTrapFrame();
+    u64 hartId = getTp();
+    u64 *pte = NULL;
 
-    printk("[userHandler] scause: %x, stval: %x, sepc: %x, sip: %x", scause, stval, sepc, sip);
+    printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx", scause, stval, sepc, sip);
 
+    printTrapframe(tf);
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
-
     if (scause & SCAUSE_INTERRUPT)
     {
         handleInterrupt();
@@ -172,15 +178,26 @@ void userHandler()
         {
         case EXCEPTION_ECALL:
             printk("ecall\n");
-            /* code */
+            tf->epc += 4;
+            syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
-            printk("page load fault\n");
-            /* code */
-            break;
         case EXCEPTION_STORE_FAULT:
-            printk("page store fault\n");
-            /* code */
+            printk("page fault\n");
+            Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
+            if (page == NULL)
+            {
+                printk("alloc\n");
+                passiveAlloc(currentProcess[hartId]->pgdir, stval);
+            }
+            else if (*pte & PTE_COW_BIT)
+            {
+                cowHandler();
+            }
+            else
+            {
+                panic("unknown page fault.\n");
+            }
             break;
         default:
             panic("unknown interrupt\n");
@@ -208,8 +225,10 @@ void userTrapReturn()
 
     Trapframe *trapframe = getHartTrapFrame();
 
-    // trapframe->kernelSp = getThreadTopSp(myThread());
+    trapframe->kernelSp = getProcessTopSp(myProcess());
     trapframe->trapHandler = (u64)userHandler;
+    // ((void (*)())trapframe->trapHandler)();
+    printk("trapframe->trapHandler: %lx\n", trapframe->trapHandler);
     trapframe->kernelHartId = hartId;
 
     u64 sstatus = readSstatus();
@@ -223,11 +242,21 @@ void userTrapReturn()
     u64 satp = MAKE_SATP(SV39, PA2PPN((myProcess()->pgdir)));
 
     u64 fn = TRAMPOLINE + ((u64)userReturn - (u64)trampoline);
+
     // u64 *pte;
     // u64 pa = pageLookup(currentProcess[hartId]->pgdir, TRAMPOLINE, &pte);
 
     // printf("out tp: %lx\n", trapframe->tp);
     printk("return to user!\n");
+    printTrapframe(trapframe);
+
+    // u64 *pa = ((u64 *)(page2PA(pageLookup(myProcess()->pgdir, 0xa00000, NULL))));
+
+    // printk("satp: %lx\n", satp);
+
+    // printk("\naaaaaaaa %lx %lx, %lx aaaaaaa\n", a, *((u64 *)fn), (u64)pa);
+    // printk("\naaaaaaaa %lx %lx, %lx aaaaaaa\n", TRAMPOLINE, trampoline, userReturn);
+
     ((void (*)(u64, u64))fn)((u64)trapframe, satp);
 }
 

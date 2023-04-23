@@ -53,7 +53,7 @@
  * xv6 和 参考代码采取 38 位 va 以避免符号扩展
  * 这列直接使用 39 位，遇到问题再进行修改
  */
-#define VA_WIDTH (39)
+#define VA_WIDTH (38)
 #define VA_MAX ((1ULL) << VA_WIDTH)
 
 #define CLINT (0x02000000ULL)
@@ -66,6 +66,7 @@
 
 #define TRAMPOLINE (VA_MAX - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
+#define USER_STACK_TOP TRAPFRAME
 
 // qemu puts programmable interrupt controller here.
 #define PLIC_PRIORITY (PLIC_V + 0x0)
@@ -78,6 +79,8 @@
 #define PLIC_SCLAIM(hart) (PLIC_V + 0x201004 + (hart)*0x2000)
 
 #define KERNEL_STACK_SIZE (0x10000ULL) // 16 pages
+
+#define KERNEL_PROCESS_SP_TOP (1UL << 36)
 
 #define PAGE_SHIFT (12)
 #define PAGE_SIZE (0x1000ULL)

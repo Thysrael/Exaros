@@ -111,8 +111,6 @@ void kernelPageInit()
     kernelPageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
-    printk("tpl:%lx, tpframe:%lx\n", trampoline, trapframe);
-
     /**
      * 映射 trampoline
      * 注意到 trampoline 本身位于 Kernel text 被直接映射一次
