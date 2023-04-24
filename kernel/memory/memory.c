@@ -273,8 +273,6 @@ i32 pageAlloc(Page **ppage)
 void bcopy(void *src, void *dst, u32 len)
 {
     void *finish = src + len;
-    printk("bcopy %lx %lx %lx\n", (u64)src, (u64)dst, len);
-    printk("finish: %lx\n", (u64)finish);
 
     while (src < finish)
     {

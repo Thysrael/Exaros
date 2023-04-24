@@ -264,15 +264,12 @@ void processRun(Process *p)
     }
     p->state = RUNNING;
 
-    printk("%lx\n", trapframe);
     int hartid = getTp();
     currentProcess[hartid] = p;
 
     // 切换页表
     // 拷贝 trapframe
 
-    printk("%lx\n", trapframe);
-    printk("address: %lx\n", (u64) & (currentProcess[getTp()]->trapframe));
     bcopy(&(currentProcess[hartid]->trapframe), trapframe, sizeof(Trapframe));
 
     u64 sp = getHartKernelTopSp(p);

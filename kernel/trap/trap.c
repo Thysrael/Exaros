@@ -162,7 +162,7 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx", scause, stval, sepc, sip);
+    printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, sepc, sip);
 
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
@@ -177,17 +177,16 @@ void userHandler()
         switch (exceptionCode)
         {
         case EXCEPTION_ECALL:
-            printk("ecall\n");
+            // printk("ecall\n");
             tf->epc += 4;
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
         case EXCEPTION_STORE_FAULT:
-            printk("page fault\n");
+            // printk("page fault\n");
             Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
             if (page == NULL)
             {
-                printk("alloc\n");
                 passiveAlloc(currentProcess[hartId]->pgdir, stval);
             }
             else if (*pte & PTE_COW_BIT)
@@ -220,14 +219,12 @@ void userTrapReturn()
     int hartId = getTp();
 
     // stvec 是中断处理的入口地址
-    printk("set stvet to %lx", TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
     Trapframe *trapframe = getHartTrapFrame();
 
     trapframe->kernelSp = getProcessTopSp(myProcess());
     trapframe->trapHandler = (u64)userHandler;
-    printk("trapframe->trapHandler: %lx\n", trapframe->trapHandler);
     trapframe->kernelHartId = hartId;
 
     u64 sstatus = readSstatus();
@@ -241,20 +238,6 @@ void userTrapReturn()
     u64 satp = MAKE_SATP(SV39, PA2PPN((myProcess()->pgdir)));
 
     u64 fn = TRAMPOLINE + ((u64)userReturn - (u64)trampoline);
-
-    // u64 *pte;
-    // u64 pa = pageLookup(currentProcess[hartId]->pgdir, TRAMPOLINE, &pte);
-
-    // printf("out tp: %lx\n", trapframe->tp);
-    printk("return to user!\n");
-    // printTrapframe(trapframe);
-
-    // u64 *pa = ((u64 *)(page2PA(pageLookup(myProcess()->pgdir, 0xa00000, NULL))));
-
-    // printk("satp: %lx\n", satp);
-
-    // printk("\naaaaaaaa %lx %lx, %lx aaaaaaa\n", a, *((u64 *)fn), (u64)pa);
-    // printk("\naaaaaaaa %lx %lx, %lx aaaaaaa\n", TRAMPOLINE, trampoline, userReturn);
 
     ((void (*)(u64, u64))fn)((u64)trapframe, satp);
 }
