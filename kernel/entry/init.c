@@ -59,6 +59,7 @@ void main(u64 hartId)
     trapInit();
 
     PROCESS_CREATE_PRIORITY(processA, 1);
+    PROCESS_CREATE_PRIORITY(processB, 2);
 
     yield();
 }

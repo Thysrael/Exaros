@@ -2,7 +2,7 @@ INCLUDES	:=	-I./lib/
 
 USER_LIB	:= print.o lib_main.o 
 
-USER_TARGET	:= processA.o processA.b processA.b.c
+USER_TARGET	:= processA.o processA.b processA.b.c processB.b.c
 
 BINTOC := ../utility/bintoc
 
@@ -35,5 +35,6 @@ clean:
 		do \
 			$(MAKE) --directory=$$d clean; \
 		done
+	rm -rf *~ *.o *.d *.b.c *.b.txt *.x *.b
 	
 include ../include.mk

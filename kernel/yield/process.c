@@ -43,9 +43,7 @@ Process *myProcess()
  * @brief 初始化进程管理
  *
  */
-
 extern u64 kernelPageDirectory[];
-
 void processInit()
 {
     printk("ProcessInit start...\n");
@@ -95,6 +93,11 @@ void processDestory(Process *p)
     }
 }
 
+/**
+ * @brief 释放进程控制块
+ *
+ * @param p
+ */
 void processFree(Process *p)
 {
     // todo
@@ -158,6 +161,12 @@ int pid2Process(u32 processId, Process **process, int checkPerm)
 
 extern void userTrap();
 
+/**
+ * @brief 为进程申请一页内存作为页表，成功返回 0
+ *
+ * @param page
+ * @return int
+ */
 int allocPgdir(Page **page)
 {
     int r = pageAlloc(page);
@@ -169,6 +178,7 @@ int allocPgdir(Page **page)
 
 /**
  * @brief 为进程申请页表，并且建立 trampoline 和 trapframe 的映射
+ * 为进程的内核栈建立映射，这样进程在陷入内核的时候才不会报错
  *
  * @param p
  * @return int
@@ -203,6 +213,14 @@ int setupProcess(Process *p)
     return 0;
 }
 
+/**
+ * @brief 申请进程控制块并初始化
+ * 包括申请页表，初始化页表映射（setupProcess)，初始化 trapframe
+ *
+ * @param new
+ * @param parentId
+ * @return int
+ */
 int processAlloc(Process **new, u64 parentId)
 {
     int r;
@@ -230,6 +248,13 @@ int processAlloc(Process **new, u64 parentId)
     return 0;
 }
 
+/**
+ * @brief 给定一段二进制可执行文件，创建一个进程
+ *
+ * @param binary 二进制地址
+ * @param size 二进制大小
+ * @param priority 进程优先级
+ */
 void processCreatePriority(u8 *binary, u32 size, u32 priority)
 {
     Process *p;
@@ -249,12 +274,22 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
     printk("created a process.\n");
 }
 
+/**
+ * @brief 当前核的内核栈栈顶地址
+ *
+ * @return u64
+ */
 u64 getHartKernelTopSp()
 {
     extern char kernelStack[];
     return (u64)kernelStack + KERNEL_STACK_SIZE * (getTp() + 1);
 }
 
+/**
+ * @brief 运行进程 p
+ *
+ * @param p
+ */
 void processRun(Process *p)
 {
     Trapframe *trapframe = getHartTrapFrame();
@@ -287,7 +322,7 @@ void processRun(Process *p)
  */
 void yield()
 {
-    printk("yield\n");
+    // printk("yield\n");
     int hartId = getTp();
     int count = processTimeCount[hartId];
     int point = processBelongList[hartId];
@@ -309,9 +344,9 @@ void yield()
         {
             process = LIST_FIRST(&scheduleList[point]);
             LIST_REMOVE(process, scheduleLink);
-            count = 1;
+            count = process->priority;
         }
-        printk("finding a process to yield...\n");
+        // printk("finding a process to yield...\n");
     }
     count--;
     processTimeCount[hartId] = count;
@@ -320,6 +355,12 @@ void yield()
     processRun(process);
 }
 
+/**
+ * @brief 获取进程的内核栈地址
+ *
+ * @param p
+ * @return u64
+ */
 u64 getProcessTopSp(Process *p)
 {
     return KERNEL_PROCESS_SP_TOP - (u64)(p - processes) * 10 * PAGE_SIZE;

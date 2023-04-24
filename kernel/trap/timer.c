@@ -23,7 +23,7 @@ void setNextTimeout()
 void timerTick()
 {
     ticks++;
-    printk("timer tick: %d\n", ticks);
+    // printk("timer tick: %d\n", ticks);
     setNextTimeout();
 }
 

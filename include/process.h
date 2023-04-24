@@ -20,6 +20,10 @@
 typedef LIST_HEAD(ProcessList, Process) ProcessList;
 #define PROCESS_OFFSET(processId) ((processId) & (PROCESS_TOTAL_NUMBER - 1))
 
+/**
+ * @brief 创建进程, x 是要创建的进程名字，y 是优先级
+ *
+ */
 #define PROCESS_CREATE_PRIORITY(x, y)                                \
     {                                                                \
         extern u8 binary##x##Start[];                                \
@@ -43,6 +47,10 @@ struct ProcessTime
     long lastKernelTime;
 };
 
+/**
+ * @brief 保存进程寄存器和其他信息
+ *
+ */
 typedef struct Trapframe
 {
     u64 kernelSatp;

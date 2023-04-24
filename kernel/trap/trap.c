@@ -35,7 +35,7 @@ void trapInit()
     writeSstatus(readSstatus() | SSTATUS_SIE | SSTATUS_SPIE);
 
     // 初始化时钟（为了防止输出太多东西，可以暂时注释掉）
-    // setNextTimeout();
+    setNextTimeout();
 
     printk("Trap init end.\n");
 }
