@@ -182,8 +182,7 @@ void userHandler()
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
-        case EXCEPTION_STORE_FAULT:
-            // printk("page fault\n");
+        case EXCEPTION_STORE_FAULT:;
             Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
             if (page == NULL)
             {
