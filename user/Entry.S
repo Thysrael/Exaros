@@ -1,9 +1,6 @@
     .section .text
     .globl _userStart
 _userStart:
-    addi a7, x0, 4
-    addi a0, x0, 42
-    ecall 
     call libMain
 _userLoop:
     call _userLoop

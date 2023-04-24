@@ -161,9 +161,9 @@ void userHandler()
     u64 hartId = getTp();
     u64 *pte = NULL;
 
+    writeStvec((u64)kernelTrap);
     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx", scause, stval, sepc, sip);
 
-    printTrapframe(tf);
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
@@ -227,7 +227,6 @@ void userTrapReturn()
 
     trapframe->kernelSp = getProcessTopSp(myProcess());
     trapframe->trapHandler = (u64)userHandler;
-    // ((void (*)())trapframe->trapHandler)();
     printk("trapframe->trapHandler: %lx\n", trapframe->trapHandler);
     trapframe->kernelHartId = hartId;
 
@@ -248,7 +247,7 @@ void userTrapReturn()
 
     // printf("out tp: %lx\n", trapframe->tp);
     printk("return to user!\n");
-    printTrapframe(trapframe);
+    // printTrapframe(trapframe);
 
     // u64 *pa = ((u64 *)(page2PA(pageLookup(myProcess()->pgdir, 0xa00000, NULL))));
 

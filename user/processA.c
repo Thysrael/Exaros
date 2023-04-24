@@ -2,10 +2,11 @@
 
 int userMain(int argc, char **argv)
 {
-    for (int i = 1; i <= 10; ++i)
+    for (int i = 1; i <= 20; ++i)
     {
-        putchar('a');
+        putchar('a' + i);
     }
+
     while (1)
         ;
     return 0;

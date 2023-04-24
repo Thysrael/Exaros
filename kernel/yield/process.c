@@ -189,10 +189,12 @@ int setupProcess(Process *p)
     p->state = UNUSED;
     p->retValue = 0;
     p->parentId = 0;
-    //   栈
-    // r = pageAlloc(&page);
-    // extern u64 kernelPageDirectory[];
-    // kernelPageMap(kernelPageDirectory, getProcessTopSp(p) - PGSIZE, page2pa(page), PTE_READ | PTE_WRITE | PTE_EXECUTE);
+
+    // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
+    // 为每个进程开一页的内核栈
+    r = pageAlloc(&page);
+    kernelPageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
     extern char trampoline[];
     extern char trapframe[];
@@ -222,8 +224,7 @@ int processAlloc(Process **new, u64 parentId)
     p->state = RUNNABLE;
     p->parentId = parentId;
     p->trapframe.kernelSp = getProcessTopSp(p);
-    // p->trapframe.sp = VA_MAX - 2 * PAGE_SIZE;
-    p->trapframe.sp = TRAMPOLINE;
+    p->trapframe.sp = USER_STACK_TOP;
 
     *new = p;
     return 0;

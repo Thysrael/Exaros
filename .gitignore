@@ -2,3 +2,6 @@ kernel-qemu
 /target/
 *.o 
 *.d
+*.b.txt
+*.x
+*.b

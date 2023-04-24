@@ -75,7 +75,9 @@ userTrap:
     sd t0, REG_A0(a0)
     # restore kernel stack pointer from p->trapframe->kernel_sp
     # todo
-    # ld sp, KERNEL_SP(a0)
+
+    
+    ld sp, KERNEL_SP(a0)
     # # make tp hold the current hartid, from p->trapframe->kernel_hartid
     ld tp, KERNEL_HART_ID(a0)
     # load the address of usertrap(), p->trapframe->kernel_trap
@@ -139,34 +141,8 @@ userReturn:
     ld t5, REG_T5(a0)
     ld t6, REG_T6(a0)
 
-
-#    sll t2, t2, 52
- #   srl t2, t2, 52
-  #  addi t1, x0, 21
-   # beq t1, t2, L2
-# 可以确定的是 sepc 是正确的，a00000，但是读这个值会出错，但是在前面 trap.c 中的 usertrapret 中，读取 sepc 地址的值是正确的
-#     addi t1, x0, 21
-#     csrr t2, sepc
-#     beq t1, t2, L2
-#    addi t1,x0, 10
-#    sll t1,t1,  20
-#    csrr t2, sepc
-#    beq t1, t2, L2
-# L1: 
-#     addi a0, x0, 42
-#     addi a7, x0, 1
-#     ecall
-
-# L2: addi a0, x0, 42
-#     addi a7, x0, 1
-#     ecall
-
-
 	# restore user a0, and save TRAPFRAME in sscratch
     csrrw a0, sscratch, a0
     # return to user mode and user pc.
     # usertrapret() set up sstatus and sepc.
-    addi a0, x0, 42
-    addi a7, x0, 1
-    ecall
     sret

@@ -78,6 +78,7 @@ void kernelPageInit()
     kernelPageMap(kernelPageDirectory, VIRTIO, VIRTIO,
                   PTE_READ_BIT | PTE_WRITE_BIT);
 
+    // 内核代码
     va = pa = (u64)textStart;
     size = (u64)textEnd - (u64)textStart;
     for (i = 0; i < size; i += PAGE_SIZE)
@@ -86,6 +87,7 @@ void kernelPageInit()
                       PTE_READ_BIT | PTE_EXECUTE_BIT);
     }
 
+    // 内核数据
     va = pa = (u64)textEnd;
     size = (u64)kernelEnd - (u64)textEnd;
     for (i = 0; i < size; i += PAGE_SIZE)
@@ -93,7 +95,7 @@ void kernelPageInit()
         kernelPageMap(kernelPageDirectory, va + i, pa + i,
                       PTE_READ_BIT | PTE_WRITE_BIT);
     }
-
+    // 内核以上的部分，线性映射
     va = pa = (u64)kernelEnd;
     size = (u64)PHYSICAL_MEMORY_END - (u64)kernelEnd;
     for (i = 0; i < size; i += PAGE_SIZE)
@@ -110,14 +112,6 @@ void kernelPageInit()
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     kernelPageMap(kernelPageDirectory, TRAPFRAME, (u64)trapframe,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-
-    /**
-     * 映射 trampoline
-     * 注意到 trampoline 本身位于 Kernel text 被直接映射一次
-     * 再映射到高位一次
-     */
-    // kernelPageMap(kernelPageDirectory, TRAMPOLINE, (u64)trampoline,
-    //               PTE_READ_BIT | PTE_EXECUTE_BIT);
 }
 
 /**
