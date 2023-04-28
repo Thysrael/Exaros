@@ -1,4 +1,8 @@
 {
     "name": "exaros",
-    "image": "exaros:latest"
+    "image": "exaros:latest",
+    "runArgs": [
+        "--network",
+        "host"
+    ]
 }
