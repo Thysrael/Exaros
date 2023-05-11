@@ -10,7 +10,8 @@
 #define _PIPE_H_
 
 #include "types.h"
-#include "file.h"
+
+typedef struct File File;
 
 #define PIPESIZE 65536
 #define MAX_PIPE 128

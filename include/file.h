@@ -17,12 +17,19 @@
 #define NFILE 512 // Number of fd that all process can open
 
 // map major device number to device functions.
+// dev switch
 struct devsw
 {
     int (*read)(int isUser, u64 dst, u64 start, u64 len);
     int (*write)(int isUser, u64 src, u64 start, u64 len);
 };
 
+/**
+ * @brief 文件结构体，目前只看懂了引用数量和类型，
+ * 可能他有一些结构只是为了某些特定 type 服务的
+ * 因为一切皆文件，所以“DirMeta”只是文件的一种，所以没有办法在 File 中集成一些 DirMeta 对应的元数据
+ *
+ */
 typedef struct File
 {
     enum
@@ -64,6 +71,7 @@ typedef struct File
 
 #define AT_FDCWD -100
 
+// 打开方式
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
 #define O_RDWR 0x002
@@ -71,7 +79,14 @@ typedef struct File
 #define O_CREATE_GPP 0x200
 #define O_APPEND 02000
 #define O_TRUNC 01000
-
 #define O_DIRECTORY 0x0200000
+
+void fileinit();
+File *filealloc();
+void *filedup(File *f);
+void fileclose(File *f);
+int filestat(File *f, u64 addr);
+int fileread(File *f, bool isUser, u64 addr, int n);
+int filewrite(File *f, bool isUser, u64 addr, int n);
 
 #endif

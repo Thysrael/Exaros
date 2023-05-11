@@ -34,7 +34,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UNMAP_MEMORY] syscallUnMapMemory,
     [SYSCALL_READDIR] syscallReadDir,
     [SYSCALL_EXEC] syscallExec,
-    [SYSCALL_GET_DIRENT] syscallGetDirmeta,
+    [SYSCALL_GET_DIRENT] syscallGetDirent,
     [SYSCALL_MOUNT] syscallMount,
     [SYSCALL_UMOUNT] syscallUmount,
     [SYSCALL_LINKAT] syscallLinkAt,

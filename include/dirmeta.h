@@ -11,8 +11,9 @@
 
 #include "types.h"
 #include "fat.h"
-#include "fs.h"
 #include "inode.h"
+
+typedef struct FileSystem FileSystem;
 
 #define DIRMETA_NUM 8192
 

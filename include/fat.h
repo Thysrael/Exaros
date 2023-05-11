@@ -1,9 +1,17 @@
+/**
+ * @file fat.h
+ * @brief fat 层，为文件系统的实现层
+ * @date 2023-05-11
+ *
+ * @copyright Copyright (c) 2023
+ */
 #ifndef _FAT_H_
 #define _FAT_H_
 
-#include "bio.h"
 #include "types.h"
+#include "linux_struct.h"
 
+// 这是 FAT dentry 的属性，包括的范围很广
 #define ATTR_READ_ONLY 0x01
 #define ATTR_HIDDEN 0x02
 #define ATTR_SYSTEM 0x04
@@ -14,15 +22,17 @@
 #define ATTR_LINK 0x40
 #define ATTR_CHARACTER_DEVICE 0x80
 
+// FAT 表中内容
 #define FAT32_EOC 0x0ffffff8
-#define FAT32_MAX_FILENAME 255
 
 #define LAST_LONG_ENTRY 0x40
 #define EMPTY_ENTRY 0xe5  // 表示该条目未被分配
 #define END_OF_ENTRY 0x00 // 表示该条目未被分配，同时此后的条目也未被分配
 
+// FAT 的一些长度宏
 #define CHAR_LONG_NAME 13
 #define CHAR_SHORT_NAME 11
+#define FAT32_MAX_FILENAME 255
 
 typedef struct SuperBlock
 {
@@ -83,7 +93,6 @@ typedef struct long_name_entry
 
 /**
  * @brief 是联合体！可以是 short_name_entry，也可以是 long_name_entry
- * 需要注意这个东西和 dirent 是两个东西，这个东西被定义在 .c 文件中，应该具有某种局部性
  * - 短文件名目录项（`sne`）：用于存储文件的短文件名，最多 11 个字符，通常用于 DOS 和 Windows 系统下的文件命名。
  *   短文件名目录项的结构比较简单，只包含了文件名、文件属性、时间戳、起始簇号和文件大小等基本信息。
  * - 长文件名目录项（`lne`）：用于存储文件的长文件名，最多 255 个字符，通常用于支持 Unicode 字符集的文件系统中。
@@ -95,4 +104,17 @@ typedef union dentry
     long_name_entry_t lne;
 } Dentry;
 
+int getSectorNumber(DirMeta *meta, int dataSectorNum);
+u32 rwClus(FileSystem *fs, u32 cluster, int write, int user, u64 data, u32 off, u32 n);
+int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc);
+int metaRead(DirMeta *meta, int userDst, u64 dst, u32 off, u32 n);
+int metaWrite(DirMeta *meta, int userSrc, u64 src, u32 off, u32 n);
+DirMeta *metaAlloc(DirMeta *parent, char *name, int attr);
+DirMeta *metaCreate(int fd, char *path, short type, int mode);
+void metaTrunc(DirMeta *meta);
+void metaStat(DirMeta *meta, struct kstat *st);
+DirMeta *metaName(int fd, char *path, bool jump);
+DirMeta *metaNameDir(int fd, char *path, char *name);
+void loadDirMetas(FileSystem *fs, DirMeta *parent);
+int fatInit(FileSystem *fs);
 #endif
