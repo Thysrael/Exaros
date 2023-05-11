@@ -76,11 +76,11 @@ void virtioDiskInit()
     // 这三个东西各分了一页的空间
     Page *tmp;
     pageAlloc(&tmp);
-    disk.desc = page2PA(tmp);
+    disk.desc = (VirtqDesc *)page2PA(tmp);
     pageAlloc(&tmp);
-    disk.avail = page2PA(tmp);
+    disk.avail = (VringAvail *)page2PA(tmp);
     pageAlloc(&tmp);
-    disk.used = page2PA(tmp);
+    disk.used = (VringUsed *)page2PA(tmp);
 
     memset(disk.desc, 0, PAGE_SIZE);
     memset(disk.avail, 0, PAGE_SIZE);

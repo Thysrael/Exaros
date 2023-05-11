@@ -10,7 +10,8 @@
 
 #include "types.h"
 #include "linux_struct.h"
-
+typedef struct DirMeta DirMeta;
+typedef struct FileSystem FileSystem;
 // 这是 FAT dentry 的属性，包括的范围很广
 #define ATTR_READ_ONLY 0x01
 #define ATTR_HIDDEN 0x02
