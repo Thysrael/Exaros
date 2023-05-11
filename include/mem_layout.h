@@ -79,6 +79,9 @@
 #define PLIC_MCLAIM(hart) (PLIC_V + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC_V + 0x201004 + (hart)*0x2000)
 
+// virtio mmio interface
+#define VIRTIO 0x10001000
+
 #define KERNEL_STACK_SIZE (0x10000ULL) // 16 pages
 
 #define KERNEL_PROCESS_SP_TOP (1UL << 36)
@@ -86,5 +89,7 @@
 #define PAGE_SHIFT (12)
 #define PAGE_SIZE (0x1000ULL)
 #define PAGE_NUM (PHYSICAL_MEMORY_SIZE >> PAGE_SHIFT)
+
+#define FILE_SYSTEM_CLUSTER_BITMAP_BASE (KERNEL_PROCESS_SP_TOP - (1UL << 30))
 
 #endif

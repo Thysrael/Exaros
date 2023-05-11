@@ -18,18 +18,17 @@
 		"memory.h": "c",
 		"features.h": "c",
 		"syscall.h": "c",
-		"print.h": "c"
+		"print.h": "c",
+		"bio.h": "c",
+		"virtio.h": "c",
+		"dirmeta.h": "c",
+		"inode.h": "c",
+		"fat.h": "c",
+		"linux_struct.h": "c",
+		"pipe.h": "c"
 	},
-	"doxdocgen.file.fileOrder": [
-		"file",
-		"brief",
-		"date",
-		"empty",
-		"copyright"
-	],
-	"doxdocgen.file.copyrightTag": [
-		"@copyright Copyright (c) {year}"
-	],
+	"doxdocgen.file.fileOrder": ["file", "brief", "date", "empty", "copyright"],
+	"doxdocgen.file.copyrightTag": ["@copyright Copyright (c) {year}"],
 	"doxdocgen.generic.briefTemplate": "@brief {text}",
 	"multiCommand.commands": [
 		{

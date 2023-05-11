@@ -13,7 +13,9 @@
 #include <yield.h>
 #include <queue.h>
 #include <memory.h>
+#include <dirmeta.h>
 
+#define NOFILE 1024 // Number of fds that a process can open
 #define LOG_PROCESS_NUM 10
 #define PROCESS_TOTAL_NUMBER (1 << LOG_PROCESS_NUM)
 
@@ -141,16 +143,16 @@ typedef struct Process
     u32 priority;            // 优先级
     enum ProcessState state; // 进程状态
     // struct Spinlock lock;
-    // Dirent *cwd;           // Current directory
-    // struct File *ofile[NOFILE];
+    DirMeta *cwd;        // 进程所在的路径
+    File *ofile[NOFILE]; // 进程打开的文件
     // u64 chan;//wait Object
     // u64 currentKernelSp;
     // int reason;
     u32 retValue; // 进程返回值
     // u64 brkHeapBottom;
     // u64 mmapHeapBottom;
-    // Dirent *execFile;
-    // Dirent *cwd;
+    // Dirmeta *execFile;
+    // Dirmeta *cwd;
     // SignalSet blocked;
     // SignalSet pending;
     // u64 setChildTid;
