@@ -25,7 +25,9 @@
 		"inode.h": "c",
 		"fat.h": "c",
 		"linux_struct.h": "c",
-		"pipe.h": "c"
+		"pipe.h": "c",
+		"sysarg.h": "c",
+		"file.h": "c"
 	},
 	"doxdocgen.file.fileOrder": ["file", "brief", "date", "empty", "copyright"],
 	"doxdocgen.file.copyrightTag": ["@copyright Copyright (c) {year}"],

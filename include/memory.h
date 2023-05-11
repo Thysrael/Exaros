@@ -24,9 +24,9 @@
 #define PTE_COW_BIT ((u64)1 << 8)      /* Copy on Write 位 */
 #define PTE_PERM_WIDTH (10)
 
-#define PTE_VALID(pte)  ((u64)pte & PTE_VALID_BIT)  /* 0: 无效 */
-#define PTE_USER(pte)   ((u64)pte & PTE_USER_BIT)   /* 0: 无效 */
-#define PTE_COW(pte)    ((u64)pte & PTE_COW_BIT)    /* 0: 无效 */
+#define PTE_VALID(pte) ((u64)pte & PTE_VALID_BIT) /* 0: 无效 */
+#define PTE_USER(pte) ((u64)pte & PTE_USER_BIT)   /* 0: 无效 */
+#define PTE_COW(pte) ((u64)pte & PTE_COW_BIT)     /* 0: 无效 */
 
 #define GETLOW(x, bits) ((u64)x & (((u64)1 << bits) - 1))
 #define ALIGN_DOWN(x, size) (((u64)x) & ~((u64)size - 1))
@@ -61,6 +61,8 @@ i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte);
 i32 pageAlloc(Page **new);
 void bzero(void *start, u32 len);
 void bcopy(void *src, void *dst, u32 len);
+int copyIn(u64 *pgdir, u64 va, char *dst, u64 len);
+int copyOut(u64 *pgdir, u64 va, char *src, u64 len);
 
 /**
  * @brief page 2 Page iNdex
@@ -152,7 +154,6 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm);
 u64 va2PA(u64 *pgdir, u64 va, int *cow);
 void passiveAlloc(u64 *pgdir, u64 va);
 int copyOut(u64 *pgdir, u64 va, char *src, u64 len);
-
 
 void cowHandler();
 

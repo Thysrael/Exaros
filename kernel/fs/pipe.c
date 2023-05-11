@@ -116,7 +116,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
     u64 pa = addr;
     if (isUser)
     {
-        pa = vir2phy(pageTable, addr, &cow);
+        pa = va2PA(pageTable, addr, &cow);
         if (pa == NULL)
         {
             cow = 0;
@@ -149,7 +149,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
             i++;
             if (isUser && (!((addr + i) & (PAGE_SIZE - 1))))
             {
-                pa = vir2phy(pageTable, addr + i, &cow);
+                pa = va2PA(pageTable, addr + i, &cow);
                 if (pa == NULL)
                 {
                     cow = 0;
@@ -158,7 +158,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
                 if (cow)
                 {
                     pa = cowHandler(pageTable, addr);
-                    // pa = vir2phy(pageTable, addr, NULL);
+                    // pa = va2PA(pageTable, addr, NULL);
                 }
             }
             else
@@ -188,7 +188,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
     u64 pa = addr;
     if (isUser)
     {
-        pa = vir2phy(pageTable, addr, NULL);
+        pa = va2PA(pageTable, addr, NULL);
         if (pa == NULL)
         {
             pa = pageout(pageTable, addr);
@@ -210,7 +210,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
         i++;
         if (isUser && (!((addr + i) & (PAGE_SIZE - 1))))
         {
-            pa = vir2phy(pageTable, addr + i, NULL);
+            pa = va2PA(pageTable, addr + i, NULL);
             if (pa == NULL)
             {
                 pa = pageout(pageTable, addr + i);

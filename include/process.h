@@ -14,6 +14,7 @@
 #include <queue.h>
 #include <memory.h>
 #include <dirmeta.h>
+#include <file.h>
 
 #define NOFILE 1024 // Number of fds that a process can open
 #define LOG_PROCESS_NUM 10

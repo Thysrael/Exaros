@@ -5,7 +5,6 @@
 #define SYSCALL_PROCESS_DESTORY 3
 #define SYSCALL_PUTCHAR 4
 #define SYSCALL_PUT_STRING 5
-#define SYSCALL_READDIR 10
 
 #define SYSCALL_SBRK 13 // TODO
 
@@ -79,11 +78,12 @@ void syscallChangeDir(void);
 void syscallGetWorkDir(void);
 void syscallPipe(void);
 void syscallDevice(void);
-void syscallReadDir(void);
 void syscallGetDirent();
 void syscallMount(void);
 void syscallUmount(void);
 void syscallUnlinkAt(void);
 void syscallLinkAt(void);
+
+extern void (*syscallVector[])(void);
 
 #endif

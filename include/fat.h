@@ -34,6 +34,7 @@ typedef struct FileSystem FileSystem;
 #define CHAR_LONG_NAME 13
 #define CHAR_SHORT_NAME 11
 #define FAT32_MAX_FILENAME 255
+#define FAT32_MAX_PATH 260
 
 typedef struct SuperBlock
 {
@@ -113,6 +114,7 @@ int metaWrite(DirMeta *meta, int userSrc, u64 src, u32 off, u32 n);
 DirMeta *metaAlloc(DirMeta *parent, char *name, int attr);
 DirMeta *metaCreate(int fd, char *path, short type, int mode);
 void metaTrunc(DirMeta *meta);
+void metaRemove(DirMeta *meta);
 void metaStat(DirMeta *meta, struct kstat *st);
 DirMeta *metaName(int fd, char *path, bool jump);
 DirMeta *metaNameDir(int fd, char *path, char *name);

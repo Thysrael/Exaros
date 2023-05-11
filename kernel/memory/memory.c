@@ -427,7 +427,7 @@ int copyIn(u64 *pgdir, u64 va, char *dst, u64 len)
  * @param pgdir 用户页表
  * @param va 用户虚拟地址
  * @param src 内核地址
- * @param cow cow 标志
+ * @param len 长度
  * @return int
  */
 int copyOut(u64 *pgdir, u64 va, char *src, u64 len)

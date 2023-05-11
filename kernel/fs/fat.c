@@ -590,6 +590,32 @@ void metaTrunc(DirMeta *meta)
 }
 
 /**
+ * @brief 将 meta 对应的文件移除，用的是链表法
+ *
+ * @param meta 待移除的文件
+ */
+void metaRemove(DirMeta *meta)
+{
+    DirMeta *i = meta->parent->firstChild;
+    if (i == meta)
+    {
+        meta->parent->firstChild = meta->nextBrother;
+    }
+    else
+    {
+        for (; i->nextBrother; i = i->nextBrother)
+        {
+            if (i->nextBrother == meta)
+            {
+                i->nextBrother = meta->nextBrother;
+                break;
+            }
+        }
+    }
+    dirMetaFree(meta);
+}
+
+/**
  * @brief 获得 meta 对应文件的状态
  *
  * @param meta 文件 meta
@@ -1080,7 +1106,7 @@ int fatInit(FileSystem *fs)
         {
             panic("");
         }
-        if (pageInsert(kernelPageDirectory, ((u64)clusterBitmap) + cnt, page2pa(pp), PTE_READ_BIT | PTE_WRITE_BIT) < 0)
+        if (pageInsert(kernelPageDirectory, ((u64)clusterBitmap) + cnt, page2PA(pp), PTE_READ_BIT | PTE_WRITE_BIT) < 0)
         {
             panic("");
         }

@@ -4,6 +4,7 @@
 #include <virtio.h>
 #include <file.h>
 #include <fat.h>
+#include <fs.h>
 
 /**
  * @brief 这是一个双向链表
@@ -163,6 +164,7 @@ Buf *mountBlockRead(FileSystem *fs, u64 blockNum)
     }
     // 如果 image 是一个文件
     assert(file->type == FD_ENTRY);
+    // 找到镜像的 meta
     DirMeta *image = fs->image->meta;
     FileSystem *parentFs = image->fileSystem;
     int parentBlockNum = getSectorNumber(image, blockNum);
