@@ -120,7 +120,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
         if (pa == NULL)
         {
             cow = 0;
-            pa = pageout(pageTable, addr);
+            pa = passiveAlloc(pageTable, addr);
         }
         if (cow)
         {
@@ -153,7 +153,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
                 if (pa == NULL)
                 {
                     cow = 0;
-                    pa = pageout(pageTable, addr + i);
+                    pa = passiveAlloc(pageTable, addr + i);
                 }
                 if (cow)
                 {
@@ -191,7 +191,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
         pa = va2PA(pageTable, addr, NULL);
         if (pa == NULL)
         {
-            pa = pageout(pageTable, addr);
+            pa = passiveAlloc(pageTable, addr);
         }
     }
 
@@ -213,7 +213,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
             pa = va2PA(pageTable, addr + i, NULL);
             if (pa == NULL)
             {
-                pa = pageout(pageTable, addr + i);
+                pa = passiveAlloc(pageTable, addr + i);
             }
         }
         else

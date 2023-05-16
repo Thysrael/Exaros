@@ -230,13 +230,13 @@ inline void writeSatp(u64 x)
 // enable device interrupts
 static inline void intr_on()
 {
-    w_sstatus(r_sstatus() | SSTATUS_SIE);
+    writeSstatus(readSstatus() | SSTATUS_SIE);
 }
 
 // disable device interrupts
 static inline void intr_off()
 {
-    w_sstatus(r_sstatus() & ~SSTATUS_SIE);
+    writeSstatus(readSstatus() & ~SSTATUS_SIE);
 }
 
 #define SV39 (8)

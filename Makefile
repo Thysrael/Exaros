@@ -15,7 +15,7 @@ objects := $(kernel_dir)/*/*.o
 mnt_path 	:=	/mnt
 fs_img	:=	sdcard.img
 
-.PHONY: build clean $(modules) run fat
+.PHONY: all clean $(modules) run fat
 
 DEBUG 	:= n
 ifeq ($(MAKECMDGOALS), debug)

@@ -1,6 +1,6 @@
 INCLUDES := -I../../include
 
-target = process.o elf_loader.o sleep.o
+target = spinlock.o interrupt.o
 
 .PHONY: build clean
 

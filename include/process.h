@@ -13,6 +13,7 @@
 #include <yield.h>
 #include <queue.h>
 #include <memory.h>
+#include <string.h>
 #include <dirmeta.h>
 #include <file.h>
 #include <lock.h>
@@ -179,4 +180,6 @@ u64 getHartKernelTopSp();
 void processRun(Process *p);
 void yield();
 u64 getProcessTopSp(Process *p);
+void sleep(void *channel, Spinlock *lk);
+void wakeup(void *channel);
 #endif

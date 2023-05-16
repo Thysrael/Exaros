@@ -83,7 +83,7 @@ typedef struct File
 
 void fileinit();
 File *filealloc();
-void *filedup(File *f);
+void filedup(File *f);
 void fileclose(File *f);
 int filestat(File *f, u64 addr);
 int fileread(File *f, bool isUser, u64 addr, int n);

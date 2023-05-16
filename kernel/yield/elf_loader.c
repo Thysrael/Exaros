@@ -11,6 +11,7 @@
 #include <error.h>
 #include <process.h>
 #include <memory.h>
+#include <string.h>
 
 /**
  * @brief 将 binary 开始的二进制文件段加载到进程 process va 开始的虚拟内存
@@ -41,7 +42,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
             kernelPageMap(pcs->pgdir, va, page2PA(page), perm);
         }
         r = MIN(binSize, PAGE_SIZE - offset);
-        bcopy(binary, (void *)page2PA(page) + offset, r);
+        memmove((void *)page2PA(page) + offset, binary, r);
     }
     for (i = r; i < binSize; i += r)
     {
@@ -49,7 +50,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
 
         kernelPageMap(pcs->pgdir, va + i, page2PA(page), perm);
         r = MIN(PAGE_SIZE, binSize - i);
-        bcopy(binary + i, (void *)page2PA(page), r);
+        memmove((void *)page2PA(page), binary + i, r);
     }
     offset = va + i - ALIGN_DOWN(va + i, PAGE_SIZE);
     if (offset > 0)

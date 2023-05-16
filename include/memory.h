@@ -64,8 +64,8 @@ i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte);
 i32 pageAlloc(Page **new);
 void bzero(void *start, u32 len);
 void bcopy(void *src, void *dst, u32 len);
-int copyIn(u64 *pgdir, u64 va, char *dst, u64 len);
-int copyOut(u64 *pgdir, u64 va, char *src, u64 len);
+int copyin(u64 *pgdir, char *dst, u64 srcva, u64 len);
+int copyout(u64 *pgdir, u64 va, char *src, u64 len);
 
 /**
  * @brief page 2 Page iNdex
@@ -155,12 +155,13 @@ i32 pageAlloc(Page **new);
 i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm);
 
 u64 va2PA(u64 *pgdir, u64 va, int *cow);
-void passiveAlloc(u64 *pgdir, u64 va);
+u64 passiveAlloc(u64 *pgdir, u64 va);
 u64 cowHandler(u64 *pgdir, u64 va);
 
 int either_copyin(void *dst, int user_src, u64 src, u64 len);
-int either_copyout(void *user_dst, int dst, u64 src, u64 len);
+int either_copyout(int user_dst, u64 dst, void *src, u64 len);
 int either_memset(bool user, u64 dst, u8 value, u64 len);
-int copyOut(u64 *pgdir, u64 va, char *src, u64 len);
+int copyout(u64 *pgdir, u64 va, char *src, u64 len);
+int memsetOut(u64 *pgdir, u64 dst, u8 value, u64 len);
 
 #endif /* _MEMORY_H_ */

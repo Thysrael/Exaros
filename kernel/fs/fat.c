@@ -459,6 +459,45 @@ int metaWrite(DirMeta *meta, int userSrc, u64 src, u32 off, u32 n)
 }
 
 /**
+ * @brief 给定目录的 DirMeta 和文件名，查找目录下文件名对应的 DirMeta
+ *
+ * @param parentDir 查找目录
+ * @param filename 文件名
+ * @return DirMeta* 文件 meta
+ */
+static DirMeta *dirlookup(DirMeta *parentDir, char *filename)
+{
+    // 如果不是目录
+    if (!(parentDir->attribute & ATTR_DIRECTORY))
+        panic("dirlookup not DIR");
+    // 如果文件是当前目录
+    if (strncmp(filename, ".", FAT32_MAX_FILENAME) == 0)
+    {
+        return parentDir;
+    }
+    // 如果文件是上级目录
+    else if (strncmp(filename, "..", FAT32_MAX_FILENAME) == 0)
+    {
+        // 如果是根目录，则返回根目录
+        if (parentDir == &parentDir->fileSystem->root)
+        {
+            return &parentDir->fileSystem->root;
+        }
+        // 返回上级目录
+        return parentDir->parent;
+    }
+    // 遍历所有的孩子节点，找到与文件名相同的文件
+    for (DirMeta *fileMeta = parentDir->firstChild; fileMeta; fileMeta = fileMeta->nextBrother)
+    {
+        if (strncmp(fileMeta->filename, filename, FAT32_MAX_FILENAME) == 0)
+        {
+            return fileMeta;
+        }
+    }
+    return NULL;
+}
+
+/**
  * @brief 在指定目录下创建具有指定属性和文件名的文件
  *
  * @param parent 目录 meta
@@ -475,7 +514,7 @@ DirMeta *metaAlloc(DirMeta *parent, char *name, int attr)
 
     DirMeta *child;
     // child exists
-    if ((child = dirlookup(parent, name)) != 0)
+    if ((child = dirlookup(parent, name)) != NULL)
     {
         return child;
     }
@@ -662,45 +701,6 @@ void metaStat(DirMeta *meta, struct kstat *st)
         st->st_ctime_sec = 0;
         st->st_ctime_nsec = 0;
     }
-}
-
-/**
- * @brief 给定目录的 DirMeta 和文件名，查找目录下文件名对应的 DirMeta
- *
- * @param parentDir 查找目录
- * @param filename 文件名
- * @return DirMeta* 文件 meta
- */
-static DirMeta *dirlookup(DirMeta *parentDir, char *filename)
-{
-    // 如果不是目录
-    if (!(parentDir->attribute & ATTR_DIRECTORY))
-        panic("dirlookup not DIR");
-    // 如果文件是当前目录
-    if (strncmp(filename, ".", FAT32_MAX_FILENAME) == 0)
-    {
-        return parentDir;
-    }
-    // 如果文件是上级目录
-    else if (strncmp(filename, "..", FAT32_MAX_FILENAME) == 0)
-    {
-        // 如果是根目录，则返回根目录
-        if (parentDir == &parentDir->fileSystem->root)
-        {
-            return &parentDir->fileSystem->root;
-        }
-        // 返回上级目录
-        return parentDir->parent;
-    }
-    // 遍历所有的孩子节点，找到与文件名相同的文件
-    for (DirMeta *fileMeta = parentDir->firstChild; fileMeta; fileMeta = fileMeta->nextBrother)
-    {
-        if (strncmp(fileMeta->filename, filename, FAT32_MAX_FILENAME) == 0)
-        {
-            return fileMeta;
-        }
-    }
-    return NULL;
 }
 
 /**
@@ -1106,7 +1106,7 @@ int fatInit(FileSystem *fs)
         {
             panic("");
         }
-        if (pageInsert(kernelPageDirectory, ((u64)clusterBitmap) + cnt, page2PA(pp), PTE_READ_BIT | PTE_WRITE_BIT) < 0)
+        if (pageInsert(kernelPageDirectory, ((u64)clusterBitmap) + cnt, pp, PTE_READ_BIT | PTE_WRITE_BIT) < 0)
         {
             panic("");
         }

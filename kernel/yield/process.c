@@ -9,6 +9,7 @@
 #include <process.h>
 #include <riscv.h>
 #include <memory.h>
+#include <string.h>
 #include <driver.h>
 #include <mem_layout.h>
 #include <error.h>
@@ -293,9 +294,11 @@ u64 getHartKernelTopSp()
 void processRun(Process *p)
 {
     Trapframe *trapframe = getHartTrapFrame();
+
+    // 保存当前进程的 trapfreme 到进程结构体中
     if (currentProcess[getTp()])
     {
-        bcopy(trapframe, &currentProcess[getTp()]->trapframe, sizeof(Trapframe));
+        memmove(&currentProcess[getTp()]->trapframe, trapframe, sizeof(Trapframe));
     }
     p->state = RUNNING;
 
@@ -303,9 +306,8 @@ void processRun(Process *p)
     currentProcess[hartid] = p;
 
     // 切换页表
-    // 拷贝 trapframe
-
-    bcopy(&(currentProcess[hartid]->trapframe), trapframe, sizeof(Trapframe));
+    // 拷贝进程的 trapframe 到 hart 对应的 trapframe
+    memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
 
     u64 sp = getHartKernelTopSp(p);
     asm volatile("ld sp, 0(%0)"
@@ -330,7 +332,7 @@ void yield()
 
     if (process && process->state == RUNNING)
     {
-        bcopy(getHartTrapFrame(), &process->trapframe, sizeof(Trapframe));
+        memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
         process->state = RUNNABLE;
     }
 
@@ -381,7 +383,7 @@ void sleep(void *channel, Spinlock *lk)
     acquireLock(&(p->lock));
     releaseLock(lk);
 
-    p->channel = channel;
+    p->channel = (u64)channel;
     p->state = SLEEPING;
     p->reason = 1;
     releaseLock(&(p->lock));

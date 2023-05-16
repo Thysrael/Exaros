@@ -1,5 +1,6 @@
 #include <memory.h>
 #include <driver.h>
+#include <process.h>
 #include <types.h>
 #include <error.h>
 #include <riscv.h>
@@ -267,7 +268,7 @@ i32 pageAlloc(Page **ppage)
     }
     page = LIST_FIRST(&freePageList);
     LIST_REMOVE(page, link);
-    memset(page2PA(page), 0, PAGE_SIZE);
+    memset((void *)page2PA(page), 0, PAGE_SIZE);
     // bzero((void *)page2PA(page), PAGE_SIZE);
     *ppage = page;
     return 0;
@@ -359,16 +360,16 @@ int either_copyin(void *dst, int user_src, u64 src, u64 len)
     }
 }
 
-int either_copyout(void *user_dst, int dst, u64 src, u64 len)
+int either_copyout(int user_dst, u64 dst, void *src, u64 len)
 {
     if (user_dst)
     {
         Process *p = myProcess();
-        return copyout(p->pgdir, dst, src, len);
+        return copyout(p->pgdir, dst, (char *)src, len);
     }
     else
     {
-        memmove((char *)dst, src, len);
+        memmove((char *)dst, (void *)src, len);
         return 0;
     }
 }
@@ -399,7 +400,7 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow)
     u64 pa;
     if (va >= VA_MAX)
         return 0;
-    int ret = pageWalk(pgdir, va, 0, &pte);
+    pageWalk(pgdir, va, 0, &pte);
     if (!PTE_VALID(*pte))
         return 0;
     if (!PTE_USER(*pte))
@@ -417,12 +418,14 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow)
  * @param pgdir 一级页表指针
  * @param va 用户空间虚拟地址
  */
-void passiveAlloc(u64 *pgdir, u64 va)
+u64 passiveAlloc(u64 *pgdir, u64 va)
 {
     Page *pp = NULL;
     // 需要增加 alloc wrong va 判断
     panic_on(pageAlloc(&pp));
     panic_on(pageInsert(pgdir, va, pp, PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT));
+
+    return page2PA(pp) + (va & 0xFFF);
 }
 
 /**
@@ -436,7 +439,7 @@ void passiveAlloc(u64 *pgdir, u64 va)
  * @param len
  * @return int
  */
-int copyIn(u64 *pgdir, u64 va, char *dst, u64 len)
+int copyin(u64 *pgdir, char *dst, u64 va, u64 len)
 {
     u64 n, pa;
     int cow;
@@ -450,11 +453,12 @@ int copyIn(u64 *pgdir, u64 va, char *dst, u64 len)
         {
             n = len;
         }
-        memmove(dst, pa, n);
+        memmove(dst, (void *)pa, n);
         len -= n;
         dst += n;
         va += n;
     }
+    return 0;
 }
 
 /**
@@ -468,7 +472,7 @@ int copyIn(u64 *pgdir, u64 va, char *dst, u64 len)
  * @param len 长度
  * @return int
  */
-int copyOut(u64 *pgdir, u64 va, char *src, u64 len)
+int copyout(u64 *pgdir, u64 va, char *src, u64 len)
 {
     u64 n, pa;
     int cow;
@@ -497,4 +501,35 @@ int copyOut(u64 *pgdir, u64 va, char *src, u64 len)
         src += n;
         va += n;
     }
+
+    return 0;
+}
+
+/* 虚拟地址 memset */
+int memsetOut(u64 *pgdir, u64 dst, u8 value, u64 len)
+{
+    u64 n, va0, pa0;
+    int cow;
+
+    while (len > 0)
+    {
+        va0 = ALIGN_DOWN(dst, PAGE_SIZE);
+        pa0 = va2PA(pgdir, dst, &cow);
+        if (pa0 == NULL)
+        {
+            cow = 0;
+            pa0 = passiveAlloc(pgdir, dst);
+        }
+        if (cow)
+        {
+            pa0 = cowHandler(pgdir, dst);
+        }
+        n = PAGE_SIZE - (dst - va0);
+        if (n > len)
+            n = len;
+        memset((void *)pa0, value, n);
+        len -= n;
+        dst = va0 + PAGE_SIZE;
+    }
+    return 0;
 }

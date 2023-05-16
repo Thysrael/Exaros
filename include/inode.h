@@ -12,7 +12,8 @@
 #define _INODE_H_
 
 #include "types.h"
-#include "dirmeta.h"
+
+typedef struct DirMeta DirMeta;
 
 #define INODE_NUM 1024
 #define INODE_ITEM_NUM 64

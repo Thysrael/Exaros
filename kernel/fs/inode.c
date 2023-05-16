@@ -1,5 +1,7 @@
 #include <types.h>
 #include <inode.h>
+#include <dirmeta.h>
+#include <driver.h>
 
 Inode inodes[INODE_NUM];
 u64 inodeBitmap[INODE_NUM / 64];
@@ -103,6 +105,7 @@ void metaFindInode(DirMeta *meta, int pos)
     // 三级 inode
     if (pos < INODE_THIRD_LEVEL_TOP)
     {
+        //
         int idx1 = INODE_THIRD_ITEM_BASE + (pos - INODE_THIRD_LEVEL_BOTTOM) / INODE_ITEM_NUM / INODE_ITEM_NUM;
         int idx2 = (pos - INODE_THIRD_LEVEL_BOTTOM) / INODE_ITEM_NUM % INODE_ITEM_NUM;
         meta->curClus = inodes[inodes[meta->inode.item[idx1]].item[idx2]].item[(pos - INODE_THIRD_LEVEL_BOTTOM) % INODE_ITEM_NUM];

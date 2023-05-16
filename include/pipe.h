@@ -10,6 +10,7 @@
 #define _PIPE_H_
 
 #include "types.h"
+#include "lock.h"
 
 typedef struct File File;
 
@@ -23,6 +24,7 @@ typedef struct Pipe
     u64 nwrite;    // number of bytes written
     int readopen;  // read fd is still open
     int writeopen; // write fd is still open
+    Spinlock lock;
 } Pipe;
 
 int pipeNew(File **f0, File **f1);

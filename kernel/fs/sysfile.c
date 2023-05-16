@@ -11,6 +11,11 @@
 #include <pipe.h>
 #include <fs.h>
 
+void syscallPutchar()
+{
+    putchar(getHartTrapFrame()->a0);
+};
+
 /**
  * @brief 分配一个 fd ，并将其与某个 File 关联
  *
@@ -213,13 +218,13 @@ void syscallGetDirMeta()
             dir64->d_reclen = len + prefix + 1;
             dir64->d_type = (cur->attribute & ATTR_DIRECTORY) ? DT_DIR : DT_REG;
             // 拷贝其他部分
-            if (copyOut(p->pgdir, addr, (char *)dir64, prefix) != 0)
+            if (copyout(p->pgdir, addr, (char *)dir64, prefix) != 0)
             {
                 getHartTrapFrame()->a0 = -4;
                 return;
             }
             // 拷贝文件名
-            if (copyOut(p->pgdir, addr + prefix, cur->filename, len + 1) != 0)
+            if (copyout(p->pgdir, addr + prefix, cur->filename, len + 1) != 0)
             {
                 getHartTrapFrame()->a0 = -114;
                 return;
@@ -301,7 +306,7 @@ void syscallOpenAt(void)
     // 如果需要截断
     if (!(entryPoint->attribute & ATTR_DIRECTORY) && (flags & O_TRUNC))
     {
-        etrunc(entryPoint);
+        metaTrunc(entryPoint);
     }
 
     file->type = FD_ENTRY;
@@ -588,6 +593,43 @@ void syscallUmount()
     mountMeta->head = mountMeta->head->next;
 
     tf->a0 = 0;
+}
+
+int do_linkat(int oldDirFd, char *oldPath, int newDirFd, char *newPath)
+{
+    DirMeta *entryPoint, *targetPoint = NULL;
+
+    if ((entryPoint = metaName(oldDirFd, oldPath, true)) == NULL)
+    {
+        goto bad;
+    }
+
+    if ((targetPoint = metaCreate(newDirFd, newPath, T_FILE, O_RDWR)) == NULL)
+    {
+        goto bad;
+    }
+
+    char buf[FAT32_MAX_PATH];
+    if (getAbsolutePath(entryPoint, 0, (u64)buf, FAT32_MAX_PATH) < 0)
+    {
+        goto bad;
+    }
+
+    int len = strlen(buf);
+    if (metaWrite(targetPoint, 0, (u64)buf, 0, len + 1) != len + 1)
+    {
+        goto bad;
+    }
+
+    targetPoint->reserve = DT_LNK;
+
+    return 0;
+bad:
+    if (targetPoint)
+    {
+        metaRemove(targetPoint);
+    }
+    return -1;
 }
 
 int do_unlinkat(int fd, char *path)

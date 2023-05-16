@@ -40,4 +40,7 @@ static inline u64 getFileSystemClusterBitmap(FileSystem *fs)
     return FILE_SYSTEM_CLUSTER_BITMAP_BASE + ((fs - fileSystem) << 10) * PAGE_SIZE;
 }
 
+int fsAlloc(FileSystem **fs);
+void initRootFileSystem();
+
 #endif

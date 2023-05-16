@@ -3,6 +3,7 @@
 #include <process.h>
 #include <linux_struct.h>
 #include <fat.h>
+#include <string.h>
 
 struct devsw devsw[NDEV];
 struct
@@ -49,7 +50,7 @@ File *filealloc()
  *
  * @param f 文件
  */
-void *filedup(File *f)
+void filedup(File *f)
 {
     if (f->ref < 1)
         panic("filedup");
@@ -201,7 +202,7 @@ int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen)
 
     if (d->parent == NULL)
     {
-        return either_copyOut(isUser, buf, "/", 2);
+        return either_copyout(isUser, buf, "/", 2);
     }
     char *s = path + FAT32_MAX_PATH - 1;
     *s = '\0';
@@ -215,5 +216,5 @@ int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen)
         *--s = '/';
         d = d->parent;
     }
-    return either_copyOut(isUser, buf, (void *)s, strlen(s) + 1);
+    return either_copyout(isUser, buf, (void *)s, strlen(s) + 1);
 }

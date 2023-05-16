@@ -1,7 +1,10 @@
 #ifndef _HART_H_
 #define _HART_H_
 
-#include "types.h"
+#include <riscv.h>
+#include <process.h>
+#include <mem_layout.h>
+#include <types.h>
 
 struct Hart
 {
@@ -10,6 +13,12 @@ struct Hart
 };
 
 struct Trapframe;
-struct Hart *myHart(void);
+
+struct Hart harts[CORE_NUM];
+inline struct Hart *myHart()
+{
+    int r = getTp();
+    return &harts[r];
+}
 
 #endif

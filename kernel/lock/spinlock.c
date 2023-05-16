@@ -1,4 +1,6 @@
 #include <lock.h>
+#include <driver.h>
+#include <hart.h>
 
 // void initLock
 

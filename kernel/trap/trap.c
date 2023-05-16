@@ -2,6 +2,7 @@
 #include <yield.h>
 #include <mem_layout.h>
 #include <memory.h>
+#include <string.h>
 #include <process.h>
 #include <trap.h>
 #include <syscall.h>

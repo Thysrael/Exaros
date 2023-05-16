@@ -5,6 +5,7 @@
 #include <string.h>
 #include <memory.h>
 #include <file.h>
+#include <trap.h>
 
 /**
  * @brief 从第 n 个参数寄存器中取得 fd 的值，并找到对应的 File 结构体
@@ -40,7 +41,7 @@ int argfd(int n, int *pfd, File **pf)
 int fetchaddr(u64 addr, u64 *ip)
 {
     struct Process *p = myProcess();
-    if (copyIn(p->pgdir, (char *)ip, addr, sizeof(*ip)) != 0)
+    if (copyin(p->pgdir, (char *)ip, addr, sizeof(*ip)) != 0)
         return -1;
     return 0;
 }
@@ -143,11 +144,11 @@ int copyInstr(u64 *pagetable, char *dst, u64 srcva, u64 max)
 
     while (got_null == 0 && max > 0)
     {
-        va0 = DOWN_ALIGN(srcva, PAGE_SIZE);
+        va0 = ALIGN_DOWN(srcva, PAGE_SIZE);
         pa0 = va2PA(pagetable, va0, &cow);
         if (pa0 == 0)
         {
-            printf("pa0=0!");
+            printk("pa0=0!");
             return -1;
         }
         n = PAGE_SIZE - (srcva - va0);
@@ -181,7 +182,7 @@ int copyInstr(u64 *pagetable, char *dst, u64 srcva, u64 max)
     }
     else
     {
-        printf("ungot null\n");
+        printk("ungot null\n");
         return -1;
     }
 }

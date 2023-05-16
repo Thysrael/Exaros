@@ -10,6 +10,7 @@
 #include <driver.h>
 #include <riscv.h>
 #include <memory.h>
+#include <string.h>
 #include <process.h>
 #include <trap.h>
 
