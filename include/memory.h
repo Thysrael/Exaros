@@ -158,8 +158,8 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow);
 void passiveAlloc(u64 *pgdir, u64 va);
 u64 cowHandler(u64 *pgdir, u64 va);
 
-int eitherCopyin(void *dst, int user_src, u64 src, u64 len);
-int eitherCopyout(void *user_dst, int dst, u64 src, u64 len);
+int either_copyin(void *dst, int user_src, u64 src, u64 len);
+int either_copyout(void *user_dst, int dst, u64 src, u64 len);
 int either_memset(bool user, u64 dst, u8 value, u64 len);
 int copyOut(u64 *pgdir, u64 va, char *src, u64 len);
 

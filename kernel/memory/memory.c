@@ -345,7 +345,7 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
     return 0;
 }
 
-int eitherCopyin(void *dst, int user_src, u64 src, u64 len)
+int either_copyin(void *dst, int user_src, u64 src, u64 len)
 {
     if (user_src)
     {
@@ -359,7 +359,7 @@ int eitherCopyin(void *dst, int user_src, u64 src, u64 len)
     }
 }
 
-int eitherCopyout(void *user_dst, int dst, u64 src, u64 len)
+int either_copyout(void *user_dst, int dst, u64 src, u64 len)
 {
     if (user_dst)
     {
