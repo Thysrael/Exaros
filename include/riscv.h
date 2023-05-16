@@ -227,6 +227,18 @@ inline void writeSatp(u64 x)
                  : "r"(x));
 }
 
+// enable device interrupts
+static inline void intr_on()
+{
+    w_sstatus(r_sstatus() | SSTATUS_SIE);
+}
+
+// disable device interrupts
+static inline void intr_off()
+{
+    w_sstatus(r_sstatus() & ~SSTATUS_SIE);
+}
+
 #define SV39 (8)
 #define MAKE_SATP(mode, ppn) (((u64)mode << 60) | (u64)ppn)
 

@@ -15,6 +15,7 @@
 #include <yield.h>
 #include <trap.h>
 #include <elf.h>
+#include <lock.h>
 
 Process processes[PROCESS_TOTAL_NUMBER];
 ProcessList freeProcesses, usedProcesses;
@@ -365,4 +366,66 @@ u64 getProcessTopSp(Process *p)
     return KERNEL_PROCESS_SP_TOP - (u64)(p - processes) * 10 * PAGE_SIZE;
 }
 
-void sleep(void *chan, struct)
+void sleepSave();
+
+// 因为让一个进程进入 sleep 状态是一个原子过程，因此要加锁
+/**
+ * @brief 当前进程进入 sleep 状态，
+ *
+ * @param channel
+ * @param lk
+ */
+void sleep(void *channel, Spinlock *lk)
+{
+    Process *p = myProcess();
+    acquireLock(&(p->lock));
+    releaseLock(lk);
+
+    p->channel = channel;
+    p->state = SLEEPING;
+    p->reason = 1;
+    releaseLock(&(p->lock));
+
+    asm volatile("sd sp, 0(%0)"
+                 :
+                 : "r"(&p->currentKernelSp));
+
+    // 保存寄存器
+    sleepSave();
+
+    acquireLock(&p->lock);
+    p->channel = 0;
+    releaseLock(&p->lock);
+    acquireLock(lk);
+}
+/**
+ * @brief 唤醒在等待队列 channel 中的所有进程
+ * 其实并没有队列，channel 只是一个整数，记录在 Process 结构体中
+ *
+ * @param channel
+ */
+void wakeup(void *channel)
+{
+    // 遍历所有进程，找到 process->channel = channel 的
+    // 这个是不是可以改进？
+    for (int i = 0; i < PROCESS_TOTAL_NUMBER; i++)
+    {
+        if (&processes[i] != myProcess())
+        {
+            acquireLock(&processes[i].lock);
+            if (processes[i].state == SLEEPING && processes[i].channel == (u64)channel)
+            {
+                processes[i].state = RUNNABLE;
+            }
+            releaseLock(&processes[i].lock);
+        }
+    }
+}
+
+/**
+ * @brief
+ *
+ */
+// void wait(int targetProcessId, u64 addr)
+// {
+// }

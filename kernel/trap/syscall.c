@@ -39,3 +39,8 @@ void (*syscallVector[])(void) = {
     [SYSCALL_LINKAT] syscallLinkAt,
     [SYSCALL_UNLINKAT] syscallUnlinkAt,
     [SYSCALL_UNAME] syscallUname};
+
+void syscallPutchar()
+{
+    putchar(getHartTrapFrame()->a0);
+};

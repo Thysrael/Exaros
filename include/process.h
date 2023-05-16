@@ -15,6 +15,7 @@
 #include <memory.h>
 #include <dirmeta.h>
 #include <file.h>
+#include <lock.h>
 
 #define NOFILE 1024 // Number of fds that a process can open
 #define LOG_PROCESS_NUM 10
@@ -143,12 +144,12 @@ typedef struct Process
     // LIST_ENTRY(Process) scheduleLink;
     u32 priority;            // 优先级
     enum ProcessState state; // 进程状态
-    // struct Spinlock lock;
-    DirMeta *cwd;        // 进程所在的路径
-    File *ofile[NOFILE]; // 进程打开的文件
-    // u64 chan;//wait Object
-    // u64 currentKernelSp;
-    // int reason;
+    Spinlock lock;
+    DirMeta *cwd;            // 进程所在的路径
+    File *ofile[NOFILE];     // 进程打开的文件
+    u64 channel;             // 等待队列
+    u64 currentKernelSp;
+    int reason;
     u32 retValue; // 进程返回值
     // u64 brkHeapBottom;
     // u64 mmapHeapBottom;
