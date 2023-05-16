@@ -3,6 +3,7 @@
 #include <types.h>
 #include <error.h>
 #include <riscv.h>
+#include <string.h>
 
 extern char kernelEnd[];
 Page pages[PAGE_NUM];
@@ -95,7 +96,8 @@ void kernelPageInit()
         kernelPageMap(kernelPageDirectory, va + i, pa + i,
                       PTE_READ_BIT | PTE_WRITE_BIT);
     }
-    // 内核以上的部分，线性映射
+
+    // 内核以上的部分，直接
     va = pa = (u64)kernelEnd;
     size = (u64)PHYSICAL_MEMORY_END - (u64)kernelEnd;
     for (i = 0; i < size; i += PAGE_SIZE)
@@ -265,23 +267,23 @@ i32 pageAlloc(Page **ppage)
     }
     page = LIST_FIRST(&freePageList);
     LIST_REMOVE(page, link);
-    bzero((void *)page2PA(page), PAGE_SIZE);
+    memset(page2PA(page), 0, PAGE_SIZE);
+    // bzero((void *)page2PA(page), PAGE_SIZE);
     *ppage = page;
     return 0;
 }
 
-void bcopy(void *src, void *dst, u32 len)
-{
-    void *finish = src + len;
+// void bcopy(void *src, void *dst, u32 len)
+// {
+//     void *finish = src + len;
 
-    while (src < finish)
-    {
-        *(u8 *)dst = *(u8 *)src;
-        src++;
-        dst++;
-        // printk("%lx\n", (u64)src);
-    }
-}
+//     while (src < finish)
+//     {
+//         *(u8 *)dst = *(u8 *)src;
+//         src++;
+//         dst++;
+//     }
+// }
 
 // 记得切换为 memset
 void bzero(void *start, u32 len)
@@ -380,4 +382,119 @@ int either_memset(bool user, u64 dst, u8 value, u64 len)
     }
     memset((void *)dst, value, len);
     return 0;
+}
+/**
+ * @brief 查询 va 在 pgdir 中对应的 pa
+ * 返回 va 对应数据是否标记为 cow
+ * 只可用于用户页表
+ *
+ * @param pgdir 一级页表指针
+ * @param va 虚拟地址
+ * @param cow 保存 cow 的指针
+ * @return u64 对应的物理地址（0 异常）
+ */
+u64 va2PA(u64 *pgdir, u64 va, int *cow)
+{
+    u64 *pte;
+    u64 pa;
+    if (va >= VA_MAX)
+        return 0;
+    int ret = pageWalk(pgdir, va, 0, &pte);
+    if (!PTE_VALID(*pte))
+        return 0;
+    if (!PTE_USER(*pte))
+        return 0;
+    if (cow)
+        *cow = PTE_COW(*pte) > 0;
+    pa = PTE2PA(*pte) + VAOFFSET(va);
+    return pa;
+}
+
+/**
+ * @brief 用户进程为 va 申请物理页
+ * 权限默认为 RW+U
+ *
+ * @param pgdir 一级页表指针
+ * @param va 用户空间虚拟地址
+ */
+void passiveAlloc(u64 *pgdir, u64 va)
+{
+    Page *pp = NULL;
+    // 需要增加 alloc wrong va 判断
+    panic_on(pageAlloc(&pp));
+    panic_on(pageInsert(pgdir, va, pp, PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT));
+}
+
+/**
+ * @brief 用户进程数据传递给内核
+ * 获取用户虚拟地址对应物理地址
+ * 直接读物理地址（内核直接映射）
+ *
+ * @param pgdir
+ * @param va
+ * @param dst
+ * @param len
+ * @return int
+ */
+int copyIn(u64 *pgdir, u64 va, char *dst, u64 len)
+{
+    u64 n, pa;
+    int cow;
+
+    while (len > 0)
+    {
+        pa = va2PA(pgdir, va, &cow); // 内核态获取用户虚拟地址对应物理地址
+        panic_on(!pa);
+        n = PAGE_SIZE - (pa - ALIGN_DOWN(pa, PAGE_SIZE));
+        if (n > len)
+        {
+            n = len;
+        }
+        memmove(dst, pa, n);
+        len -= n;
+        dst += n;
+        va += n;
+    }
+}
+
+/**
+ * @brief kernel 数据传递给用户进程
+ * 获取用户虚拟地址对应物理地址
+ * 直接写物理地址（内核直接映射）
+ *
+ * @param pgdir 用户页表
+ * @param va 用户虚拟地址
+ * @param src 内核地址
+ * @param len 长度
+ * @return int
+ */
+int copyOut(u64 *pgdir, u64 va, char *src, u64 len)
+{
+    u64 n, pa;
+    int cow;
+
+    while (len > 0)
+    {
+        pa = va2PA(pgdir, va, &cow);
+        if (!pa)
+        { // 不存在对应映射，申请新页
+            passiveAlloc(pgdir, va);
+            pa = va2PA(pgdir, va, &cow);
+            // cow = 0;
+        }
+        if (cow)
+        { // cow 手动处理
+            cowHandler(pgdir, va);
+            pa = va2PA(pgdir, va, &cow);
+        }
+        n = PAGE_SIZE - (pa - ALIGN_DOWN(pa, PAGE_SIZE));
+        if (n > len)
+        {
+            n = len;
+        }
+        memmove((void *)pa, src, n);
+        len -= n;
+        src += n;
+        va += n;
+    }
 }

@@ -4,7 +4,7 @@
 #include <memory.h>
 #include <process.h>
 #include <trap.h>
-#include "../../include/syscall.h"
+#include <syscall.h>
 
 Trapframe *getHartTrapFrame()
 {

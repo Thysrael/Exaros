@@ -11,8 +11,9 @@
 
 #include "types.h"
 #include "fat.h"
-#include "fs.h"
 #include "inode.h"
+
+typedef struct FileSystem FileSystem;
 
 #define DIRMETA_NUM 8192
 
@@ -37,7 +38,7 @@ typedef struct DirMeta
         OSRELEASE = 12,
         NONE = 15
     } dev;
-    FileSystem *head;            // 构成链表
+    FileSystem *head;            // 构成链表，应该是链表的头结点，挂载的文件系统在一个列表中
     u32 off;                     // 这个目录项在目录中偏移（单位应该是字节）
     struct DirMeta *parent;      // 父目录
     struct DirMeta *nextBrother; // 用于构造链表

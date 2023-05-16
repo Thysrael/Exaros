@@ -12,7 +12,10 @@ exaros_sys	:= 	$(target_dir)/exaros_sys.txt
 modules := 	$(kernel_dir)
 objects := $(kernel_dir)/*/*.o 
 
-.PHONY: build clean $(modules) run
+mnt_path 	:=	/mnt
+fs_img	:=	sdcard.img
+
+.PHONY: build clean $(modules) run fat
 
 DEBUG 	:= n
 ifeq ($(MAKECMDGOALS), debug)
@@ -28,6 +31,17 @@ all: $(modules)
 
 $(modules):
 	$(MAKE) DEBUG=$(DEBUG) --directory=$@
+
+# 制作 FAT 格式的文件系统镜像
+fat: $(user_dir)
+	if [ ! -f "$(fs_img)" ]; then \
+		echo "making fs image..."; \
+		dd if=/dev/zero of=$(fs_img) bs=512k count=1024; fi
+	mkfs.vfat -F 32 $(fs_img); 
+	@sudo mount $(fs_img) $(mnt_path)
+	@sudo cp -r user/mnt/* $(mnt_path)/
+	@sudo cp -r root/** $(mnt_path)/
+	@sudo umount $(mnt_path)
 
 clean:
 	for module in $(modules);						\

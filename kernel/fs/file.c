@@ -185,3 +185,35 @@ int filewrite(File *f, bool isUser, u64 addr, int n)
 
     return ret;
 }
+
+/**
+ * @brief 利用递归获得路径
+ *
+ * @param d
+ * @param isUser
+ * @param buf
+ * @param maxLen
+ * @return int
+ */
+int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen)
+{
+    char path[FAT32_MAX_PATH];
+
+    if (d->parent == NULL)
+    {
+        return either_copyOut(isUser, buf, "/", 2);
+    }
+    char *s = path + FAT32_MAX_PATH - 1;
+    *s = '\0';
+    while (d->parent)
+    {
+        int len = strlen(d->filename);
+        s -= len;
+        if (s <= path || s - path <= FAT32_MAX_PATH - maxLen) // can't reach root "/"
+            return -1;
+        strncpy(s, d->filename, len);
+        *--s = '/';
+        d = d->parent;
+    }
+    return either_copyOut(isUser, buf, (void *)s, strlen(s) + 1);
+}

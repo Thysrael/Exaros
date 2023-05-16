@@ -60,6 +60,7 @@
 #define CLINT (0x02000000ULL)
 #define PLIC (0x0c000000ULL)
 #define UART0 (0x10000000ULL)
+// virtio mmio interface
 #define VIRTIO (0x10001000ULL)
 
 #define VIRT_OFFSET (0x3F00000000ULL)
@@ -78,9 +79,6 @@
 #define PLIC_SPRIORITY(hart) (PLIC_V + 0x201000 + (hart)*0x2000)
 #define PLIC_MCLAIM(hart) (PLIC_V + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC_V + 0x201004 + (hart)*0x2000)
-
-// virtio mmio interface
-#define VIRTIO 0x10001000
 
 #define KERNEL_STACK_SIZE (0x10000ULL) // 16 pages
 

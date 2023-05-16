@@ -3,6 +3,7 @@
 #include <mem_layout.h>
 #include <driver.h>
 #include <memory.h>
+#include <string.h>
 
 /**
  * @brief Disk 结构，因为只有一个 disk block 所以只有一个全局变量
@@ -73,13 +74,17 @@ void virtioDiskInit()
 
     // allocate and zero queue memory.
     // 这三个东西各分了一页的空间
-    pageAlloc(&(disk.desc));
-    pageAlloc(&(disk.avail));
-    pageAlloc(&(disk.used));
+    Page *tmp;
+    pageAlloc(&tmp);
+    disk.desc = (VirtqDesc *)page2PA(tmp);
+    pageAlloc(&tmp);
+    disk.avail = (VringAvail *)page2PA(tmp);
+    pageAlloc(&tmp);
+    disk.used = (VringUsed *)page2PA(tmp);
 
-    bzero(disk.desc, PAGE_SIZE);
-    bzero(disk.avail, PAGE_SIZE);
-    bzero(disk.used, PAGE_SIZE);
+    memset(disk.desc, 0, PAGE_SIZE);
+    memset(disk.avail, 0, PAGE_SIZE);
+    memset(disk.used, 0, PAGE_SIZE);
 
     // set queue size.
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NUM) = RING_SIZE;

@@ -9,6 +9,7 @@
 
 extern Inode inodes[];
 extern DirMeta dirMetas[];
+
 /**
  * @brief 计算簇号为 cluster 的簇的第一个 sector 的编号
  * 需要注意 cluster 从 2 开始编号
@@ -17,8 +18,7 @@ extern DirMeta dirMetas[];
  * @param cluster 簇号
  * @return u32 sector 编号
  */
-static inline u32
-firstSecOfClus(FileSystem *fs, u32 cluster)
+static inline u32 firstSecOfClus(FileSystem *fs, u32 cluster)
 {
     return ((cluster - 2) * fs->superBlock.BPB.secPerClus) + fs->superBlock.firstDataSec;
 }
@@ -590,6 +590,32 @@ void metaTrunc(DirMeta *meta)
 }
 
 /**
+ * @brief 将 meta 对应的文件移除，用的是链表法
+ *
+ * @param meta 待移除的文件
+ */
+void metaRemove(DirMeta *meta)
+{
+    DirMeta *i = meta->parent->firstChild;
+    if (i == meta)
+    {
+        meta->parent->firstChild = meta->nextBrother;
+    }
+    else
+    {
+        for (; i->nextBrother; i = i->nextBrother)
+        {
+            if (i->nextBrother == meta)
+            {
+                i->nextBrother = meta->nextBrother;
+                break;
+            }
+        }
+    }
+    dirMetaFree(meta);
+}
+
+/**
  * @brief 获得 meta 对应文件的状态
  *
  * @param meta 文件 meta
@@ -645,7 +671,7 @@ void metaStat(DirMeta *meta, struct kstat *st)
  * @param filename 文件名
  * @return DirMeta* 文件 meta
  */
-DirMeta *dirlookup(DirMeta *parentDir, char *filename)
+static DirMeta *dirlookup(DirMeta *parentDir, char *filename)
 {
     // 如果不是目录
     if (!(parentDir->attribute & ATTR_DIRECTORY))
@@ -1001,7 +1027,7 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
         // 头插法
         meta->nextBrother = parent->firstChild;
         parent->firstChild = meta;
-        printf("name: %s, parent: %s\n", meta->filename, parent->filename);
+        printk("name: %s, parent: %s\n", meta->filename, parent->filename);
         // 如果 meta 是目录文件，就递归处理
         if ((meta->attribute & ATTR_DIRECTORY) && (off > 32 || parent == &fs->root))
         {
@@ -1022,7 +1048,7 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
  */
 int fatInit(FileSystem *fs)
 {
-    printf("[FAT32 init]fat init begin\n");
+    printk("[FAT32 init]fat init begin\n");
     Buf *b = fs->read(fs, 0);
     if (b == 0)
     {
@@ -1047,14 +1073,14 @@ int fatInit(FileSystem *fs)
     fs->superBlock.bytsPerClus = fs->superBlock.BPB.secPerClus * fs->superBlock.BPB.bytsPerSec;
     brelse(b);
 
-    printf("[FAT32 init]read fat s\n");
+    printk("[FAT32 init]read fat s\n");
     // 打印 superblock 信息
-    printf("[FAT32 init]bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
-    printf("[FAT32 init]rootClus: %d\n", fs->superBlock.BPB.rootClus);
-    printf("[FAT32 init]secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
-    printf("[FAT32 init]numFATs: %d\n", fs->superBlock.BPB.numFATs);
-    printf("[FAT32 init]FATsz: %d\n", fs->superBlock.BPB.FATsz);
-    printf("[FAT32 init]firstDataSec: %d\n", fs->superBlock.firstDataSec);
+    printk("[FAT32 init]bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
+    printk("[FAT32 init]rootClus: %d\n", fs->superBlock.BPB.rootClus);
+    printk("[FAT32 init]secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
+    printk("[FAT32 init]numFATs: %d\n", fs->superBlock.BPB.numFATs);
+    printk("[FAT32 init]FATsz: %d\n", fs->superBlock.BPB.FATsz);
+    printk("[FAT32 init]firstDataSec: %d\n", fs->superBlock.firstDataSec);
 
     // make sure that bytsPerSec has the same value with BUFFER_SIZE
     if (BUFFER_SIZE != fs->superBlock.BPB.bytsPerSec)
@@ -1080,7 +1106,7 @@ int fatInit(FileSystem *fs)
         {
             panic("");
         }
-        if (pageInsert(kernelPageDirectory, ((u64)clusterBitmap) + cnt, page2pa(pp), PTE_READ_BIT | PTE_WRITE_BIT) < 0)
+        if (pageInsert(kernelPageDirectory, ((u64)clusterBitmap) + cnt, page2PA(pp), PTE_READ_BIT | PTE_WRITE_BIT) < 0)
         {
             panic("");
         }
@@ -1105,6 +1131,6 @@ int fatInit(FileSystem *fs)
     // 构造 dirMetas
     loadDirMetas(fs, &fs->root);
 
-    printf("[FAT32 init]fat init end\n");
+    printk("[FAT32 init]fat init end\n");
     return 0;
 }

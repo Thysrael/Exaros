@@ -1,4 +1,6 @@
 #include <pipe.h>
+#include <file.h>
+#include <process.h>
 
 Pipe pipeBuffer[MAX_PIPE];
 u64 pipeBitMap[MAX_PIPE / 64];
@@ -36,7 +38,14 @@ void pipeFree(Pipe *p)
     pipeBitMap[off >> 6] &= ~(1UL << (off & 63));
 }
 
-int pipeNew(struct File **f0, struct File **f1)
+/**
+ * @brief 配一个管道（pipe）的文件描述符（file descriptor），并将它们存储在 f0 和 f1 两个指针中
+ *
+ * @param f0 管道的输出，只能读
+ * @param f1 管道的输入，只能写
+ * @return int 成功为 0，失败为 -1
+ */
+int pipeNew(File **f0, File **f1)
 {
     Pipe *pi;
 
@@ -47,17 +56,18 @@ int pipeNew(struct File **f0, struct File **f1)
     pipeAlloc(&pi);
     pi->readopen = 1;
     pi->writeopen = 1;
-    initLock(&pi->lock, "pipe");
+    // f0 是读入端
     (*f0)->type = FD_PIPE;
     (*f0)->readable = 1;
     (*f0)->writable = 0;
     (*f0)->pipe = pi;
+    // f1 是写入端
     (*f1)->type = FD_PIPE;
     (*f1)->readable = 0;
     (*f1)->writable = 1;
     (*f1)->pipe = pi;
     return 0;
-
+// 如果分配没有成功，需要将各种分配好的空间释放掉
 bad:
     if (*f0)
         fileclose(*f0);
@@ -66,10 +76,14 @@ bad:
     return -1;
 }
 
+/**
+ * @brief 关闭管道的一侧，如果两侧均关闭，那么就关闭整个管道
+ *
+ * @param pi 管道
+ * @param writable 是否是写侧
+ */
 void pipeClose(Pipe *pi, int writable)
 {
-    // acquireLock(&pi->lock);
-    // printf("%x %x %x\n", pi->writeopen, pi->readopen, writable);
     if (writable)
     {
         pi->writeopen = 0;
@@ -82,16 +96,18 @@ void pipeClose(Pipe *pi, int writable)
     }
     if (pi->readopen == 0 && pi->writeopen == 0)
     {
-        // releaseLock(&pi->lock);
         pipeFree(pi);
     }
-    // } else
-    // releaseLock(&pi->lock);
 }
 
-void pipeOut(bool isUser, u64 dstva, char *src);
-void pipeIn(bool isUser, char *dst, u64 srcva);
-
+/**
+ * @brief 向管道写入内容
+ *
+ * @param pi 管道
+ * @param addr 写入的内容的地址，是一个用户地址
+ * @param n 写入的字节数
+ * @return int 实际写入的字节数
+ */
 int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
 {
     int i = 0, cow;
@@ -100,7 +116,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
     u64 pa = addr;
     if (isUser)
     {
-        pa = vir2phy(pageTable, addr, &cow);
+        pa = va2PA(pageTable, addr, &cow);
         if (pa == NULL)
         {
             cow = 0;
@@ -109,37 +125,31 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
         if (cow)
         {
             pa = cowHandler(pageTable, addr);
-            // pa = vir2phy(pageTable, addr, NULL);
         }
     }
 
-    // acquireLock(&pi->lock);
     while (i < n)
     {
-        if (pi->readopen == 0 /*|| pr->killed*/)
+        if (pi->readopen == 0)
         {
-            // releaseLock(&pi->lock);
             panic("");
             return -1;
         }
+        // DOC: pipewrite-full
         if (pi->nwrite == pi->nread + PIPESIZE)
-        { // DOC: pipewrite-full
+        {
             wakeup(&pi->nread);
             sleep(&pi->nwrite, &pi->lock);
         }
         else
         {
             char ch;
-            // if (either_copyin(&ch, isUser, addr + i, 1) == -1) {
-            //     break;
-            // }
-            // pipeIn(isUser, &ch, addr + i);
             ch = *((char *)pa);
             pi->data[(pi->nwrite++) & (PIPESIZE - 1)] = ch;
             i++;
             if (isUser && (!((addr + i) & (PAGE_SIZE - 1))))
             {
-                pa = vir2phy(pageTable, addr + i, &cow);
+                pa = va2PA(pageTable, addr + i, &cow);
                 if (pa == NULL)
                 {
                     cow = 0;
@@ -148,7 +158,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
                 if (cow)
                 {
                     pa = cowHandler(pageTable, addr);
-                    // pa = vir2phy(pageTable, addr, NULL);
+                    // pa = va2PA(pageTable, addr, NULL);
                 }
             }
             else
@@ -158,11 +168,18 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
         }
     }
     wakeup(&pi->nread);
-    // releaseLock(&pi->lock);
     assert(i != 0);
     return i;
 }
 
+/**
+ * @brief 从管道中读出内容
+ *
+ * @param pi 管道
+ * @param addr 读出内容存放的地址，是一个用户地址
+ * @param n 内容大小
+ * @return int
+ */
 int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
 {
     int i;
@@ -171,14 +188,13 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
     u64 pa = addr;
     if (isUser)
     {
-        pa = vir2phy(pageTable, addr, NULL);
+        pa = va2PA(pageTable, addr, NULL);
         if (pa == NULL)
         {
             pa = pageout(pageTable, addr);
         }
     }
 
-    // acquireLock(&pi->lock);
     while (pi->nread == pi->nwrite && pi->writeopen)
     {                                 // DOC: pipe-empty
         sleep(&pi->nread, &pi->lock); // DOC: piperead-sleep
@@ -194,7 +210,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
         i++;
         if (isUser && (!((addr + i) & (PAGE_SIZE - 1))))
         {
-            pa = vir2phy(pageTable, addr + i, NULL);
+            pa = va2PA(pageTable, addr + i, NULL);
             if (pa == NULL)
             {
                 pa = pageout(pageTable, addr + i);
@@ -204,12 +220,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
         {
             pa++;
         }
-        // if (either_copyout(isUser, addr + i, &ch, 1) == -1) {
-        //     break;
-        // }
-        // pipeOut(isUser, addr + i, &ch);
     }
     wakeup(&pi->nwrite); // DOC: piperead-wakeup
-    // releaseLock(&pi->lock);
     return i;
 }

@@ -2,6 +2,9 @@
 #include <types.h>
 #include <driver.h>
 #include <virtio.h>
+#include <file.h>
+#include <fat.h>
+#include <fs.h>
 
 /**
  * @brief 这是一个双向链表
@@ -142,4 +145,45 @@ void bpin(Buf *b)
 void bunpin(Buf *b)
 {
     b->refcnt--;
+}
+
+/**
+ * @brief 挂载的 blockRead，似乎会有 parentFS 的概念
+ *
+ * @param fs 文件系统
+ * @param blockNum 块号
+ * @return Buf* 缓存
+ */
+Buf *mountBlockRead(FileSystem *fs, u64 blockNum)
+{
+    File *file = fs->image;
+    // 如果 image 是一个设备（这似乎是常见情况），那么直接 bread
+    if (file->type == FD_DEVICE)
+    {
+        return bread(file->major, blockNum);
+    }
+    // 如果 image 是一个文件
+    assert(file->type == FD_ENTRY);
+    // 找到镜像的 meta
+    DirMeta *image = fs->image->meta;
+    FileSystem *parentFs = image->fileSystem;
+    int parentBlockNum = getSectorNumber(image, blockNum);
+    if (parentBlockNum < 0)
+    {
+        return 0;
+    }
+    // 用 parentFS 进行 read
+    return parentFs->read(parentFs, parentBlockNum);
+}
+
+/**
+ * @brief 是 bread 的封装器
+ *
+ * @param fs 文件系统
+ * @param blockNum 块号
+ * @return Buf* 缓冲区
+ */
+Buf *blockRead(FileSystem *fs, u64 blockNum)
+{
+    return bread(fs->deviceNumber, blockNum);
 }
