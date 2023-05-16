@@ -342,3 +342,42 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
     pp->ref++;
     return 0;
 }
+
+int eitherCopyin(void *dst, int user_src, u64 src, u64 len)
+{
+    if (user_src)
+    {
+        Process *p = myProcess();
+        return copyin(p->pgdir, dst, src, len);
+    }
+    else
+    {
+        memmove(dst, (char *)src, len);
+        return 0;
+    }
+}
+
+int eitherCopyout(void *user_dst, int dst, u64 src, u64 len)
+{
+    if (user_dst)
+    {
+        Process *p = myProcess();
+        return copyout(p->pgdir, dst, src, len);
+    }
+    else
+    {
+        memmove((char *)dst, src, len);
+        return 0;
+    }
+}
+
+int either_memset(bool user, u64 dst, u8 value, u64 len)
+{
+    if (user)
+    {
+        Process *p = myProcess();
+        return memsetOut(p->pgdir, dst, value, len);
+    }
+    memset((void *)dst, value, len);
+    return 0;
+}

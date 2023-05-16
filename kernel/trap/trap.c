@@ -190,7 +190,7 @@ void userHandler()
             }
             else if (*pte & PTE_COW_BIT)
             {
-                cowHandler();
+                cowHandler(currentProcess[hartId]->pgdir, stval);
             }
             else
             {

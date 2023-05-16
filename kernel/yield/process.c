@@ -48,7 +48,6 @@ void processInit()
 {
     printk("ProcessInit start...\n");
 
-    printk("processes address:%lx\n", (u64)(&processes));
     LIST_INIT(&freeProcesses);
     LIST_INIT(&scheduleList[0]);
     LIST_INIT(&scheduleList[1]);
@@ -365,3 +364,5 @@ u64 getProcessTopSp(Process *p)
 {
     return KERNEL_PROCESS_SP_TOP - (u64)(p - processes) * 10 * PAGE_SIZE;
 }
+
+void sleep(void *chan, struct)

@@ -35,6 +35,9 @@
 #define PA2PTE(pa) (PA2PPN(pa) << PTE_PERM_WIDTH)
 #define PTE2PPN(pte) GETLOW((((u64)pte >> PTE_PERM_WIDTH)), 44)
 #define PTE2PA(pte) PPN2PA(PTE2PPN(pte))
+// 取出权限
+#define PTE2PERM(pte) (((u64)(pte)) & ~((1ull << 54) - (1ull << 10)))
+
 #define VAPPN(va, level) GETLOW((u64)va >> (PAGE_SHIFT + 9 * (level)), 9)
 
 typedef LIST_HEAD(PageList, Page) PageList;
@@ -147,6 +150,10 @@ i32 pageAlloc(Page **new);
 i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm);
 
 void passiveAlloc(u64 *pgdir, u64 va);
-void cowHandler();
+u64 cowHandler(u64 *pgdir, u64 va);
+
+int eitherCopyin(void *dst, int user_src, u64 src, u64 len);
+int eitherCopyout(void *user_dst, int dst, u64 src, u64 len);
+int either_memset(bool user, u64 dst, u8 value, u64 len);
 
 #endif /* _MEMORY_H_ */
