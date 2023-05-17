@@ -14,11 +14,5 @@ struct Hart
 
 struct Trapframe;
 
-struct Hart harts[CORE_NUM];
-inline struct Hart *myHart()
-{
-    int r = getTp();
-    return &harts[r];
-}
-
+struct Hart *myHart();
 #endif

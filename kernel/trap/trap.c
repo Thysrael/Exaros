@@ -163,8 +163,10 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, sepc, sip);
-
+    if (0)
+    {
+        printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, sepc, sip);
+    }
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)

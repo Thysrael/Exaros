@@ -53,7 +53,6 @@ void syscallPutchar();
 void syscallProcessDestory();
 void syscallClone();
 void syscallPutString();
-void syscallGetProcessId();
 void syscallGetParentProcessId();
 void syscallWait();
 void syscallExit();

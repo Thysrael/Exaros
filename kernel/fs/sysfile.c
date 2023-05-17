@@ -690,3 +690,58 @@ void syscallUnlinkAt()
 
     tf->a0 = do_unlinkat(dirFd, path);
 }
+
+void syscallGetProcessId()
+{
+}
+void syscallYield()
+{
+}
+void syscallProcessDestory()
+{
+}
+void syscallClone()
+{
+}
+void syscallPutString()
+{
+}
+void syscallGetParentProcessId()
+{
+}
+void syscallWait()
+{
+}
+void syscallExit()
+{
+}
+void syscallGetCpuTimes()
+{
+}
+void syscallGetTime()
+{
+}
+void syscallSleepTime()
+{
+}
+void syscallBrk()
+{
+}
+void syscallSetBrk()
+{
+}
+void syscallMapMemory()
+{
+}
+void syscallUnMapMemory()
+{
+}
+void syscallExec()
+{
+}
+void syscallUname()
+{
+}
+void syscallGetDirent()
+{
+}
