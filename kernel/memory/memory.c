@@ -132,7 +132,9 @@ void pageStart()
 
 /**
  * @brief 插入 va -> pa 的映射
- * 不处理 pa 对应 page ref
+ * 可用于所有地址
+ * [0, PHYSICAL_MEMORY_END)
+ * 不处理 page->ref
  *
  * @param pgdir 一级页表指针
  * @param va 虚拟地址
@@ -154,6 +156,27 @@ i32 kernelPageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
     }
     try(pageWalk(pgdir, va, true, &pte));
     *pte = PA2PTE(pa) | perm | PTE_VALID_BIT;
+    return 0;
+}
+
+/**
+ * @brief 插入 va -> pa 的映射
+ * 只能用于由页管理块管理的地址
+ * [PHYSICAL_MEMORY_BASE, PHYSICAL_MEMORY_END)
+ * 处理 page->ref
+ *
+ * @param pgdir 一级页表指针
+ * @param va 虚拟地址
+ * @param pa 物理地址
+ * @param perm 权限参数
+ * @return i32 非 0 异常
+ */
+i32 pageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
+{
+    try(kernelPageMap(pgdir, va, pa, perm));
+    u64 *pte = NULL;
+    Page *page = pageLookup(pgdir, va, &pte);
+    page->ref++;
     return 0;
 }
 
