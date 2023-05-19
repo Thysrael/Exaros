@@ -328,6 +328,7 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
     u64 *pte;
     perm |= PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
     try(pageWalk(pgdir, va, false, &pte));
+    // 如果原来已经有映射，并且不等于 pp，移除原来的映射
     if (pte && PTE_VALID(*pte))
     {
         if (pte2Page(*pte) != pp)
@@ -532,4 +533,15 @@ int memsetOut(u64 *pgdir, u64 dst, u8 value, u64 len)
         dst = va0 + PAGE_SIZE;
     }
     return 0;
+}
+
+void paDecreaseRef(u64 pa)
+{
+    Page *page = pa2Page(pa);
+    page->ref--;
+    assert(page->ref == 0);
+    if (page->ref == 0)
+    {
+        LIST_INSERT_HEAD(&freePageList, page, link);
+    }
 }

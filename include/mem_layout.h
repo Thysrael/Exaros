@@ -70,6 +70,10 @@
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 #define USER_STACK_TOP TRAPFRAME
 
+// 用户进程的堆
+#define USER_HEAP_TOP (USER_STACK_TOP - (1UL << 32))
+#define USER_HEAP_BOTTOM (USER_HEAP_TOP - (1UL << 32))
+
 // qemu puts programmable interrupt controller here.
 #define PLIC_PRIORITY (PLIC_V + 0x0)
 #define PLIC_PENDING (PLIC_V + 0x1000)

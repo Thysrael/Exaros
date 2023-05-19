@@ -182,7 +182,7 @@ void syscallGetFileState(void)
  * @brief 给定一个目录的 fd，获得这个目录的所有目录项
  *
  */
-void syscallGetDirMeta()
+void syscallGetDirent()
 {
     File *dir;
     int fd, n;
@@ -691,27 +691,76 @@ void syscallUnlinkAt()
     tf->a0 = do_unlinkat(dirFd, path);
 }
 
+extern Process *currentProcess[];
+
 void syscallGetProcessId()
 {
+    u64 hartid = getTp();
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = currentProcess[hartid]->processId;
+}
+
+void syscallGetParentProcessId()
+{
+    u64 hartid = getTp();
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = currentProcess[hartid]->parentId;
 }
 void syscallYield()
 {
+    yield();
 }
+
+// 销毁进程
 void syscallProcessDestory()
 {
+    Trapframe *tf = getHartTrapFrame();
+    u64 processid = tf->a0;
+    Process *process;
+    int ret;
+    if ((ret = pid2Process(processid, &process, 1)) < 0)
+    {
+        tf->a0 = ret;
+        return;
+    }
+    processDestory(process);
+    tf->a0 = 0;
+    return;
 }
+
+// 创建子进程 todo
 void syscallClone()
 {
+    Trapframe *tf = getHartTrapFrame();
+    processFork(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4);
 }
+
 void syscallPutString()
 {
+    Trapframe *trapframe = getHartTrapFrame();
+    int hartId = getTp();
+    // printf("hart %d, env %lx printf string:\n", hartId, currentProcess[hartId]->id);
+    u64 va = trapframe->a0;
+    int len = trapframe->a1;
+    extern Process *currentProcess[CORE_NUM];
+    u64 *pte;
+    Page *page = pageLookup(currentProcess[hartId]->pgdir, va, &pte);
+    if (page == NULL)
+    {
+        panic("Syscall put string address error!\nThe virtual address is %x, the length is %x\n", va, len);
+    }
+    char *start = (char *)(page2PA(page) + (va & 0xfff));
+    while (len--)
+    {
+        putchar(*start);
+        start++;
+    }
 }
-void syscallGetParentProcessId()
-{
-}
+
 void syscallWait()
 {
 }
+
 void syscallExit()
 {
 }
@@ -736,12 +785,93 @@ void syscallMapMemory()
 void syscallUnMapMemory()
 {
 }
+
+#define MAX_PATH_LEN 128
+#define MAX_ARG 32
+/**
+ * @brief 功能：执行一个指定的程序；
+ * 输入：
+ * path: 待执行程序路径名称，
+ * argv: 程序的参数，
+ * envp: 环境变量的数组指针
+ * 返回值：成功不返回，失败返回-1
+ */
 void syscallExec()
 {
+    Trapframe *tf = getHartTrapFrame();
+    char path[MAX_PATH_LEN], *argv[MAX_ARG];
+    u64 uargv, uarg;
+
+    if (argstr(0, path, MAX_PATH_LEN) < 0 || argaddr(1, &uargv))
+    {
+        tf->a0 = -1;
+        return;
+    }
+    // 全部指令是因为给进程传递参数是用零作为指针数组的结尾
+    memset(argv, 0, sizeof(argv));
+    for (int i = 0;; i++)
+    {
+        // 这也太浪费了吧，一个参数开一页？
+        if (i >= NELEM(argv))
+        {
+            goto bad;
+        }
+        if (fetchaddr(uargv + (sizeof(u64) * i), (u64 *)&uarg) < 0)
+        {
+            goto bad;
+        }
+        if (uarg == 0)
+        {
+            // 参数结束
+            argv[i] = 0;
+            break;
+        }
+        Page *page;
+        if (pageAlloc(&page))
+        {
+            goto bad;
+        }
+        argv[i] = (char *)page2PA(page);
+        if (argv[i] == 0)
+            goto bad;
+        if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
+            goto bad;
+    }
+    int ret = exec(path, argv);
+    // 释放给参数开的空间
+    for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        pageFree(pa2Page((u64)argv[i]));
+    }
+    tf->a0 = ret;
+    return;
+bad:
+    for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        pageFree(pa2Page((u64)argv[i]));
+    }
+    tf->a0 = -1;
+    return;
 }
+
+/// @brief 打印系统信息
 void syscallUname()
 {
-}
-void syscallGetDirent()
-{
+    struct utsname
+    {
+        char sysname[65];
+        char nodename[65];
+        char release[65];
+        char version[65];
+        char machine[65];
+        char domainname[65];
+    } uname;
+    strncpy(uname.sysname, "my_linux", 65);
+    strncpy(uname.nodename, "my_node", 65);
+    strncpy(uname.release, "MIPS-OS", 65);
+    strncpy(uname.version, "0.1.0", 65);
+    strncpy(uname.machine, "Risc-V sifive_u", 65);
+    strncpy(uname.domainname, "Beijing", 65);
+    Trapframe *tf = getHartTrapFrame();
+    copyout(myProcess()->pgdir, tf->a0, (char *)&uname, sizeof(struct utsname));
 }

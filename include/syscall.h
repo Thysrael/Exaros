@@ -77,7 +77,7 @@ void syscallChangeDir(void);
 void syscallGetWorkDir(void);
 void syscallPipe(void);
 void syscallDevice(void);
-void syscallGetDirent();
+void syscallGetDirent(void);
 void syscallMount(void);
 void syscallUmount(void);
 void syscallUnlinkAt(void);

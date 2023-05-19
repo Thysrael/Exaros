@@ -153,9 +153,8 @@ typedef struct Process
     int reason;
     u32 retValue; // 进程返回值
     // u64 brkHeapBottom;
-    // u64 mmapHeapBottom;
-    // Dirmeta *execFile;
-    // Dirmeta *cwd;
+    u64 mmapHeapBottom;
+    DirMeta *execFile;
     // SignalSet blocked;
     // SignalSet pending;
     // u64 setChildTid;
@@ -173,6 +172,7 @@ void processDestory(Process *p);
 void processFree(Process *p);
 int pid2Process(u32 processId, Process **process, int checkPerm);
 int allocPgdir(Page **page);
+void pgdirFree(u64 *pgdir);
 int setupProcess(Process *p);
 int processAlloc(Process **new, u64 parentId);
 void processCreatePriority(u8 *binary, u32 size, u32 priority);
@@ -182,4 +182,8 @@ void yield();
 u64 getProcessTopSp(Process *p);
 void sleep(void *channel, Spinlock *lk);
 void wakeup(void *channel);
+void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
+
+u64 exec(char *path, char **argv);
+
 #endif

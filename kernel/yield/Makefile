@@ -1,6 +1,6 @@
 INCLUDES := -I../../include
 
-target = process.o elf_loader.o sleep.o
+target = $(shell ls *.c | awk '{gsub(/\.c/, ".o"); print $0}') sleep.o
 
 .PHONY: build clean
 

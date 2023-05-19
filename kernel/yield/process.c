@@ -9,6 +9,7 @@
 #include <process.h>
 #include <riscv.h>
 #include <memory.h>
+#include <queue.h>
 #include <string.h>
 #include <driver.h>
 #include <mem_layout.h>
@@ -101,8 +102,7 @@ void processDestory(Process *p)
  */
 void processFree(Process *p)
 {
-    // todo
-    // pgdirFree(p->pgdir);
+    pgdirFree(p->pgdir);
     p->state = ZOMBIE; // 进程已结束，但是未被父进程获取返回值
 
     // todo 写好文件系统之后要在这里释放掉进程占用的文件资源
@@ -177,6 +177,37 @@ int allocPgdir(Page **page)
     return 0;
 }
 
+void pgdirFree(u64 *pgdir)
+{
+    // printf("jaoeifherigh   %lx\n", (u64)pgdir);
+    u64 i, j, k;
+    u64 *pageTable;
+    for (i = 0; i < PTE2PT; i++)
+    {
+        if (!(pgdir[i] & PTE_VALID_BIT))
+            continue;
+        pageTable = pgdir + i;
+        u64 *pa = (u64 *)PTE2PA(*pageTable);
+        for (j = 0; j < PTE2PT; j++)
+        {
+            if (!(pa[j] & PTE_VALID_BIT))
+                continue;
+            pageTable = (u64 *)pa + j;
+            u64 *pa2 = (u64 *)PTE2PA(*pageTable);
+            for (k = 0; k < PTE2PT; k++)
+            {
+                if (!(pa2[k] & PTE_VALID_BIT))
+                    continue;
+                u64 addr = (i << 30) | (j << 21) | (k << 12);
+                pageRemove(pgdir, addr);
+            }
+            pa2[j] = 0;
+            paDecreaseRef((u64)pa2);
+        }
+        paDecreaseRef((u64)pa);
+    }
+    paDecreaseRef((u64)pgdir);
+}
 /**
  * @brief 为进程申请页表，并且建立 trampoline 和 trapframe 的映射
  * 为进程的内核栈建立映射，这样进程在陷入内核的时候才不会报错
@@ -431,3 +462,17 @@ void wakeup(void *channel)
 // void wait(int targetProcessId, u64 addr)
 // {
 // }
+
+/**
+ * @brief 功能：创建一个子进程；
+ *
+ * @param flags 创建的标志，如SIGCHLD；
+ * @param stack 指定新进程的栈，可为0；
+ * @param ptid 父线程ID；
+ * @param tls TLS线程本地存储描述符；
+ * @param ctid 子线程ID；
+ * 成功则返回子进程的线程ID，失败返回-1；
+ */
+void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
+{
+}

@@ -23,6 +23,7 @@
 #define PTE_DIRTY_BIT ((u64)1 << 7)    /* 被修改位（写），恒 1*/
 #define PTE_COW_BIT ((u64)1 << 8)      /* Copy on Write 位 */
 #define PTE_PERM_WIDTH (10)
+#define PTE2PT 512
 
 #define PTE_VALID(pte) ((u64)pte & PTE_VALID_BIT) /* 0: 无效 */
 #define PTE_USER(pte) ((u64)pte & PTE_USER_BIT)   /* 0: 无效 */
@@ -163,5 +164,6 @@ int either_copyout(int user_dst, u64 dst, void *src, u64 len);
 int either_memset(bool user, u64 dst, u8 value, u64 len);
 int copyout(u64 *pgdir, u64 va, char *src, u64 len);
 int memsetOut(u64 *pgdir, u64 dst, u8 value, u64 len);
+void paDecreaseRef(u64 pa);
 
 #endif /* _MEMORY_H_ */
