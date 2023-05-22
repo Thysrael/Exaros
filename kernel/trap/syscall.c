@@ -1,6 +1,16 @@
-#include <syscall.h>
-#include <trap.h>
 #include <driver.h>
+#include <syscall.h>
+#include <file.h>
+#include <process.h>
+#include <types.h>
+#include <trap.h>
+#include <linux_struct.h>
+#include <fat.h>
+#include <sysarg.h>
+#include <string.h>
+#include <memory.h>
+#include <pipe.h>
+#include <fs.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -39,19 +49,6 @@ void (*syscallVector[])(void) = {
     [SYSCALL_LINKAT] syscallLinkAt,
     [SYSCALL_UNLINKAT] syscallUnlinkAt,
     [SYSCALL_UNAME] syscallUname};
-
-#include <syscall.h>
-#include <file.h>
-#include <process.h>
-#include <types.h>
-#include <trap.h>
-#include <linux_struct.h>
-#include <fat.h>
-#include <sysarg.h>
-#include <string.h>
-#include <memory.h>
-#include <pipe.h>
-#include <fs.h>
 
 void syscallPutchar()
 {
