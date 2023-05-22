@@ -1,5 +1,10 @@
 {
     "version": "2.0.0",
+    "options": {
+        "env": {
+            "PATH": "/opt/qemu/:/opt/riscv/bin/:${env:PATH}"
+        }
+    },
     "tasks": [
         {
             "label": "exarosDebug",

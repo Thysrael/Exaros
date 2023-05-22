@@ -1,6 +1,6 @@
-#include <print.h>
+#include <stdio.h>
 
-int userMain(int argc, char **argv)
+int main(int argc, char **argv)
 {
     for (int i = 1; i <= 10000; ++i)
     {

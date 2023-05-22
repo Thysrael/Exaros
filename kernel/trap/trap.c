@@ -185,7 +185,7 @@ void userHandler()
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
-        case EXCEPTION_STORE_FAULT:;
+        case EXCEPTION_STORE_FAULT:
             Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
             if (page == NULL)
             {
@@ -207,7 +207,7 @@ void userHandler()
     userTrapReturn();
 }
 
-extern Process *currentProcess[CORE_NUM];
+extern Process *currentpageFaultProcess[CORE_NUM];
 
 /**
  * @brief 从 userHandler 返回到用户态

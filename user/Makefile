@@ -1,10 +1,9 @@
-INCLUDES	:=	-I./lib/
-
-USER_LIB	:= print.o lib_main.o 
-
-USER_TARGET	:= processA processA.b processA.b.c processB.b.c
-
-BINTOC := ../utility/bintoc
+INCLUDES	:=	-I./include
+# USER_LIB	:=	main.o print.o syscall.o Entry.o
+USER_LIB	:=	main.o print.o syscall.o crt.o
+USER_TARGET	:=	processA.b processA.b.c processB.b.c
+BINTOC		:=	../utility/bintoc
+MOUNT_DIR	:=	./target
 
 .PHONY: build clean
 
@@ -16,13 +15,21 @@ build: $(BINTOC) $(USER_LIB) $(USER_TARGET)
 %.b.c: %.b
 	$(BINTOC) -f $< -o $@
 
-%: Entry.o %.o $(USER_LIB)
-	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ../linkscript/user.lds $^
+%: %.o $(USER_LIB)
+	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ./lib/arch/riscv/user.ld $^
 	mv $@ $(MOUNT_DIR)
 
-%.b: Entry.o %.o $(USER_LIB)
-	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ../linkscript/user.lds $^
-	$(OBJDUMP) -D $@ > $@.txt
+%.b: %.o $(USER_LIB)
+	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ./lib/arch/riscv/user.ld $^
+	$(OBJDUMP) -S -D $@ > $@.txt
+
+# %: %.o $(USER_LIB)
+# 	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ../linkscript/user.lds $^
+# 	mv $@ $(MOUNT_DIR)
+
+# %.b: %.o $(USER_LIB)
+# 	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ../linkscript/user.lds $^
+# 	$(OBJDUMP) -S -D $@ > $@.txt
 
 %.o: %.c
 	$(GCC) $(CFLAGS) $(INCLUDES) -c -o $@ $<

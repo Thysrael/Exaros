@@ -27,10 +27,24 @@
 		"linux_struct.h": "c",
 		"pipe.h": "c",
 		"sysarg.h": "c",
-		"file.h": "c"
+		"file.h": "c",
+		"stdio.h": "c",
+		"stddef.h": "c",
+		"cstdarg": "c",
+		"unistd.h": "c",
+		"syscall_lib.h": "c",
+		"lib_main.h": "c"
 	},
-	"doxdocgen.file.fileOrder": ["file", "brief", "date", "empty", "copyright"],
-	"doxdocgen.file.copyrightTag": ["@copyright Copyright (c) {year}"],
+	"doxdocgen.file.fileOrder": [
+		"file",
+		"brief",
+		"date",
+		"empty",
+		"copyright"
+	],
+	"doxdocgen.file.copyrightTag": [
+		"@copyright Copyright (c) {year}"
+	],
 	"doxdocgen.generic.briefTemplate": "@brief {text}",
 	"multiCommand.commands": [
 		{
@@ -46,5 +60,6 @@
 			]
 		}
 	],
-	"C_Cpp.errorSquiggles": "enabled"
+	"C_Cpp.errorSquiggles": "enabled",
+	"C_Cpp.default.compilerPath": "/opt/riscv/bin/riscv64-unknown-elf-gcc",
 }
