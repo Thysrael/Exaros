@@ -1,21 +1,30 @@
-#ifndef _USER_SYSCALL_H_
-#define _USER_SYSCALL_H_
+#ifndef __SYSCALL_H__
+#define __SYSCALL_H__
 
-#include "../../include/types.h"
+#include "arch/riscv/syscall_arch.h"
+#include "../../include/syscall.h"
 
-inline u64 msyscall(long n, u64 _a0, u64 _a1, u64 _a2, u64 _a3, u64 _a4, u64 _a5)
-{
-    register u64 a0 asm("a0") = _a0;
-    register u64 a1 asm("a1") = _a1;
-    register u64 a2 asm("a2") = _a2;
-    register u64 a3 asm("a3") = _a3;
-    register u64 a4 asm("a4") = _a4;
-    register u64 a5 asm("a5") = _a5;
-    register long syscall_id asm("a7") = n;
-    asm volatile("ecall"
-                 : "+r"(a0)
-                 : "r"(a1), "r"(a2), "r"(a3), "r"(a4), "r"(a5), "r"(syscall_id));
-    return a0;
-}
-
+#ifndef __scc
+#define __scc(X) ((long)(X))
+typedef long syscall_arg_t;
 #endif
+
+#define __syscall1(n, a) __syscall1(n, __scc(a))
+#define __syscall2(n, a, b) __syscall2(n, __scc(a), __scc(b))
+#define __syscall3(n, a, b, c) __syscall3(n, __scc(a), __scc(b), __scc(c))
+#define __syscall4(n, a, b, c, d) __syscall4(n, __scc(a), __scc(b), __scc(c), __scc(d))
+#define __syscall5(n, a, b, c, d, e) __syscall5(n, __scc(a), __scc(b), __scc(c), __scc(d), __scc(e))
+#define __syscall6(n, a, b, c, d, e, f) __syscall6(n, __scc(a), __scc(b), __scc(c), __scc(d), __scc(e), __scc(f))
+
+#define __SYSCALL_NARGS_X(a, b, c, d, e, f, g, h, n, ...) n
+#define __SYSCALL_NARGS(...) __SYSCALL_NARGS_X(__VA_ARGS__, 7, 6, 5, 4, 3, 2, 1, 0, )
+#define __SYSCALL_CONCAT_X(a, b) a##b
+#define __SYSCALL_CONCAT(a, b) __SYSCALL_CONCAT_X(a, b)
+#define __SYSCALL_DISP(b, ...)                        \
+    __SYSCALL_CONCAT(b, __SYSCALL_NARGS(__VA_ARGS__)) \
+    (__VA_ARGS__)
+
+#define __syscall(...) __SYSCALL_DISP(__syscall, __VA_ARGS__)
+#define syscall(...) __syscall(__VA_ARGS__)
+
+#endif // __SYSCALL_H

@@ -1,8 +1,16 @@
 {
-    "name": "exaros",
-    "image": "exaros:latest",
-    "runArgs": [
-        "--network",
-        "host"
-    ]
+	"name": "exaros",
+	"image": "exaros:latest",
+	"runArgs": [
+		// # host 模式没法调试
+		// "--network",
+		// "host"
+	],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack"
+			]
+		}
+	}
 }

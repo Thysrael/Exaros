@@ -94,4 +94,6 @@
 
 #define FILE_SYSTEM_CLUSTER_BITMAP_BASE (KERNEL_PROCESS_SP_TOP - (1UL << 30))
 
+// #define USER_HEAP_TOP
+// #define USER_HEAP_BOTTOM
 #endif
