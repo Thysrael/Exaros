@@ -30,9 +30,9 @@
 #define VIRTIO_MMIO_STATUS 0x070           // read/write
 #define VIRTIO_MMIO_QUEUE_DESC_LOW 0x080   // physical address for descriptor table, write-only
 #define VIRTIO_MMIO_QUEUE_DESC_HIGH 0x084
-#define VIRTIO_MMIO_DRIVER_DESC_LOW 0x090 // physical address for available ring, write-only
+#define VIRTIO_MMIO_DRIVER_DESC_LOW 0x090  // physical address for available ring, write-only
 #define VIRTIO_MMIO_DRIVER_DESC_HIGH 0x094
-#define VIRTIO_MMIO_DEVICE_DESC_LOW 0x0a0 // physical address for used ring, write-only
+#define VIRTIO_MMIO_DEVICE_DESC_LOW 0x0a0  // physical address for used ring, write-only
 #define VIRTIO_MMIO_DEVICE_DESC_HIGH 0x0a4
 
 // 利用的是 mmio 的原理，从 VIRTIO 这个地址开始访问 virtio 的寄存器
@@ -167,5 +167,6 @@ typedef struct Disk
 } Disk;
 
 void virtioDiskRW(Buf *b, int write);
+void virtioDiskInit();
 
 #endif

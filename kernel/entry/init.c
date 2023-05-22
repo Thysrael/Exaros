@@ -13,6 +13,10 @@
 #include <string.h>
 #include <process.h>
 #include <trap.h>
+#include <fs.h>
+#include <fat.h>
+#include <file.h>
+#include <virtio.h>
 
 /**
  * @brief boot banner, `train` style character drawing.
@@ -52,10 +56,16 @@ void main(u64 hartId)
     setTp(hartId);
     clearBSS();
     printk("Hello, Exaros!\n");
+
     memoryInit();
-    printk("Memory init finished!\n");
 
     processInit();
+
+    // fs initialize
+
+    binit();
+    virtioDiskInit();
+    fileinit();
 
     trapInit();
 
