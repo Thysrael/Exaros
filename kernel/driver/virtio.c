@@ -18,8 +18,12 @@ Disk disk;
  */
 void virtioDiskInit()
 {
+    printk("checksum: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
+    printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
+    printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
+    printk("vendor id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID));
     // 经过一下校验
-    if (*VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION) != 2 || *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID) != 2 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551)
+    if (*VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION) != 1 || *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID) != 2 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551)
     {
         panic("could not find virtio disk");
     }

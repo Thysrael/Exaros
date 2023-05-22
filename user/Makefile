@@ -1,7 +1,7 @@
 INCLUDES	:=	-I./include
 # USER_LIB	:=	main.o print.o syscall.o Entry.o
 USER_LIB	:=	main.o print.o syscall.o crt.o
-USER_TARGET	:=	processA.b processB.b processA.x processB.x processA.b processA.b.c processB.b.c
+USER_TARGET	:=	processA.x processB.x processA processB
 BINTOC		:=	../utility/bintoc
 MOUNT_DIR	:=	./target
 
@@ -17,6 +17,7 @@ build: $(BINTOC) $(USER_LIB) $(USER_TARGET)
 
 %: %.o $(USER_LIB)
 	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ./lib/arch/riscv/user.ld $^
+	echo $@
 	mv $@ $(MOUNT_DIR)
 
 %.b: %.o $(USER_LIB)
@@ -42,6 +43,6 @@ clean:
 		do \
 			$(MAKE) --directory=$$d clean; \
 		done
-	rm -rf *~ *.o *.d *.b.c *.b.txt *.x *.b
+	rm -rf *~ *.o *.d *.b.c *.b.txt *.x *.b $(MOUNT_DIR)/*
 	
 include ../include.mk

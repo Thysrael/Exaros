@@ -2,4 +2,6 @@
 .globl _start
 _start:
     mv a0, sp
-    tail __start_main
+    call __start_main
+loop_:
+    call loop_

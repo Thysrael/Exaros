@@ -39,10 +39,15 @@ fat: $(user_dir)
 		echo "making fs image..."; \
 		dd if=/dev/zero of=$(fs_img) bs=512k count=1024; fi
 	mkfs.vfat -F 32 $(fs_img); 
-	# @sudo mount $(fs_img) $(mnt_path)
-	# @sudo cp -r user/mnt/* $(mnt_path)/
-	# @sudo cp -r root/** $(mnt_path)/
-	# @sudo umount $(mnt_path)
+	@sudo mount $(fs_img) $(mnt_path)
+	@sudo cp -r user/target/* $(mnt_path)/
+	@sudo umount $(mnt_path)
+
+umount:
+	sudo umount $(mnt_path)
+
+mount:
+	sudo mount -t vfat $(fs_img) $(mnt_path)
 
 clean:
 	for module in $(modules);						\

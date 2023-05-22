@@ -384,7 +384,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    printk("hartID %d yield process %lx\n", hartId, process->processId);
+    // printk("hartID %d yield process %lx\n", hartId, process->processId);
     processRun(process);
 }
 

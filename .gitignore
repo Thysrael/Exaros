@@ -6,3 +6,4 @@ kernel-qemu
 *.x
 *.b
 sdcard.img
+/user/target/*
