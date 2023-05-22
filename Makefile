@@ -1,6 +1,7 @@
 include include.mk
 
 kernel_dir	:= 	kernel
+user_dir	:= 	user
 link_dir	:= 	linkscript
 target_dir	:= 	target
 
@@ -9,20 +10,20 @@ exaros_elf	:=	$(target_dir)/exaros.elf
 exaros_bin	:=	kernel-qemu
 exaros_sys	:= 	$(target_dir)/exaros_sys.txt
 
-modules := 	$(kernel_dir)
-objects := $(kernel_dir)/*/*.o 
+modules := 	$(kernel_dir) $(user_dir)
+objects := $(kernel_dir)/*/*.o $(user_dir)/*.x
 
 mnt_path 	:=	/mnt
 fs_img	:=	sdcard.img
 
-.PHONY: all clean $(modules) run fat
+.PHONY: all clean $(modules) $(user_dir) run fat
 
 DEBUG 	:= n
 ifeq ($(MAKECMDGOALS), debug)
 	DEBUG = y
 endif
 
-all: $(modules)
+all: fat $(modules)
 	mkdir -p $(target_dir)
 	$(LD) -o $(exaros_elf) -T $(linkscript) $(LDFLAGS) $(objects)
 	$(OBJDUMP) -alDS $(exaros_elf) > $(exaros_sys)
@@ -38,10 +39,10 @@ fat: $(user_dir)
 		echo "making fs image..."; \
 		dd if=/dev/zero of=$(fs_img) bs=512k count=1024; fi
 	mkfs.vfat -F 32 $(fs_img); 
-	@sudo mount $(fs_img) $(mnt_path)
-	@sudo cp -r user/mnt/* $(mnt_path)/
-	@sudo cp -r root/** $(mnt_path)/
-	@sudo umount $(mnt_path)
+	# @sudo mount $(fs_img) $(mnt_path)
+	# @sudo cp -r user/mnt/* $(mnt_path)/
+	# @sudo cp -r root/** $(mnt_path)/
+	# @sudo umount $(mnt_path)
 
 clean:
 	for module in $(modules);						\
@@ -49,6 +50,7 @@ clean:
 			$(MAKE) --directory=$$module clean;		\
 		done;										\
 	rm -rf *.o *~ $(target_dir)
+	rm $(fs_img)
 	rm $(exaros_bin)
 
 run: 

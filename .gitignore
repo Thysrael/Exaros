@@ -5,3 +5,4 @@ kernel-qemu
 *.b.txt
 *.x
 *.b
+sdcard.img

@@ -1,7 +1,7 @@
 INCLUDES	:=	-I./include
 # USER_LIB	:=	main.o print.o syscall.o Entry.o
 USER_LIB	:=	main.o print.o syscall.o crt.o
-USER_TARGET	:=	processA.b processA.b.c processB.b.c
+USER_TARGET	:=	processA.b processB.b processA.x processB.x processA.b processA.b.c processB.b.c
 BINTOC		:=	../utility/bintoc
 MOUNT_DIR	:=	./target
 

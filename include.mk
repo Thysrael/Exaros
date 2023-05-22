@@ -32,3 +32,5 @@ QFLAGS	+= -smp 2
 QFLAGS	+= -bios default
 QFLAGS	+= -m 128M
 QFLAGS	+= -nographic
+QFLAGS 	+= -drive file=sdcard.img,if=none,format=raw,id=x0
+QFLAGS 	+= -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
