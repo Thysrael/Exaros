@@ -16,6 +16,7 @@
 #include <fs.h>
 #include <fat.h>
 #include <file.h>
+#include <bio.h>
 #include <virtio.h>
 
 /**
@@ -68,6 +69,23 @@ void main(u64 hartId)
     fileinit();
 
     trapInit();
+
+    extern FileSystem *rootFileSystem;
+    strncpy(rootFileSystem->name, "fat32", 6);
+
+    rootFileSystem->read = blockRead;
+    fatInit(&rootFileSystem);
+    dirMetaInit();
+    printk("init dirent end\n");
+    void testMeta();
+    testMeta();
+
+    DirMeta *ep = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);
+    // eunlock(ep);
+    // eput(ep);
+    ep = metaCreate(AT_FDCWD, "/dev/vda2", T_DIR, O_RDONLY);
+    ep->head = &rootFileSystem;
+    // eunlock(ep);
 
     PROCESS_CREATE_PRIORITY(processA, 1);
     // PROCESS_CREATE_PRIORITY(processB, 2);
