@@ -16,7 +16,7 @@
 // virtio mmio control registers, mapped starting at 0x10001000.
 // 这里记录的是所有寄存器的偏移
 #define VIRTIO_MMIO_MAGIC_VALUE 0x000 // 0x74726976
-#define VIRTIO_MMIO_VERSION 0x004     // version; should be 2
+#define VIRTIO_MMIO_VERSION 0x004     // version; should be 1
 #define VIRTIO_MMIO_DEVICE_ID 0x008   // device type; 1 is net, 2 is disk
 #define VIRTIO_MMIO_VENDOR_ID 0x00c   // 0x554d4551
 #define VIRTIO_MMIO_DEVICE_FEATURES 0x010
