@@ -57,6 +57,7 @@
 #define VA_WIDTH (38)
 #define VA_MAX ((1ULL) << VA_WIDTH)
 
+// Core Local Interruptor, 用于处理与处理器核心相关的定时器和中断
 #define CLINT (0x02000000ULL)
 #define PLIC (0x0c000000ULL)
 #define UART0 (0x10000000ULL)
@@ -65,6 +66,8 @@
 
 #define VIRT_OFFSET (0x3F00000000ULL)
 #define PLIC_V (PLIC + VIRT_OFFSET)
+#define CLINT_V (CLINT + VIRT_OFFSET)
+#define VIRTIO_V (VIRTIO + VIRT_OFFSET)
 
 #define TRAMPOLINE (VA_MAX - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)

@@ -69,7 +69,8 @@ void main(u64 hartId)
     fileinit();
 
     trapInit();
-
+    plicinit();
+    plicinithart();
     // initRootFileSystem();
 
     PROCESS_CREATE_PRIORITY(processA, 1);
