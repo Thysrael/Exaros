@@ -57,6 +57,7 @@ int handleInterrupt()
     printk("scause & SCAUSE_INTERRUPT: %lx\n", scause & SCAUSE_INTERRUPT);
     printk("scause & SCAUSE_INTERRUPT: %lx\n", scause);
     assert(scause & SCAUSE_INTERRUPT);
+    printk("%lx\n", exceptionCode);
     // 处理中断
     switch (exceptionCode)
     {
@@ -324,4 +325,23 @@ void printTrapframe(Trapframe *tf)
            tf->s10, tf->s11, tf->ra, tf->sp, tf->gp,
            tf->tp, tf->epc, tf->kernelSp, tf->kernelSatp,
            tf->trapHandler, tf->kernelHartId);
+}
+
+void plicinit(void)
+{
+    // set desired IRQ priorities non-zero (otherwise disabled).
+    *(u32 *)(PLIC_V + 10 * 4) = 1;
+    *(u32 *)(PLIC_V + 1 * 4) = 1;
+}
+
+void plicinithart(void)
+{
+    int hart = readTp();
+
+    // set enable bits for this hart's S-mode
+    // for the uart and virtio disk.
+    *(u32 *)PLIC_SENABLE(hart) = (1 << 10) | (1 << 1);
+
+    // set this hart's S-mode priority threshold to 0.
+    *(u32 *)PLIC_SPRIORITY(hart) = 0;
 }

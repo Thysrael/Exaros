@@ -68,17 +68,23 @@ void kernelPageInit()
     extern char kernelEnd[];
     // extern char trampoline[];
 
-    kernelPageMap(kernelPageDirectory, CLINT, CLINT,
-                  PTE_READ_BIT | PTE_WRITE_BIT);
+    kernelPageMap(kernelPageDirectory, CLINT_V, CLINT,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
-    kernelPageMap(kernelPageDirectory, PLIC, PLIC,
-                  PTE_READ_BIT | PTE_WRITE_BIT);
+    for (i = 0; i < 0x400000; i += PAGE_SIZE)
+    {
+        kernelPageMap(kernelPageDirectory, PLIC_V + i, PLIC + i,
+                      PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+    }
+
+    // kernelPageMap(kernelPageDirectory, PLIC_V + 0x200000, PLIC + 0x200000,
+    //               PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
     kernelPageMap(kernelPageDirectory, UART0, UART0,
-                  PTE_READ_BIT | PTE_WRITE_BIT);
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
-    kernelPageMap(kernelPageDirectory, VIRTIO, VIRTIO,
-                  PTE_READ_BIT | PTE_WRITE_BIT);
+    kernelPageMap(kernelPageDirectory, VIRTIO_V, VIRTIO,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
     // 内核代码
     va = pa = (u64)textStart;

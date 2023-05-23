@@ -21,24 +21,21 @@
 #define VIRTIO_MMIO_VENDOR_ID 0x00c   // 0x554d4551
 #define VIRTIO_MMIO_DEVICE_FEATURES 0x010
 #define VIRTIO_MMIO_DRIVER_FEATURES 0x020
+#define VIRTIO_MMIO_GUEST_PAGE_SIZE 0x028  // page size for PFN, write-only
 #define VIRTIO_MMIO_QUEUE_SEL 0x030        // select queue, write-only
 #define VIRTIO_MMIO_QUEUE_NUM_MAX 0x034    // max size of current queue, read-only
 #define VIRTIO_MMIO_QUEUE_NUM 0x038        // size of current queue, write-only
+#define VIRTIO_MMIO_QUEUE_ALIGN 0x03c      // used ring alignment, write-only
+#define VIRTIO_MMIO_QUEUE_PFN 0x040        // physical page number for queue, read/write
 #define VIRTIO_MMIO_QUEUE_READY 0x044      // ready bit
 #define VIRTIO_MMIO_QUEUE_NOTIFY 0x050     // write-only
 #define VIRTIO_MMIO_INTERRUPT_STATUS 0x060 // read-only
 #define VIRTIO_MMIO_INTERRUPT_ACK 0x064    // write-only
-#define VIRTIO_MMIO_STATUS 0x070           // read/write
-#define VIRTIO_MMIO_QUEUE_DESC_LOW 0x080   // physical address for descriptor table, write-only
-#define VIRTIO_MMIO_QUEUE_DESC_HIGH 0x084
-#define VIRTIO_MMIO_DRIVER_DESC_LOW 0x090  // physical address for available ring, write-only
-#define VIRTIO_MMIO_DRIVER_DESC_HIGH 0x094
-#define VIRTIO_MMIO_DEVICE_DESC_LOW 0x0a0  // physical address for used ring, write-only
-#define VIRTIO_MMIO_DEVICE_DESC_HIGH 0x0a4
+#define VIRTIO_MMIO_STATUS 0x070           // read / write
 
 // 利用的是 mmio 的原理，从 VIRTIO 这个地址开始访问 virtio 的寄存器
 // 这里读出的都是地址
-#define VIRTIO_ADDRESS(r) ((volatile u32 *)(VIRTIO + (r)))
+#define VIRTIO_ADDRESS(r) ((volatile u32 *)(VIRTIO_V + (r)))
 
 // status register bits, from qemu virtio_config.h
 // 属于 Device Status Field，用于指示启动流程进行了到了哪一步，在 2.1 有讲解
@@ -130,22 +127,9 @@ typedef struct VirtBlockReq
  */
 typedef struct Disk
 {
-    // a set (not a ring) of DMA descriptors, with which the
-    // driver tells the device where to read and write individual
-    // disk operations. there are NUM descriptors.
-    // most commands consist of a "chain" (a linked list) of a couple of
-    // these descriptors.
+    u8 pages[2 * PAGE_SIZE];
     VirtqDesc *desc;
-
-    // a ring in which the driver writes descriptor numbers
-    // that the driver would like the device to process.  it only
-    // includes the head descriptor of each chain. the ring has
-    // NUM elements.
-    VringAvail *avail;
-
-    // a ring in which the device writes descriptor numbers that
-    // the device has finished processing (just the head of each chain).
-    // there are NUM used ring entries.
+    u16 *avail;
     VringUsed *used;
 
     // 辅助结构，用于指示 desc 是否空闲
@@ -167,7 +151,7 @@ typedef struct Disk
 
     // 锁，因为 IO 需要时间
     Spinlock vdiskLock;
-} Disk;
+} __attribute__((aligned(PAGE_SIZE))) Disk;
 
 void virtioDiskRW(Buf *b, int write);
 void virtioDiskInit();

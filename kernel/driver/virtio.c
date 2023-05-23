@@ -19,10 +19,10 @@ Disk disk;
  */
 void virtioDiskInit()
 {
-    // printk("magic value: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
-    // printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
-    // printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
-    // printk("vendor id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID));
+    printk("magic value: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
+    printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
+    printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
+    printk("vendor id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID));
     initLock(&disk.vdiskLock, "vdiskLock");
     // 经过一下校验
     if (*VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION) != 1 || *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID) != 2 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551)
@@ -32,9 +32,6 @@ void virtioDiskInit()
 
     // status 应该就是启动的那个 status
     u32 status = 0;
-    // 然后一步步进行 init
-    // reset device
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_STATUS) = status;
 
     // set ACKNOWLEDGE status bit
     status |= VIRTIO_CONFIG_S_ACKNOWLEDGE;
@@ -64,7 +61,10 @@ void virtioDiskInit()
     if (!(status & VIRTIO_CONFIG_S_FEATURES_OK))
         panic("virtio disk FEATURES_OK unset");
 
-    // initialize queue 0.
+    // legacy 设置页面大小
+    *VIRTIO_ADDRESS(VIRTIO_MMIO_GUEST_PAGE_SIZE) = PAGE_SIZE;
+
+    // initialize queue 0. 这是因为我们只有一个 disk 所以只需要维护一个队列即可
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_SEL) = 0;
 
     // ensure queue 0 is not in use.
@@ -78,31 +78,15 @@ void virtioDiskInit()
     if (max < RING_SIZE)
         panic("virtio disk max queue too short");
 
-    // allocate and zero queue memory.
-    // 这三个东西各分了一页的空间
-    Page *tmp;
-    pageAlloc(&tmp);
-    disk.desc = (VirtqDesc *)page2PA(tmp);
-    pageAlloc(&tmp);
-    disk.avail = (VringAvail *)page2PA(tmp);
-    pageAlloc(&tmp);
-    disk.used = (VringUsed *)page2PA(tmp);
-
-    memset(disk.desc, 0, PAGE_SIZE);
-    memset(disk.avail, 0, PAGE_SIZE);
-    memset(disk.used, 0, PAGE_SIZE);
-
     // set queue size.
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NUM) = RING_SIZE;
 
-    // 将通信协议涉及的地址都登记好，因为地址是 64 位的，所以需要登记两个 32 位寄存器
-    // printk("%lx %lx %lx\n", (u64)disk.desc, (u64)disk.avail, (u64)disk.used);
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_DESC_LOW) = (u64)disk.desc;
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (u64)disk.desc >> 32;
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_DRIVER_DESC_LOW) = (u64)disk.avail;
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_DRIVER_DESC_HIGH) = (u64)disk.avail >> 32;
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_DESC_LOW) = (u64)disk.used;
-    *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_DESC_HIGH) = (u64)disk.used >> 32;
+    // allocate and zero queue memory.
+    memset(disk.pages, 0, sizeof(disk.pages));
+    *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_PFN) = ((u64)disk.pages) >> PAGE_SHIFT;
+    disk.desc = (VirtqDesc *)disk.pages;
+    disk.avail = (u16 *)(((char *)disk.desc) + RING_SIZE * sizeof(VirtqDesc));
+    disk.used = (VringUsed *)(disk.pages + PAGE_SIZE);
 
     // queue is ready.
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_READY) = 0x1;
@@ -230,7 +214,7 @@ void virtioDiskRW(Buf *b, int write)
     if (write)
         req0->type = VIRTIO_BLK_T_OUT; // write the disk
     else
-        req0->type = VIRTIO_BLK_T_IN;  // read the disk
+        req0->type = VIRTIO_BLK_T_IN; // read the disk
     req0->reserved = 0;
     // 这里是因为 buffer（或者 block）和 sector 有一个换算结构，sector 是要读写的 sector 序号
     u64 sector = b->blockno * (BUFFER_SIZE / 512);
@@ -247,13 +231,13 @@ void virtioDiskRW(Buf *b, int write)
     disk.desc[idx[1]].addr = (u64)b->data;
     disk.desc[idx[1]].len = BUFFER_SIZE;
     if (write)
-        disk.desc[idx[1]].flags = 0;                  // device reads b->data
+        disk.desc[idx[1]].flags = 0; // device reads b->data
     else
         disk.desc[idx[1]].flags = VRING_DESC_F_WRITE; // device writes b->data
     disk.desc[idx[1]].flags |= VRING_DESC_F_NEXT;
     disk.desc[idx[1]].next = idx[2];
 
-    disk.info[idx[0]].status = 0xff; // device writes 0 on success
+    disk.info[idx[0]].status = 0; // device writes 0 on success
 
     // 加工第 3 个 desc
     disk.desc[idx[2]].addr = (u64)&disk.info[idx[0]].status;
@@ -266,12 +250,12 @@ void virtioDiskRW(Buf *b, int write)
     disk.info[idx[0]].b = b;
 
     // 如上所言，告诉 device 它可以处理我们的这个请求了，'%' 体现了 ring 的特性
-    disk.avail->ring[disk.avail->idx % RING_SIZE] = idx[0];
+    disk.avail[2 + (disk.avail[1] % RING_SIZE)] = idx[0];
 
     __sync_synchronize();
 
     // tell the device another avail ring entry is available.
-    disk.avail->idx += 1; // not % RING_SIZE ...
+    disk.avail[1] = disk.avail[1] + 1;
 
     __sync_synchronize();
     // 通知 virio 通信
@@ -280,10 +264,7 @@ void virtioDiskRW(Buf *b, int write)
     // Wait for virtio_disk_intr() to say request has finished.
     while (b->disk == 1)
     {
-        printk("I am here");
         sleep(b, &disk.vdiskLock);
-
-        printk("I am here\n");
     }
 
     // 通信结束，释放链表
@@ -313,7 +294,7 @@ void virtioDiskIntrupt()
     // the device increments disk.used->idx when it
     // adds an entry to the used ring.
 
-    while (disk.usedIndex != disk.used->idx)
+    while ((disk.usedIndex % RING_SIZE) != (disk.used->idx % RING_SIZE))
     {
         __sync_synchronize();
         int id = disk.used->ring[disk.usedIndex % RING_SIZE].id;
