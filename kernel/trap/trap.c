@@ -5,6 +5,8 @@
 #include <string.h>
 #include <process.h>
 #include <trap.h>
+#include <types.h>
+#include <virtio.h>
 #include <syscall.h>
 
 Trapframe *getHartTrapFrame()
@@ -52,12 +54,14 @@ int handleInterrupt()
     u64 scause = readScause();
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
 
+    printk("scause & SCAUSE_INTERRUPT: %lx\n", scause & SCAUSE_INTERRUPT);
+    printk("scause & SCAUSE_INTERRUPT: %lx\n", scause);
     assert(scause & SCAUSE_INTERRUPT);
     // 处理中断
     switch (exceptionCode)
     {
-    case INTERRUPT_SEI:
-        // todo
+    case INTERRUPT_SEI:;
+        // // todo
         // // user external interrupt
         // int irq = interruptServed();
         // if (irq == UART_IRQ)
@@ -65,7 +69,7 @@ int handleInterrupt()
         //     int c = getchar();
         //     if (c != -1)
         //     {
-        //         consoleInterrupt(c);
+        //         // consoleInterrupt(c);
         //     }
         // }
         // else if (irq == DISK_IRQ)
@@ -80,6 +84,31 @@ int handleInterrupt()
         // {
         //     interruptCompleted(irq);
         // }
+
+        // this is a supervisor external interrupt, via PLIC.
+
+        // irq indicates which device interrupted.
+        u32 irq = interruptServed();
+
+        if (irq == UART_IRQ)
+        {
+            // uartintr();
+        }
+        else if (irq == DISK_IRQ)
+        {
+            printk("1111\n\n");
+            virtioDiskIntrupt();
+        }
+        else if (irq)
+        {
+            printk("unexpected interrupt irq=%d\n", irq);
+        }
+
+        // the PLIC allows each device to raise at most one
+        // interrupt at a time; tell the PLIC the device is
+        // now allowed to interrupt again.
+        if (irq)
+            interruptCompleted(irq);
         printk("external interrupt");
         return EXTERNAL_TRAP;
         break;
@@ -106,7 +135,7 @@ void kernelHandler()
     u64 sip = readSip();
     u64 sstatus = readSstatus();
 
-    printk("[kernelHandler] scause: %x, stval: %lx, sepc: %x, sip: %x\n", scause, stval, sepc, sip);
+    printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, sepc, sip);
 
     // Trapframe *trapframe = getHartTrapFrame();
 
@@ -185,7 +214,7 @@ void userHandler()
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
-        case EXCEPTION_STORE_FAULT:
+        case EXCEPTION_STORE_FAULT:;
             Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
             if (page == NULL)
             {

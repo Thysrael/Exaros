@@ -344,6 +344,7 @@ void processRun(Process *p)
 
     if (first)
     {
+        printk("ffff\n");
         first = 0;
         initRootFileSystem();
     }
@@ -419,6 +420,7 @@ void sleepSave();
 void sleep(void *channel, Spinlock *lk)
 {
     Process *p = myProcess();
+    printk("p: %lx\n", (u64)p);
     acquireLock(&(p->lock));
     releaseLock(lk);
 

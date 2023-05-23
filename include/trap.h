@@ -40,8 +40,8 @@
 // #define EXCEPTION_    9      // Environment call from S mode
 // #define EXCEPTION_    11     // Environment call from M mode
 // #define EXCEPTION_    12     // Instruction page fault
-#define EXCEPTION_LOAD_FAULT 13  // Load page fault
-#define EXCEPTION_STORE_FAULT 15 // Store page fault
+#define EXCEPTION_LOAD_FAULT 13        // Load page fault
+#define EXCEPTION_STORE_FAULT 15       // Store page fault
 
 #define SIE_SSIE (1L << INTERRUPT_SSI) // Supervisor software interrupt
 #define SIE_STIE (1L << INTERRUPT_STI) // Supervisor software interrupt
@@ -51,13 +51,25 @@
 #define EXTERNAL_TRAP 1
 #define UNKNOWN_DEVICE 0
 
+#define UART_IRQ 10
+#define DISK_IRQ 1
+
 inline static u32 interruptServed()
 {
     u64 hart = readTp(); // thread id
     // #ifndef QEMU
-    return *(u32 *)PLIC_MCLAIM(hart);
+    // return *(u32 *)PLIC_MCLAIM(hart);
     // #else
-    //     return *(u32 *)PLIC_SCLAIM(hart);
+    return *(u32 *)PLIC_SCLAIM(hart);
+    // #endif
+}
+inline static void interruptCompleted(int irq)
+{
+    int hart = readTp();
+    // #ifndef QEMU
+    // *(u32 *)PLIC_MCLAIM(hart) = irq;
+    // #else
+    *(u32 *)PLIC_SCLAIM(hart) = irq;
     // #endif
 }
 

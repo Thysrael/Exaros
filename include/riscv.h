@@ -119,6 +119,13 @@ static inline void writeSepc(u64 x)
     WRITE_CSR("sepc", x);
 }
 
+static inline u64 readSp()
+{
+    u64 x;
+    asm volatile("mv %0, sp"
+                 : "=r"(x));
+    return x;
+}
 // read/write Sscratch
 static inline u64 readSscratch()
 {
