@@ -151,6 +151,7 @@ static void freeDesc(int i)
     disk.desc[i].flags = 0;
     disk.desc[i].next = 0;
     disk.free[i] = 1;
+    wakeup(&disk.free[0]);
 }
 
 /**
@@ -216,6 +217,7 @@ void virtioDiskRW(Buf *b, int write)
         {
             break;
         }
+        sleep(&disk.free[0], &disk.vdiskLock);
     }
 
     // format the three descriptors.
@@ -269,12 +271,13 @@ void virtioDiskRW(Buf *b, int write)
     __sync_synchronize();
 
     // tell the device another avail ring entry is available.
-    disk.avail->idx += 1; // not % NUM ...
+    disk.avail->idx += 1; // not % RING_SIZE ...
 
     __sync_synchronize();
     // 通知 virio 通信
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
     printk("I am here");
+    // Wait for virtio_disk_intr() to say request has finished.
     while (b->disk == 1)
     {
         printk("I am here");
@@ -318,7 +321,7 @@ void virtioDiskIntrupt()
 
         Buf *b = disk.info[id].b;
         b->disk = 0; // disk is done with buf
-
+        wakeup(b);
         disk.usedIndex += 1;
     }
 
