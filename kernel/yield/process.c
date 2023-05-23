@@ -18,6 +18,7 @@
 #include <trap.h>
 #include <elf.h>
 #include <lock.h>
+#include <fs.h>
 
 Process processes[PROCESS_TOTAL_NUMBER];
 ProcessList freeProcesses, usedProcesses;
@@ -324,6 +325,7 @@ u64 getHartKernelTopSp()
  */
 void processRun(Process *p)
 {
+    static int first = 1;
     Trapframe *trapframe = getHartTrapFrame();
 
     // 保存当前进程的 trapfreme 到进程结构体中
@@ -339,6 +341,12 @@ void processRun(Process *p)
     // 切换页表
     // 拷贝进程的 trapframe 到 hart 对应的 trapframe
     memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
+
+    if (first)
+    {
+        first = 0;
+        initRootFileSystem();
+    }
 
     u64 sp = getHartKernelTopSp(p);
     asm volatile("ld sp, 0(%0)"

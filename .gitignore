@@ -5,5 +5,6 @@ kernel-qemu
 *.b.txt
 *.x
 *.b
-sdcard.img
 /user/target/*
+*.b.c
+sdcard.img

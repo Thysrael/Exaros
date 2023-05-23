@@ -23,7 +23,7 @@ ifeq ($(MAKECMDGOALS), debug)
 	DEBUG = y
 endif
 
-all: fat $(modules)
+all: $(modules)
 	mkdir -p $(target_dir)
 	$(LD) -o $(exaros_elf) -T $(linkscript) $(LDFLAGS) $(objects)
 	$(OBJDUMP) -alDS $(exaros_elf) > $(exaros_sys)
@@ -55,7 +55,6 @@ clean:
 			$(MAKE) --directory=$$module clean;		\
 		done;										\
 	rm -rf *.o *~ $(target_dir)
-	rm $(fs_img)
 	rm $(exaros_bin)
 
 run: 

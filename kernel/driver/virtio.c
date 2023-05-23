@@ -4,6 +4,7 @@
 #include <driver.h>
 #include <memory.h>
 #include <string.h>
+#include <lock.h>
 
 /**
  * @brief Disk 结构，因为只有一个 disk block 所以只有一个全局变量
@@ -18,10 +19,11 @@ Disk disk;
  */
 void virtioDiskInit()
 {
-    printk("checksum: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
-    printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
-    printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
-    printk("vendor id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID));
+    // printk("checksum: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
+    // printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
+    // printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
+    // printk("vendor id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID));
+    initLock(&disk.vdiskLock, "vdiskLock");
     // 经过一下校验
     if (*VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE) != 0x74726976 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION) != 1 || *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID) != 2 || *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID) != 0x554d4551)
     {
@@ -204,7 +206,7 @@ void virtioDiskRW(Buf *b, int write)
     // the spec's Section 5.2 says that legacy block operations use
     // three descriptors: one for type/reserved/sector, one for the
     // data, one for a 1-byte status result.
-
+    acquireLock(&disk.vdiskLock);
     // 分配好的 3 个 desc 的 index
     int idx[3];
     while (1)
@@ -271,10 +273,18 @@ void virtioDiskRW(Buf *b, int write)
     __sync_synchronize();
     // 通知 virio 通信
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
+    printk("I am here");
+    while (b->disk == 1)
+    {
+        printk("I am here");
+        sleep(b, &disk.vdiskLock);
+    }
 
     // 通信结束，释放链表
     disk.info[idx[0]].b = 0;
     freeDescChain(idx[0]);
+
+    releaseLock(&disk.vdiskLock);
 }
 
 /**

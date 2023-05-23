@@ -1,6 +1,7 @@
 #include <fs.h>
 #include <fat.h>
 #include <string.h>
+#include <driver.h>
 
 FileSystem fileSystem[32];
 FileSystem *rootFileSystem;
@@ -32,6 +33,12 @@ int fsAlloc(FileSystem **fs)
  */
 void initRootFileSystem()
 {
+    if (rootFileSystem == NULL)
+    {
+        fsAlloc(&rootFileSystem);
+    }
+    strncpy(rootFileSystem->name, "fat32", 6);
+    rootFileSystem->read = blockRead;
     File *file = filealloc();
     // root 天然挂载，所以就随便分配一个
     rootFileSystem->image = file;
@@ -39,4 +46,13 @@ void initRootFileSystem()
     file->major = 0;
     file->readable = true;
     file->writable = true;
+
+    fatInit(rootFileSystem);
+    dirMetaInit();
+    void testMeta();
+    testMeta();
+
+    DirMeta *ep = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);
+    ep = metaCreate(AT_FDCWD, "/dev/vda2", T_DIR, O_RDONLY);
+    ep->head = rootFileSystem;
 }

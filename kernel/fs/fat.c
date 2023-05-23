@@ -1054,6 +1054,15 @@ int fatInit(FileSystem *fs)
     {
         panic("");
     }
+    // char *sp = (char *)(b->data);
+    // for (int i = 0; i < 16; i++)
+    // {
+    //     for (int j = 0; j < 32; j++)
+    //     {
+    //         printk("%d ", sp[i * 16 + j]);
+    //     }
+    //     printk("\n");
+    // }
     if (strncmp((char const *)(b->data + 82), "FAT32", 5))
     {
         panic("not FAT32 volume");

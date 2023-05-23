@@ -3,6 +3,13 @@
 #include <hart.h>
 
 // void initLock
+void initLock(Spinlock *lock, char *name)
+{
+    lock->name = name;
+    lock->locked = 0;
+    lock->hart = 0;
+    lock->times = 0;
+}
 
 void acquireLock(Spinlock *lock)
 {
