@@ -337,17 +337,15 @@ void processRun(Process *p)
 
     int hartid = getTp();
     currentProcess[hartid] = p;
-
-    // 切换页表
-    // 拷贝进程的 trapframe 到 hart 对应的 trapframe
-    memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
-
     if (first)
     {
         printk("ffff\n");
         first = 0;
         initRootFileSystem();
     }
+    // 切换页表
+    // 拷贝进程的 trapframe 到 hart 对应的 trapframe
+    memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
 
     u64 sp = getHartKernelTopSp(p);
     asm volatile("ld sp, 0(%0)"

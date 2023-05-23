@@ -19,7 +19,7 @@ Disk disk;
  */
 void virtioDiskInit()
 {
-    // printk("checksum: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
+    // printk("magic value: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
     // printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
     // printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
     // printk("vendor id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VENDOR_ID));
@@ -95,7 +95,8 @@ void virtioDiskInit()
     // set queue size.
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NUM) = RING_SIZE;
 
-    // 将东西都登记好，因为地址是 64 位的，所以需要登记两个 32 位寄存器
+    // 将通信协议涉及的地址都登记好，因为地址是 64 位的，所以需要登记两个 32 位寄存器
+    // printk("%lx %lx %lx\n", (u64)disk.desc, (u64)disk.avail, (u64)disk.used);
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_DESC_LOW) = (u64)disk.desc;
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_DESC_HIGH) = (u64)disk.desc >> 32;
     *VIRTIO_ADDRESS(VIRTIO_MMIO_DRIVER_DESC_LOW) = (u64)disk.avail;
@@ -150,6 +151,7 @@ static void freeDesc(int i)
     disk.desc[i].flags = 0;
     disk.desc[i].next = 0;
     disk.free[i] = 1;
+    wakeup(&disk.free[0]);
 }
 
 /**
@@ -215,6 +217,7 @@ void virtioDiskRW(Buf *b, int write)
         {
             break;
         }
+        sleep(&disk.free[0], &disk.vdiskLock);
     }
 
     // format the three descriptors.
@@ -268,12 +271,13 @@ void virtioDiskRW(Buf *b, int write)
     __sync_synchronize();
 
     // tell the device another avail ring entry is available.
-    disk.avail->idx += 1; // not % NUM ...
+    disk.avail->idx += 1; // not % RING_SIZE ...
 
     __sync_synchronize();
     // 通知 virio 通信
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
     printk("I am here");
+    // Wait for virtio_disk_intr() to say request has finished.
     while (b->disk == 1)
     {
         printk("I am here");
@@ -295,6 +299,7 @@ void virtioDiskRW(Buf *b, int write)
  */
 void virtioDiskIntrupt()
 {
+    acquireLock(&disk.vdiskLock);
     // the device won't raise another interrupt until we tell it
     // we've seen this interrupt, which the following line does.
     // this may race with the device writing new entries to
@@ -318,7 +323,9 @@ void virtioDiskIntrupt()
 
         Buf *b = disk.info[id].b;
         b->disk = 0; // disk is done with buf
-
+        wakeup(b);
         disk.usedIndex += 1;
     }
+
+    releaseLock(&disk.vdiskLock);
 }
