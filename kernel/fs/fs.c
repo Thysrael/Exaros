@@ -46,13 +46,20 @@ void initRootFileSystem()
     file->major = 0;
     file->readable = true;
     file->writable = true;
+    printk("ffff1\n");
 
     fatInit(rootFileSystem);
+
+    printk("ffffa4\n");
     dirMetaInit();
+
+    printk("ffffa3\n");
     void testMeta();
     testMeta();
 
+    printk("ffff2\n");
     DirMeta *ep = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);
     ep = metaCreate(AT_FDCWD, "/dev/vda2", T_DIR, O_RDONLY);
     ep->head = rootFileSystem;
+    printk("ffff3\n");
 }

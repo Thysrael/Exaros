@@ -318,6 +318,7 @@ u64 getHartKernelTopSp()
     return (u64)kernelStack + KERNEL_STACK_SIZE * (getTp() + 1);
 }
 
+void sleepRec();
 /**
  * @brief 运行进程 p
  *
@@ -337,22 +338,37 @@ void processRun(Process *p)
 
     int hartid = getTp();
     currentProcess[hartid] = p;
-    if (first)
+    // sleep
+    if (p->reason == 1)
     {
-        printk("ffff\n");
-        first = 0;
-        initRootFileSystem();
+        p->reason = 0;
+        memmove(trapframe, &currentProcess[hartid]->trapframe, sizeof(Trapframe));
+        asm volatile("ld sp, 0(%0)"
+                     :
+                     : "r"(&p->currentKernelSp));
+        sleepRec();
     }
-    // 切换页表
-    // 拷贝进程的 trapframe 到 hart 对应的 trapframe
-    memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
+    else
+    {
+        if (first)
+        {
+            printk("ffff\n");
+            first = 0;
+            initRootFileSystem();
+            printk("fffaaaaf\n");
+        }
 
-    u64 sp = getHartKernelTopSp(p);
-    asm volatile("ld sp, 0(%0)"
-                 :
-                 : "r"(&sp)
-                 : "memory");
-    userTrapReturn();
+        // 切换页表
+        // 拷贝进程的 trapframe 到 hart 对应的 trapframe
+        memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
+
+        u64 sp = getHartKernelTopSp(p);
+        asm volatile("ld sp, 0(%0)"
+                     :
+                     : "r"(&sp)
+                     : "memory");
+        userTrapReturn();
+    }
 }
 
 /**
@@ -362,7 +378,7 @@ void processRun(Process *p)
  */
 void yield()
 {
-    // printk("yield\n");
+    printk("yield\n");
     int hartId = getTp();
     int count = processTimeCount[hartId];
     int point = processBelongList[hartId];
@@ -386,7 +402,7 @@ void yield()
             LIST_REMOVE(process, scheduleLink);
             count = process->priority;
         }
-        // printk("finding a process to yield...\n");
+        printk("finding a process to yield... %d, %d\n", count, process->state);
     }
     count--;
     processTimeCount[hartId] = count;
@@ -424,6 +440,7 @@ void sleep(void *channel, Spinlock *lk)
 
     p->channel = (u64)channel;
     p->state = SLEEPING;
+
     p->reason = 1;
     releaseLock(&(p->lock));
 
@@ -451,7 +468,7 @@ void wakeup(void *channel)
     // 这个是不是可以改进？
     for (int i = 0; i < PROCESS_TOTAL_NUMBER; i++)
     {
-        if (&processes[i] != myProcess())
+        // if (&processes[i] != myProcess())
         {
             acquireLock(&processes[i].lock);
             if (processes[i].state == SLEEPING && processes[i].channel == (u64)channel)

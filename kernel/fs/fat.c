@@ -1103,6 +1103,7 @@ int fatInit(FileSystem *fs)
     fs->root.inodeMaxCluster = 1;
     fs->root.filename[0] = '/';
     fs->root.fileSystem = fs;
+    // ok
     // 构造 cluster bitmap
     int totalClusterNumber = fs->superBlock.BPB.FATsz * fs->superBlock.BPB.bytsPerSec / sizeof(u32);
     u64 *clusterBitmap = (u64 *)getFileSystemClusterBitmap(fs);
@@ -1121,6 +1122,8 @@ int fatInit(FileSystem *fs)
         }
         cnt += PAGE_SIZE;
     } while (cnt * 8 < totalClusterNumber);
+
+    printk("cnxcnx\n");
     // 填写 cluster bitmap
     u32 sec = fs->superBlock.BPB.rsvdSecCnt;
     u32 entryPerSec = fs->superBlock.BPB.bytsPerSec / sizeof(u32);
@@ -1137,6 +1140,7 @@ int fatInit(FileSystem *fs)
         }
         brelse(b);
     }
+    printk("cnxcnx\n");
     // 构造 dirMetas
     loadDirMetas(fs, &fs->root);
 
