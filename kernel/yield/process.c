@@ -355,10 +355,10 @@ void processRun(Process *p)
         {
             first = 0;
             initRootFileSystem();
+            // setNextTimeout();
         }
         // else
         // {
-        //     setNextTimeout();
         // }
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
