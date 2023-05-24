@@ -82,6 +82,7 @@ typedef struct VirtqDesc
 // the (entire) avail ring, from the spec.
 // 似乎是一个环一样的数据结构，用来存储一定的描述符,指明 vring_desc 中哪些项是可用的;
 // 存储的是每个 IO 请求在 vring_desc 中连接成的链表的表头位置
+// 在 legacy 中没有用到
 typedef struct VringAvail
 {
     u16 flags; // always zero
