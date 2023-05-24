@@ -17,7 +17,6 @@ build: $(BINTOC) $(USER_LIB) $(USER_TARGET)
 
 %: %.o $(USER_LIB)
 	$(LD) -o $@ $(LDFLAGS) -G 0 -static -n -nostdlib -T ./lib/arch/riscv/user.ld $^
-	echo $@
 	mv $@ $(MOUNT_DIR)
 
 %.b: %.o $(USER_LIB)

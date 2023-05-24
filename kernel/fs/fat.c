@@ -1054,26 +1054,22 @@ int fatInit(FileSystem *fs)
     {
         panic("");
     }
-    // char *sp = (char *)(b->data);
-    // for (int i = 0; i < 16; i++)
-    // {
-    //     for (int j = 0; j < 32; j++)
-    //     {
-    //         printk("%d ", sp[i * 16 + j]);
-    //     }
-    //     printk("\n");
-    // }
+
     if (strncmp((char const *)(b->data + 82), "FAT32", 5))
     {
         panic("not FAT32 volume");
         return -1;
     }
     // 构造 superblock
-    memmove(&fs->superBlock.BPB.bytsPerSec, b->data + 11, 2);
+    fs->superBlock.BPB.bytsPerSec = *(u16 *)(b->data + 11);
     fs->superBlock.BPB.secPerClus = *(b->data + 13);
     fs->superBlock.BPB.rsvdSecCnt = *(u16 *)(b->data + 14);
     fs->superBlock.BPB.numFATs = *(b->data + 16);
-    fs->superBlock.BPB.totSec = *(u32 *)(b->data + 32);
+    fs->superBlock.BPB.totSec = *(u16 *)(b->data + 19);
+    if (fs->superBlock.BPB.totSec == 0)
+    {
+        fs->superBlock.BPB.totSec = *(u32 *)(b->data + 32);
+    }
     fs->superBlock.BPB.FATsz = *(u32 *)(b->data + 36);
     fs->superBlock.BPB.rootClus = *(u32 *)(b->data + 44);
     fs->superBlock.firstDataSec = fs->superBlock.BPB.rsvdSecCnt + fs->superBlock.BPB.numFATs * fs->superBlock.BPB.FATsz;
@@ -1082,14 +1078,18 @@ int fatInit(FileSystem *fs)
     fs->superBlock.bytsPerClus = fs->superBlock.BPB.secPerClus * fs->superBlock.BPB.bytsPerSec;
     brelse(b);
 
-    printk("[FAT32 init]read fat s\n");
     // 打印 superblock 信息
     printk("[FAT32 init]bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
-    printk("[FAT32 init]rootClus: %d\n", fs->superBlock.BPB.rootClus);
     printk("[FAT32 init]secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
+    printk("[FAT32 init]rsvdSecCnt: %d\n", fs->superBlock.BPB.rsvdSecCnt);
     printk("[FAT32 init]numFATs: %d\n", fs->superBlock.BPB.numFATs);
+    printk("[FAT32 init]totSec: %d\n", fs->superBlock.BPB.totSec);
     printk("[FAT32 init]FATsz: %d\n", fs->superBlock.BPB.FATsz);
+    printk("[FAT32 init]rootClus: %d\n", fs->superBlock.BPB.rootClus);
     printk("[FAT32 init]firstDataSec: %d\n", fs->superBlock.firstDataSec);
+    printk("[FAT32 init]dataSecCnt: %d\n", fs->superBlock.dataSecCnt);
+    printk("[FAT32 init]dataClusCnt: %d\n", fs->superBlock.dataClusCnt);
+    printk("[FAT32 init]bytsPerClus: %d\n", fs->superBlock.bytsPerClus);
 
     // make sure that bytsPerSec has the same value with BUFFER_SIZE
     if (BUFFER_SIZE != fs->superBlock.BPB.bytsPerSec)
@@ -1103,7 +1103,7 @@ int fatInit(FileSystem *fs)
     fs->root.inodeMaxCluster = 1;
     fs->root.filename[0] = '/';
     fs->root.fileSystem = fs;
-    // ok
+
     // 构造 cluster bitmap
     int totalClusterNumber = fs->superBlock.BPB.FATsz * fs->superBlock.BPB.bytsPerSec / sizeof(u32);
     u64 *clusterBitmap = (u64 *)getFileSystemClusterBitmap(fs);
@@ -1123,13 +1123,10 @@ int fatInit(FileSystem *fs)
         cnt += PAGE_SIZE;
     } while (cnt * 8 < totalClusterNumber);
 
-    printk("cnxcnx\n");
     // 填写 cluster bitmap
     u32 sec = fs->superBlock.BPB.rsvdSecCnt;
     u32 entryPerSec = fs->superBlock.BPB.bytsPerSec / sizeof(u32);
 
-    printk("sz: %d\n", fs->superBlock.BPB.FATsz);
-    // for (u32 i = 0; i < 1; i++, sec++)
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
@@ -1144,7 +1141,7 @@ int fatInit(FileSystem *fs)
         }
         brelse(b);
     }
-    printk("cnxcnx\n");
+
     // 构造 dirMetas
     loadDirMetas(fs, &fs->root);
 
