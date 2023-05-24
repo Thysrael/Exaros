@@ -46,20 +46,14 @@ void initRootFileSystem()
     file->major = 0;
     file->readable = true;
     file->writable = true;
-    printk("ffff1\n");
     dirMetaInit();
     // fatinit 用到了 dirmeta ，要先初始化 dirmeta
     fatInit(rootFileSystem);
-    // to delete
-    printk("ffffa4\n");
 
-    printk("ffffa3\n");
     void testMeta();
     testMeta();
 
-    printk("ffff2\n");
     DirMeta *ep = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);
     ep = metaCreate(AT_FDCWD, "/dev/vda2", T_DIR, O_RDONLY);
     ep->head = rootFileSystem;
-    printk("ffff3\n");
 }

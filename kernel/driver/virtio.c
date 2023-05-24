@@ -260,7 +260,7 @@ void virtioDiskRW(Buf *b, int write)
     __sync_synchronize();
     // 通知 virio 通信
     *VIRTIO_ADDRESS(VIRTIO_MMIO_QUEUE_NOTIFY) = 0; // value is queue number
-    printk("I am here");
+    // printk("I am here");
     // Wait for virtio_disk_intr() to say request has finished.
     while (b->disk == 1)
     {
@@ -304,7 +304,6 @@ void virtioDiskIntrupt()
 
         Buf *b = disk.info[id].b;
         b->disk = 0; // disk is done with buf
-        printk("wakeup b\n");
         wakeup(b);
         disk.usedIndex += 1;
     }

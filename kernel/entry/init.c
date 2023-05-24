@@ -74,7 +74,8 @@ void main(u64 hartId)
     // initRootFileSystem();
 
     PROCESS_CREATE_PRIORITY(processA, 1);
-    // PROCESS_CREATE_PRIORITY(processB, 1);
+    PROCESS_CREATE_PRIORITY(processB, 1);
+    PROCESS_CREATE_PRIORITY(processB, 1);
 
     yield();
 }

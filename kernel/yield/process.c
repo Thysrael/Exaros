@@ -304,7 +304,7 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
 
     LIST_INSERT_TAIL(&scheduleList[0], p, scheduleLink);
 
-    printk("created a process.\n");
+    printk("created a process: %x\n", p->processId);
 }
 
 /**
@@ -339,6 +339,7 @@ void processRun(Process *p)
     int hartid = getTp();
     currentProcess[hartid] = p;
     // sleep
+    // printk("ccc %d\n", p->reason);
     if (p->reason == 1)
     {
         p->reason = 0;
@@ -352,25 +353,24 @@ void processRun(Process *p)
     {
         if (first)
         {
-            printk("ffff\n");
             first = 0;
             initRootFileSystem();
-            printk("fffaaaaf\n");
         }
-
+        // else
+        // {
+        //     setNextTimeout();
+        // }
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
         memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
-        printTrapframe(((Trapframe *)(&currentProcess[hartid]->trapframe)));
-        printk("%lx\n", currentProcess[hartid]->processId);
-        printk("%lx\n", hartid);
+        // printTrapframe(((Trapframe *)(&currentProcess[hartid]->trapframe)));
         u64 sp = getHartKernelTopSp(p);
         asm volatile("ld sp, 0(%0)"
                      :
                      : "r"(&sp)
                      : "memory");
 
-        printk("aaaaaaaf\n");
+        // printk("aaaaaaaf\n");
         userTrapReturn();
     }
 }
@@ -382,11 +382,13 @@ void processRun(Process *p)
  */
 void yield()
 {
-    printk("yield\n");
+    // printk("yield\n");
     int hartId = getTp();
     int count = processTimeCount[hartId];
     int point = processBelongList[hartId];
     Process *process = currentProcess[hartId];
+
+    // printk("0: %d, 1:%d\n", processes[0].state, processes[1].state);
 
     if (process && process->state == RUNNING)
     {
@@ -406,7 +408,7 @@ void yield()
             LIST_REMOVE(process, scheduleLink);
             count = process->priority;
         }
-        printk("finding a process to yield... %d, %d\n", count, process->state);
+        // printk("finding a process to yield... %d, %d\n", count, process->state);
     }
     count--;
     processTimeCount[hartId] = count;
@@ -438,17 +440,14 @@ void sleepSave();
 void sleep(void *channel, Spinlock *lk)
 {
     Process *p = myProcess();
-    printk("p: %lx\n", (u64)p);
     acquireLock(&(p->lock));
     releaseLock(lk);
-    printk("hello123\n");
     p->channel = (u64)channel;
     p->state = SLEEPING;
 
     p->reason = 1;
     releaseLock(&(p->lock));
 
-    printk("hello456\n");
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));
@@ -459,7 +458,6 @@ void sleep(void *channel, Spinlock *lk)
     acquireLock(&p->lock);
     p->channel = 0;
     releaseLock(&p->lock);
-    printk("hello7\n");
     acquireLock(lk);
 }
 /**
