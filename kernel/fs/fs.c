@@ -51,7 +51,6 @@ void initRootFileSystem()
     // fatinit 用到了 dirmeta ，要先初始化 dirmeta
     fatInit(rootFileSystem);
     // to delete
-    // return;
     printk("ffffa4\n");
 
     printk("ffffa3\n");
