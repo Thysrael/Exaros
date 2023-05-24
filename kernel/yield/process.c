@@ -330,7 +330,7 @@ void processRun(Process *p)
     Trapframe *trapframe = getHartTrapFrame();
 
     // 保存当前进程的 trapfreme 到进程结构体中
-    if (currentProcess[getTp()])
+    if (currentProcess[getTp()] && (currentProcess[getTp()]->state == RUNNING))
     {
         memmove(&currentProcess[getTp()]->trapframe, trapframe, sizeof(Trapframe));
     }
@@ -361,7 +361,7 @@ void processRun(Process *p)
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
         memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
-        printTrapframe((Trapframe *)trapframe);
+        printTrapframe(((Trapframe *)(&currentProcess[hartid]->trapframe)));
         printk("%lx\n", currentProcess[hartid]->processId);
         printk("%lx\n", hartid);
         u64 sp = getHartKernelTopSp(p);
