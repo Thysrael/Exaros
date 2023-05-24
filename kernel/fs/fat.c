@@ -1127,9 +1127,13 @@ int fatInit(FileSystem *fs)
     // 填写 cluster bitmap
     u32 sec = fs->superBlock.BPB.rsvdSecCnt;
     u32 entryPerSec = fs->superBlock.BPB.bytsPerSec / sizeof(u32);
+
+    printk("sz: %d\n", fs->superBlock.BPB.FATsz);
+    // for (u32 i = 0; i < 1; i++, sec++)
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
+        printk("sec: %d\n", sec);
         for (u32 j = 0; j < entryPerSec; j++)
         {
             if (((u32 *)(b->data))[j])

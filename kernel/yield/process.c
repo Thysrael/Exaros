@@ -361,12 +361,16 @@ void processRun(Process *p)
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
         memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
-
+        printTrapframe((Trapframe *)trapframe);
+        printk("%lx\n", currentProcess[hartid]->processId);
+        printk("%lx\n", hartid);
         u64 sp = getHartKernelTopSp(p);
         asm volatile("ld sp, 0(%0)"
                      :
                      : "r"(&sp)
                      : "memory");
+
+        printk("aaaaaaaf\n");
         userTrapReturn();
     }
 }
@@ -437,13 +441,14 @@ void sleep(void *channel, Spinlock *lk)
     printk("p: %lx\n", (u64)p);
     acquireLock(&(p->lock));
     releaseLock(lk);
-
+    printk("hello123\n");
     p->channel = (u64)channel;
     p->state = SLEEPING;
 
     p->reason = 1;
     releaseLock(&(p->lock));
 
+    printk("hello456\n");
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));
@@ -454,6 +459,7 @@ void sleep(void *channel, Spinlock *lk)
     acquireLock(&p->lock);
     p->channel = 0;
     releaseLock(&p->lock);
+    printk("hello7\n");
     acquireLock(lk);
 }
 /**

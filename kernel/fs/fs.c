@@ -47,11 +47,12 @@ void initRootFileSystem()
     file->readable = true;
     file->writable = true;
     printk("ffff1\n");
-
-    fatInit(rootFileSystem);
-
-    printk("ffffa4\n");
     dirMetaInit();
+    // fatinit 用到了 dirmeta ，要先初始化 dirmeta
+    fatInit(rootFileSystem);
+    // to delete
+    // return;
+    printk("ffffa4\n");
 
     printk("ffffa3\n");
     void testMeta();

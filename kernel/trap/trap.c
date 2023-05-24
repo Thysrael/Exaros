@@ -55,12 +55,12 @@ int handleInterrupt()
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
 
     assert(scause & SCAUSE_INTERRUPT);
-    printk("%lx\n", exceptionCode);
+    // printk("%lx\n", exceptionCode);
     // 处理中断
     switch (exceptionCode)
     {
     case INTERRUPT_SEI:;
-        printk("INTERRUPT_SEI\n");
+        // printk("INTERRUPT_SEI\n");
         // // todo
         // // user external interrupt
         // int irq = interruptServed();
@@ -96,7 +96,6 @@ int handleInterrupt()
         }
         else if (irq == DISK_IRQ)
         {
-            printk("1111\n\n");
             virtioDiskIntrupt();
         }
         else if (irq)
@@ -109,7 +108,7 @@ int handleInterrupt()
         // now allowed to interrupt again.
         if (irq)
             interruptCompleted(irq);
-        printk("external interrupt");
+        // printk("external interrupt");
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
@@ -172,6 +171,7 @@ void kernelHandler()
         break;
     }
 
+    printk("helloooo\n");
     writeSepc(sepc);
     writeSstatus(sstatus);
 }

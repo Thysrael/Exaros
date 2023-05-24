@@ -42,4 +42,5 @@ void interruptPop(void)
     hart->interruptLayer--;
     if (hart->interruptLayer == 0 && hart->lastInterruptEnable)
         intr_on();
+    // printk("i am here");
 }
