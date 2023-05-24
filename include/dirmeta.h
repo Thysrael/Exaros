@@ -21,15 +21,15 @@ typedef struct DirMeta
 {
     char filename[FAT32_MAX_FILENAME + 1];
     u8 attribute;
-    u32 firstClus;       // 文件的第一簇
-    u32 fileSize;        // 文件的字节大小
+    u32 firstClus; // 文件的第一簇
+    u32 fileSize;  // 文件的字节大小
 
     u32 curClus;         // 文件的当前簇
     u32 inodeMaxCluster; // 应该是已经缓存过的 cluster
     u32 clusCnt;         // 簇的数量
     Inode inode;         // 用来检索已经用过的簇
 
-    u8 reserve;          // 保留字段，主要用于指示该文件是否是链接
+    u8 reserve; // 保留字段，主要用于指示该文件是否是链接
     FileSystem *fileSystem;
     /* for OS */
     enum
@@ -38,7 +38,7 @@ typedef struct DirMeta
         OSRELEASE = 12,
         NONE = 15
     } dev;
-    FileSystem *head;            // 构成链表，应该是链表的头结点，挂载的文件系统在一个列表中
+    FileSystem *head;            // 这个属性只有 mountPathMeta 拥有，对应所有被挂载在当前路径上的文件系统链表的头结点（也就是最近挂载的文件系统）
     u32 off;                     // 这个目录项在目录中偏移（单位应该是字节）
     struct DirMeta *parent;      // 父目录
     struct DirMeta *nextBrother; // 用于构造链表

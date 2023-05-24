@@ -543,8 +543,10 @@ bad:
 }
 
 /**
- * @brief 还是有一些看不懂
- *
+ * @brief 挂载一个文件系统镜像。文件系统未被挂载前，是以一个镜像文件的形式(image)存在于现有文件系统中的
+ * 我们需要将它挂载到现有文件系统的某个挂载点（是一个目录）上去。
+ * 挂载可能会发生多个镜像挂载到同一个挂载点上的现象，这个时候需要利用一个头插法链表来记录某个挂载点上的所有镜像
+ * 此时挂载点应当呈现最近挂载的镜像的内容
  */
 void syscallMount()
 {
@@ -552,6 +554,7 @@ void syscallMount()
     u64 imagePathUva = tf->a0, mountPathUva = tf->a1, typeUva = tf->a2, dataUva = tf->a4;
     int flag = tf->a3;
     char imagePath[FAT32_MAX_FILENAME], mountPath[FAT32_MAX_FILENAME], type[10], data[10];
+    // vfat 是 FAT 文件系统的一种扩展版本
     if (fetchstr(typeUva, type, 10) < 0 || strncmp(type, "vfat", 4))
     {
         tf->a0 = -1;
@@ -585,6 +588,7 @@ void syscallMount()
     file->off = 0;
     file->readable = true;
     file->writable = true;
+    // 当前挂载点已经有了挂载镜像了，这里的写法可能是冗余的
     if (imageMeta->head)
     {
         file->type = imageMeta->head->image->type;
@@ -606,6 +610,12 @@ void syscallMount()
     tf->a0 = 0;
 }
 
+/**
+ * @brief 给定挂载点目录，卸载上面挂载的镜像。
+ * 同样有重复挂载的问题，如果仅仅是卸载完最近挂载的镜像，挂载点的内容应该是较早挂载的镜像的内容
+ * 卸载必须按照逆向挂载顺序操作
+ *
+ */
 void syscallUmount()
 {
     Trapframe *tf = getHartTrapFrame();

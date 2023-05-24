@@ -22,7 +22,7 @@ typedef struct FileSystem
     SuperBlock superBlock;   // 超级块，记录着许多 FAT 的重要信息
     DirMeta root;            // 根目录对应的 meta
     File *image;             // 可能是挂载前的设备路径
-    struct FileSystem *next; // 用于组成链表
+    struct FileSystem *next; // 用于组成挂载镜像链表
     int deviceNumber;
     Buf *(*read)(FileSystem *fs, u64 blockNum);
 } FileSystem;

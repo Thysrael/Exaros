@@ -148,16 +148,18 @@ void bunpin(Buf *b)
 }
 
 /**
- * @brief 挂载的 blockRead，似乎会有 parentFS 的概念
- *
+ * @brief bread 的封装器，是之后被挂载的文件系统使用的 read 函数。
+ * 因为只能提供相对于当前文件系统的 sector 编号。
+ * 而实际上我们需要统一的扇区编号（因为镜像本身也在母文件系统中），
+ * 所以要根据挂载文件系统的 image 推算实际的 sector 编号，然后再在 parentFS 中查询
  * @param fs 文件系统
- * @param blockNum 块号
+ * @param blockNum 相对于当前文件系统的 sector 编号
  * @return Buf* 缓存
  */
 Buf *mountBlockRead(FileSystem *fs, u64 blockNum)
 {
     File *file = fs->image;
-    // 如果 image 是一个设备（这似乎是常见情况），那么直接 bread
+    // 如果 image 是一个设备，这是不可能发生的，被挂载的文件系统一定是镜像文件，只有根文件系统是 device
     if (file->type == FD_DEVICE)
     {
         return bread(file->major, blockNum);
@@ -177,7 +179,7 @@ Buf *mountBlockRead(FileSystem *fs, u64 blockNum)
 }
 
 /**
- * @brief 是 bread 的封装器
+ * @brief 是 bread 的封装器，是根文件系统使用的 read 函数
  *
  * @param fs 文件系统
  * @param blockNum 块号

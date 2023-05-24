@@ -49,7 +49,7 @@ static inline u32 fatOffsetOfClus(FileSystem *fs, u32 cluster)
 }
 
 /**
- * @brief 根据文件内扇区编号和文件 meta 计算文件系统扇区编号
+ * @brief 根据文件内扇区编号和文件 meta 计算文件系统扇区编号。
  *
  * @param meta 文件 meta
  * @param dataSectorNum  文件内扇区编号
@@ -577,7 +577,7 @@ DirMeta *metaCreate(int fd, char *path, short type, int mode)
     {
         return NULL;
     }
-
+    printk("parentDir filename: %s\n", parentDir->filename);
     // 虚拟文件权限 mode 转 fat 格式的权限 mode
     if (type == T_DIR)
     {

@@ -45,9 +45,9 @@ inline int getchar()
 
 void printk(const char *fmt, ...);
 void _panic_(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
-void _assert_(const char *, int, const char *, u64);
+void _assert_(const char *, const char *, int, const char *, u64);
 #define panic(...) _panic_(__FILE__, __LINE__, __func__, __VA_ARGS__)
-#define assert(x) _assert_(__FILE__, __LINE__, __func__, (x))
+#define assert(x) _assert_(#x, __FILE__, __LINE__, __func__, (x))
 #define panic_on(expr)                           \
     do {                                         \
         int r = (expr);                          \

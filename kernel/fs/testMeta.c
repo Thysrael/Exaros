@@ -16,6 +16,7 @@ void testMeta()
         panic("[testfat] create file error\n");
     }
     printk("create file finish\n");
+
     int ret = metaWrite(testfile, 0, (u64)testContentToWrite, 0, 9);
     if (ret != 9)
     {
