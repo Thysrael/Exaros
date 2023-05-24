@@ -34,7 +34,8 @@
 		"unistd.h": "c",
 		"syscall_lib.h": "c",
 		"lib_main.h": "c",
-		"string.h": "c"
+		"string.h": "c",
+		"fs.h": "c"
 	},
 	"doxdocgen.file.fileOrder": ["file", "brief", "date", "empty", "copyright"],
 	"doxdocgen.file.copyrightTag": ["@copyright Copyright (c) {year}"],

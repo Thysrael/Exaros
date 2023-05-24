@@ -55,11 +55,11 @@ void _panic_(const char *file, int line, const char *func, const char *fmt, ...)
  * @param func 所在函数
  * @param statement 断言条件
  */
-void _assert_(const char *file, int line, const char *func, u64 statement)
+void _assert_(const char *s, const char *file, int line, const char *func, u64 statement)
 {
     if (!statement)
     {
-        _panic_(file, line, func, "assert failed\n");
+        _panic_(file, line, func, "%s assert failed\n", s);
     }
 }
 

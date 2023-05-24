@@ -69,7 +69,7 @@ typedef struct File
 #define DT_SOCK 12
 #define DT_WHT 14
 
-#define AT_FDCWD -100
+#define AT_FDCWD -100 // AT_FDCWD 常量的作用就是表示当前进程的工作目录
 
 // 打开方式
 #define O_RDONLY 0x000
