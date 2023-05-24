@@ -214,7 +214,7 @@ void virtioDiskRW(Buf *b, int write)
     if (write)
         req0->type = VIRTIO_BLK_T_OUT; // write the disk
     else
-        req0->type = VIRTIO_BLK_T_IN; // read the disk
+        req0->type = VIRTIO_BLK_T_IN;  // read the disk
     req0->reserved = 0;
     // 这里是因为 buffer（或者 block）和 sector 有一个换算结构，sector 是要读写的 sector 序号
     u64 sector = b->blockno * (BUFFER_SIZE / 512);
@@ -231,7 +231,7 @@ void virtioDiskRW(Buf *b, int write)
     disk.desc[idx[1]].addr = (u64)b->data;
     disk.desc[idx[1]].len = BUFFER_SIZE;
     if (write)
-        disk.desc[idx[1]].flags = 0; // device reads b->data
+        disk.desc[idx[1]].flags = 0;                  // device reads b->data
     else
         disk.desc[idx[1]].flags = VRING_DESC_F_WRITE; // device writes b->data
     disk.desc[idx[1]].flags |= VRING_DESC_F_NEXT;

@@ -5,6 +5,7 @@
 #include <fat.h>
 #include <process.h>
 #include <linux_struct.h>
+#include <debug.h>
 #include <driver.h>
 
 extern Inode inodes[];
@@ -1130,7 +1131,7 @@ int fatInit(FileSystem *fs)
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
-        printk("sec: %d\n", sec);
+        CNX_DEBUG("sec: %d\n", sec);
         for (u32 j = 0; j < entryPerSec; j++)
         {
             if (((u32 *)(b->data))[j])

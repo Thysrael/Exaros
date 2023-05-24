@@ -8,6 +8,7 @@
 
 #include <types.h>
 #include <driver.h>
+#include <debug.h>
 #include <riscv.h>
 #include <memory.h>
 #include <string.h>
@@ -75,11 +76,9 @@ void main(u64 hartId)
 
     PROCESS_CREATE_PRIORITY(processA, 1);
     PROCESS_CREATE_PRIORITY(processB, 1);
-    PROCESS_CREATE_PRIORITY(processC, 1);
+    // PROCESS_CREATE_PRIORITY(processC, 1);
 
-    setNextTimeout();
-
-    // yield();
+    yield();
     while (1)
         ;
 }
