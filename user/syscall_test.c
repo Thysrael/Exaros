@@ -12,7 +12,7 @@ char *argp[] = {NULL};
 
 int main()
 {
-    putchar('#');
+    printf("hello, test.\n");
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         int pid = fork();
