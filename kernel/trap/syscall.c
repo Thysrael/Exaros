@@ -808,6 +808,10 @@ void syscallPutString()
 
 void syscallWait()
 {
+}
+
+void syscallExit()
+{
     Trapframe *trapframe = getHartTrapFrame();
     Process *process;
     int ret, ec = trapframe->a0;
@@ -823,10 +827,6 @@ void syscallWait()
     processDestory(process);
     // will not reach here
     panic("sycall exit error");
-}
-
-void syscallExit()
-{
 }
 void syscallGetCpuTimes()
 {
