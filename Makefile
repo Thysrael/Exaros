@@ -41,6 +41,7 @@ fat: $(user_dir)
 	mkfs.vfat -F 32 $(fs_img); 
 	@sudo mount $(fs_img) $(mnt_path)
 	@sudo cp -r user/target/* $(mnt_path)/
+	sudo cp -r testcase/** $(mnt_path)/
 	@sudo umount $(mnt_path)
 
 umount:
