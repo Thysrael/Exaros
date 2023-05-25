@@ -232,6 +232,8 @@ int setupProcess(Process *p)
     p->state = UNUSED;
     p->retValue = 0;
     p->parentId = 0;
+    p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
+    p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
 
     // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
     // 为每个进程开一页的内核栈
@@ -241,6 +243,8 @@ int setupProcess(Process *p)
 
     extern char trampoline[];
     extern char trapframe[];
+    // kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
+    // kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
     kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     return 0;

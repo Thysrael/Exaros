@@ -73,9 +73,10 @@ void main(u64 hartId)
     plicinit();
     plicinithart();
 
-    PROCESS_CREATE_PRIORITY(processA, 1);
-    PROCESS_CREATE_PRIORITY(processC, 1);
+    // PROCESS_CREATE_PRIORITY(processA, 1);
+    // PROCESS_CREATE_PRIORITY(processB, 1);
     // PROCESS_CREATE_PRIORITY(processC, 1);
+    PROCESS_CREATE_PRIORITY(test, 1);
 
     yield();
     while (1)

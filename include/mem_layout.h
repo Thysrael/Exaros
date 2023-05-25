@@ -45,6 +45,38 @@
     0 --------------------->+---------------------------+-------0x0000_0000
 */
 
+/*  进程虚拟空间
+    VA_MAX ---------------->+---------------------------+-----------------
+                            |       TRAMPOLINE:R-X      |       BY2PG
+    TRAMPOLINE ------------>+---------------------------+-----------------
+                            |       TRAPFRAME:R-X       |       BY2PG
+    TRAPFRAME, ------------>+---------------------------+-----------------
+    USER_STACK_TOP          |                           |        ^
+                            | User Stack(dynamic, down) |        |
+                            |                           |     1 << 32
+    Stack Pointer --------->+---------------------------+        |
+                            |                           |        v
+    USER_STACK_BOTTOM, ---->+---------------------------+-----------------
+    USER_MMAP_HEAP_TOP      |                           |        ^
+    mmapHeapPointer ------->+---------------------------+        |
+                            |                           |     1 << 32
+                            |User MMAP Heap(dynamic, up)|        |
+                            |                           |        v
+    USER_MMAP_HEAP_BOTTOM ->+---------------------------+-----------------
+    USER_BRK_HEAP_TOP       |                           |        ^
+    brkHeapPointer -------->+---------------------------+        |
+                            |                           |     1 << 32
+                            |User BRK Heap(dynamic, up) |        |
+                            |                           |        v
+    USER_BRK_HEAP_BOTTOM -->+---------------------------+-----------------
+                            |                           |
+    ----------------------->+---------------------------+-----------------
+                            |       .data               |
+                            |       .bss                |
+                            |       .text               |
+    0 --------------------->+---------------------------+-------0x0000_0000
+*/
+
 #define PHYSICAL_MEMORY_BASE (0x80000000ULL)
 #define PHYSICAL_MEMORY_SIZE (0x08000000ULL)
 #define PHYSICAL_MEMORY_END (PHYSICAL_MEMORY_BASE + PHYSICAL_MEMORY_SIZE)
@@ -72,10 +104,13 @@
 #define TRAMPOLINE (VA_MAX - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 #define USER_STACK_TOP TRAPFRAME
+#define USER_STACK_BOTTOM (USER_STACK_TOP - (1UL << 32))
 
 // 用户进程的堆
-#define USER_HEAP_TOP (USER_STACK_TOP - (1UL << 32))
-#define USER_HEAP_BOTTOM (USER_HEAP_TOP - (1UL << 32))
+#define USER_MMAP_HEAP_TOP USER_STACK_BOTTOM
+#define USER_MMAP_HEAP_BOTTOM (USER_MMAP_HEAP_TOP - (1UL << 32))
+#define USER_BRK_HEAP_TOP USER_MMAP_HEAP_BOTTOM
+#define USER_BRK_HEAP_BOTTOM (USER_BRK_HEAP_TOP - (1UL << 32))
 
 // qemu puts programmable interrupt controller here.
 #define PLIC_PRIORITY (PLIC_V + 0x0)

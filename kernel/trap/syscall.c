@@ -11,6 +11,7 @@
 #include <memory.h>
 #include <pipe.h>
 #include <fs.h>
+#include <mmap.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -38,7 +39,6 @@ void (*syscallVector[])(void) = {
     [SYSCALL_CWD] syscallGetWorkDir,
     [SYSCALL_MKDIRAT] syscallMakeDirAt,
     [SYSCALL_BRK] syscallBrk,
-    [SYSCALL_SBRK] syscallSetBrk,
     [SYSCALL_FSTAT] syscallGetFileState,
     [SYSCALL_MAP_MEMORY] syscallMapMemory,
     [SYSCALL_UNMAP_MEMORY] syscallUnMapMemory,
@@ -822,17 +822,229 @@ void syscallGetTime()
 void syscallSleepTime()
 {
 }
+
+/**
+ * @brief brk(u64 addr)
+ * 修改数据段的大小
+ * 当 addr = 0 时，返回 brkHeapTop
+ * 当 addr > brkHeapTop 时，不支持
+ * 当 addr < brkHeapTop 时，将 brkHeap 扩展到 addr
+ * 注意这里的页分配策略
+ */
 void syscallBrk()
 {
+    Trapframe *tf = getHartTrapFrame();
+    u64 addr;
+    if (argaddr(0, &addr) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    Process *p = myProcess();
+    if (addr == 0)
+    {
+        tf->a0 = p->brkHeapTop;
+        return;
+    }
+    else
+    {
+        if (addr < p->brkHeapTop)
+        {
+            panic("Syscall brk can't decrease the size of heap from 0x%x to 0x%x\n", addr, addr);
+        }
+        u64 start = ALIGN_UP(p->brkHeapTop, PAGE_SIZE); // 权限一致，需要新的页则直接申请
+        u64 end = ALIGN_UP(addr, PAGE_SIZE);
+        if (end > USER_BRK_HEAP_TOP)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        while (start < end)
+        {
+            u64 *pte = NULL;
+            Page *page = pageLookup(p->pgdir, start, &pte);
+            u64 perm = PTE_READ_BIT | PTE_WRITE_BIT; // 权限必然一致
+            if (page == NULL)
+            {
+                if (pageAlloc(&page) < 0)
+                {
+                    tf->a0 = -1;
+                    return;
+                }
+                if (pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT) < 0)
+                {
+                    tf->a0 = -1;
+                    return;
+                }
+            }
+            else
+            {
+                panic("Syscall brk remap at 0x%x\n", start);
+            }
+            start += PAGE_SIZE;
+        }
+        p->brkHeapTop = addr;
+        tf->a0 = 0;
+        return;
+    }
 }
-void syscallSetBrk()
-{
-}
+
+/**
+ * @brief mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset)
+ * 将文件或设备映射到内存中
+ * addr:
+ *  NULL: 自动申请空余的空间
+ * prot:
+ *  PROT_READ: 可读
+ *  PROT_WRITE: 可写
+ *  (PROT_EXEC): 可运行
+ * flags:
+ *  MAP_FILE: useless
+ *  MAP_SHARED: 改动需要写回到文件
+ *  MAP_PRIVATE: 改动不需要写回到文件
+ *  (MAP_ANONYMOUS): 不读取文件
+ * return:
+ */
 void syscallMapMemory()
 {
+    Trapframe *tf = getHartTrapFrame();
+    u64 addr, length, prot, flags, offset;
+    if ((argaddr(0, &addr) < 0)
+        || (argaddr(1, &length) < 0)
+        || (argaddr(2, &prot) < 0)
+        || (argaddr(3, &flags) < 0)
+        || (argaddr(5, &offset) < 0))
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    if (length == 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    u64 perm = 0;
+    if (PROT_EXEC(prot))
+        perm |= PTE_EXECUTE_BIT | PTE_READ_BIT;
+    if (PROT_READ(prot))
+        perm |= PTE_READ_BIT;
+    if (PROT_WRITE(prot))
+        perm |= PTE_WRITE_BIT | PTE_READ_BIT;
+
+    /* TODO */
+    // tf->a0 = do_mmap(addr, length, perm, flags, fd, offset);
+    // 将 fd 从 offset 开始长度为 length 的块以 perm 权限映射到
+    // 自定的位置
+
+    Process *p = myProcess();
+    int alloc = (addr = NULL);
+    if (alloc == 0)
+    {
+        panic("Syscall mmap can't handle addr(0x%x) != 0", addr);
+    }
+    u64 start = p->mmapHeapTop; // mmapHeapTop 必然是页对齐的
+    u64 end = ALIGN_UP(start + length, PAGE_SIZE);
+    if (end > USER_MMAP_HEAP_TOP)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    p->mmapHeapTop = end;
+    while (start < end)
+    {
+        u64 *pte = NULL;
+        Page *page = pageLookup(p->pgdir, start, &pte);
+        if (page == NULL)
+        {
+            if (pageAlloc(&page) < 0)
+            {
+                tf->a0 = -1;
+                return;
+            }
+            if (pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT) < 0)
+            {
+                tf->a0 = -1;
+                return;
+            }
+        }
+        else
+        {
+            // 可以考虑 overwrite 或者返回 -1
+            panic("Syscall mmap remap at 0x%x\n", start);
+        }
+        start += PAGE_SIZE;
+    }
+
+    if (MAP_ANONYMOUS(flags))
+    {
+        tf->a0 = addr;
+        return;
+    }
+    int fd;
+    File *file;
+    if (argfd(4, &fd, &file) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    if (MAP_SHARED(flags))
+    {
+        /* TODO */
+        tf->a0 = addr;
+        return;
+    }
+    if (MAP_PRIVATE(flags))
+    {
+        /* TODO */
+        tf->a0 = addr;
+        return;
+    }
+    tf->a0 = -1;
+    return;
 }
+
+/**
+ * @brief munmap(addr, length)
+ * 将文件或设备取消映射到内存中
+ * addr:
+ *
+ */
 void syscallUnMapMemory()
 {
+    Trapframe *tf = getHartTrapFrame();
+    u64 addr, length;
+    if ((argaddr(0, &addr) < 0) || (argaddr(1, &length) < 0))
+    {
+        tf->a0 = -1;
+        return;
+    }
+    if ((addr & (PAGE_SIZE - 1))) // 返回的 addr 应该是按页对齐的（和 mmap 一致）
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    u64 start = addr; // mmapHeapTop 必然是页对齐的
+    u64 end = ALIGN_UP(start + length, PAGE_SIZE);
+    if (end > USER_MMAP_HEAP_TOP)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    Process *p = myProcess();
+    while (start < end)
+    {
+        if (pageRemove(p->pgdir, start) < 0)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        start += PAGE_SIZE;
+    }
+    tf->a0 = 0;
+    return;
 }
 
 #define MAX_PATH_LEN 128

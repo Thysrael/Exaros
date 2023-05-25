@@ -28,6 +28,23 @@ int putchar(int c)
     return syscall(4, c);
 }
 
+int puts(const char *s)
+{
+    // char byte = c;
+    // return write(stdout, &byte, 1);
+    // SYSCALL_PUTCHAR = 4
+    int r;
+    while (*s != 0)
+    {
+        if ((r = putchar(*s)) < 0)
+        {
+            return r;
+        }
+        s++;
+    }
+    return 0;
+}
+
 void printf(const char *fmt, ...)
 {
     va_list ap;
