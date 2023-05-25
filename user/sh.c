@@ -260,13 +260,13 @@ void execute_command(Command command, int fd_in, int fd_out)
             if (command.file_out)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
-                int out = open(command.file_out, O_RDWR | O_CREATE_GPP | O_TRUNC);
+                int out = open(command.file_out, O_RDWR | O_CREATE | O_TRUNC);
                 dup2(out, STDOUT);
             }
             else if (command.file_append)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
-                int append = open(command.file_append, O_WRONLY | O_CREATE_GPP | O_APPEND);
+                int append = open(command.file_append, O_WRONLY | O_CREATE | O_APPEND);
                 dup2(append, STDOUT);
             }
             else if (fd_out > 0)

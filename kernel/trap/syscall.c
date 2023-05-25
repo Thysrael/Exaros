@@ -299,8 +299,8 @@ void syscallOpenAt(void)
     }
 
     DirMeta *entryPoint;
-    // 如果是创建一个文件，那么勇 metaCreate
-    if (flags & O_CREATE_GLIBC)
+    // 如果是创建一个文件，那么用 metaCreate
+    if (flags & O_CREATE)
     {
         entryPoint = metaCreate(startFd, path, T_FILE, mode);
         if (entryPoint == NULL)
@@ -511,7 +511,7 @@ void syscallDevice(void)
     int major = tf->a0;
     struct File *f;
 
-    if (omode & O_CREATE_GLIBC)
+    if (omode & O_CREATE)
     {
         panic("dev file on FAT");
     }
