@@ -1,8 +1,7 @@
-#include "../include/stddef.h"
-#include "../include/stdio.h"
-#include "../include/syscall.h"
-#include <unistd.h>
-#include "lib/syscall.h"
+#include "stddef.h"
+#include "stdio.h"
+#include "unistd.h"
+#include "syscall.h"
 
 #define BUF_SIZE 256
 #define IsDigit(x) (((x) >= '0') && ((x) <= '9'))
@@ -23,9 +22,10 @@ int getchar()
 
 int putchar(int c)
 {
-    //     char byte = c;
+    // char byte = c;
     // return write(stdout, &byte, 1);
-    return syscall(SYSCALL_PUTCHAR, c);
+    // SYSCALL_PUTCHAR = 4
+    return syscall(4, c);
 }
 
 void printf(const char *fmt, ...)

@@ -1,6 +1,8 @@
 #ifndef __STDIO_H__
 #define __STDIO_H__
 
+#include "stddef.h"
+
 #define STDIN 0
 #define STDOUT 1
 #define STDERR 2
@@ -18,6 +20,8 @@
 #define stdin STDIN
 #define stdout STDOUT
 #define stderr STDERR
+
+#define EOF_ASCII 4
 
 #define va_start(ap, last) (__builtin_va_start(ap, last))
 #define va_arg(ap, type) (__builtin_va_arg(ap, type))

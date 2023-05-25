@@ -2,7 +2,6 @@
 #define __SYSCALL_H__
 
 #include "arch/riscv/syscall_arch.h"
-#include "../../include/syscall.h"
 
 #ifndef __scc
 #define __scc(X) ((long)(X))
