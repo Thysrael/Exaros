@@ -808,6 +808,21 @@ void syscallPutString()
 
 void syscallWait()
 {
+    Trapframe *trapframe = getHartTrapFrame();
+    Process *process;
+    int ret, ec = trapframe->a0;
+
+    if ((ret = pid2Process(0, &process, 1)) < 0)
+    {
+        panic("Process exit error\n");
+        return;
+    }
+
+    // 为啥要 << 8?
+    process->retValue = (ec << 8); // todo
+    processDestory(process);
+    // will not reach here
+    panic("sycall exit error");
 }
 
 void syscallExit()
