@@ -1,8 +1,6 @@
 #include "unistd.h"
 
-char *syscallList[] = {"getpid", "getppid", "dup", "exit", "yield", "pipe", "times", "gettimeofday", "sleep", "dup2",
-                       "getcwd", "open", "read", "write", "close", "execve", "chdir", "waitpid", "brk", "wait", "fork", "mkdir_",
-                       "openat", "fstat", "mmap", "munmap", "clone", "mount", "umount", "unlink", "getdents", "uname", "sh"};
+char *syscallList[] = {"sh"};
 
 char *argv[] = {NULL};
 
