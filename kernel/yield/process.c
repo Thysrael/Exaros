@@ -410,7 +410,7 @@ void yield()
             LIST_REMOVE(process, scheduleLink);
             count = process->priority;
         }
-        // printk("finding a process to yield... %d, %d\n", count, process->state);
+        // printk("finding a process to yield... %d, %d, %d\n", count, process->state, (int)intr_get());
     }
     count--;
     processTimeCount[hartId] = count;
