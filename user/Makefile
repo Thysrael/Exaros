@@ -1,7 +1,7 @@
 INCLUDES	:=	-I./include
 USER_LIB	:=	crt.o main.o syscall.o print.o string.o 
 # 如果希望拷到磁盘中，则需要无后缀文件名，否则只需要 x 即可嵌入内核
-USER_TARGET	:=	processA.x processB.x processC.x sh.x processA processB sh
+USER_TARGET	:=	processA.x processB.x processC.x sh.x syscallTest.x processA processB sh
 BINTOC		:=	../utility/bintoc
 MOUNT_DIR	:=	./target
 
