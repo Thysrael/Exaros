@@ -3,6 +3,7 @@
 #include <mem_layout.h>
 #include <memory.h>
 #include <string.h>
+#include <debug.h>
 #include <process.h>
 #include <trap.h>
 #include <types.h>
@@ -128,13 +129,10 @@ int handleInterrupt()
  */
 void kernelHandler()
 {
-    u64 scause = readScause();
-    u64 stval = readStval();
     u64 sepc = readSepc();
-    u64 sip = readSip();
     u64 sstatus = readSstatus();
 
-    printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, sepc, sip);
+    CNX_DEBUG("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
 
     // Trapframe *trapframe = getHartTrapFrame();
 
@@ -171,7 +169,6 @@ void kernelHandler()
         break;
     }
 
-    printk("helloooo\n");
     writeSepc(sepc);
     writeSstatus(sstatus);
 }
@@ -186,17 +183,12 @@ void userHandler()
 {
     u64 scause = readScause();
     u64 stval = readStval();
-    u64 sepc = readSepc();
-    u64 sip = readSip();
     Trapframe *tf = getHartTrapFrame();
     u64 hartId = getTp();
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    if (0)
-    {
-        printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, sepc, sip);
-    }
+    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, readSepc(), readSip());
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)

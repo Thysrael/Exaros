@@ -358,9 +358,10 @@ void processRun(Process *p)
             initRootFileSystem();
             // setNextTimeout();
         }
-        // else
-        // {
-        // }
+        else
+        {
+            setNextTimeout();
+        }
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
         memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
