@@ -1,4 +1,5 @@
 #include "unistd.h"
+#include "stdio.h"
 
 char *syscallList[] = {"sh"};
 
@@ -11,6 +12,7 @@ char *argp[] = {NULL};
 
 int main()
 {
+    printf("hello, test.\n");
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         int pid = fork();
