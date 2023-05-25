@@ -57,4 +57,5 @@ void _assert_(const char *, const char *, int, const char *, u64);
         }                                        \
     } while (0)
 
+void consoleInit();
 #endif /* _DRIVER_H_ */
