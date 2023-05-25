@@ -351,6 +351,7 @@ void processRun(Process *p)
     }
     else
     {
+        // 在此处初始化文件系统，是因为初始化需要 sleep，而 sleep 需要考虑进程号
         if (first)
         {
             first = 0;

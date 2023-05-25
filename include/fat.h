@@ -119,5 +119,6 @@ void metaStat(DirMeta *meta, struct kstat *st);
 DirMeta *metaName(int fd, char *path, bool jump);
 DirMeta *metaNameDir(int fd, char *path, char *name);
 void loadDirMetas(FileSystem *fs, DirMeta *parent);
+void dumpDirMetas(FileSystem *fs, DirMeta *parent);
 int fatInit(FileSystem *fs);
 #endif

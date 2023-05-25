@@ -497,6 +497,182 @@ static DirMeta *dirlookup(DirMeta *parentDir, char *filename)
     return NULL;
 }
 
+static void generateShortName(char *shortname, char *name)
+{
+    static char illegal[] = {
+        '+', ',', ';', '=',
+        '[', ']', 0}; // these are legal in l-n-e but not s-n-e
+    int i = 0;
+    char c, *p = name;
+    for (int j = strlen(name) - 1; j >= 0; j--)
+    {
+        if (name[j] == '.')
+        {
+            p = name + j;
+            break;
+        }
+    }
+    while (i < CHAR_SHORT_NAME && (c = *name++))
+    {
+        if (i == 8 && p)
+        {
+            if (p + 1 < name)
+            {
+                break;
+            } // no '.'
+            else
+            {
+                name = p + 1, p = 0;
+                continue;
+            }
+        }
+        if (c == ' ')
+        {
+            continue;
+        }
+        if (c == '.')
+        {
+            if (name > p)
+            { // last '.'
+                memset(shortname + i, ' ', 8 - i);
+                i = 8, p = 0;
+            }
+            continue;
+        }
+        if (c >= 'a' && c <= 'z')
+        {
+            c += 'A' - 'a';
+        }
+        else
+        {
+            if (strchr(illegal, c) != NULL)
+            {
+                c = '_';
+            }
+        }
+        shortname[i++] = c;
+    }
+    while (i < CHAR_SHORT_NAME)
+    {
+        shortname[i++] = ' ';
+    }
+}
+
+/**
+ * @brief 长目录项的校验码
+ *
+ * @param shortname
+ * @return u8 校验码
+ */
+static u8 calChecksum(uchar *shortname)
+{
+    u8 sum = 0;
+    for (int i = CHAR_SHORT_NAME; i != 0; i--)
+    {
+        sum = ((sum & 1) ? 0x80 : 0) + (sum >> 1) + *shortname++;
+    }
+    return sum;
+}
+
+/**
+ * @brief 产生一组 FAT 标准的目录项，并写回磁盘
+ *
+ * @param dirMeta 目录 meta
+ * @param childMeta 文件 meta
+ * @param off 目录项在 FAT 目录文件中的偏移
+ * @return 即将写的 offset（也就是 offset 前全部写完，下一个条目该写 offset 了）
+ */
+static int makeDentry(DirMeta *dirMeta, DirMeta *childMeta, u32 off)
+{
+    if (!(dirMeta->attribute & ATTR_DIRECTORY))
+        panic("makeDentry: not dir");
+    if (off % sizeof(Dentry))
+        panic("makeDentry: not aligned");
+
+    assert(dirMeta->fileSystem == childMeta->fileSystem);
+    FileSystem *fs = childMeta->fileSystem;
+    Dentry de;
+    memset(&de, 0, sizeof(de));
+    if (off <= 32)
+    {
+        // 分别对应 . 和 ..
+        if (off == 0)
+        {
+            strncpy(de.sne.name, ".          ", sizeof(de.sne.name));
+        }
+        else
+        {
+            strncpy(de.sne.name, "..         ", sizeof(de.sne.name));
+        }
+        de.sne.attr = ATTR_DIRECTORY;
+        de.sne.fst_clus_hi =
+            (u16)(childMeta->firstClus >> 16);                     // first clus high 16 bits
+        de.sne.fst_clus_lo = (u16)(childMeta->firstClus & 0xffff); // low 16 bits
+        de.sne.file_size = 0;                                      // filesize is updated in eupdate()
+        de.sne._nt_res = childMeta->reserve;
+        off = relocClus(fs, dirMeta, off, 1);
+        rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off, sizeof(de));
+    }
+    else
+    {
+        int entcnt = (strlen(childMeta->filename) + CHAR_LONG_NAME - 1) / CHAR_LONG_NAME; // count of l-n-entries, rounds up
+        char shortname[CHAR_SHORT_NAME + 1];
+        memset(shortname, 0, sizeof(shortname));
+        generateShortName(shortname, childMeta->filename);
+        de.lne.checksum = calChecksum((uchar *)shortname);
+        de.lne.attr = ATTR_LONG_NAME;
+        for (int i = entcnt; i > 0; i--)
+        {
+            if ((de.lne.order = i) == entcnt)
+            {
+                de.lne.order |= LAST_LONG_ENTRY;
+            }
+            char *p = childMeta->filename + (i - 1) * CHAR_LONG_NAME;
+            u8 *w = (u8 *)de.lne.name1;
+            int end = 0;
+            for (int j = 1; j <= CHAR_LONG_NAME; j++)
+            {
+                if (end)
+                {
+                    *w++ = 0xff; // on k210, unaligned reading is illegal
+                    *w++ = 0xff;
+                }
+                else
+                {
+                    if ((*w++ = *p++) == 0)
+                    {
+                        end = 1;
+                    }
+                    *w++ = 0;
+                }
+                switch (j)
+                {
+                case 5:
+                    w = (u8 *)de.lne.name2;
+                    break;
+                case 11:
+                    w = (u8 *)de.lne.name3;
+                    break;
+                }
+            }
+            u32 off2 = relocClus(fs, dirMeta, off, 1);
+            rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off2, sizeof(de));
+            off += sizeof(de);
+        }
+        memset(&de, 0, sizeof(de));
+        strncpy(de.sne.name, shortname, sizeof(de.sne.name));
+        de.sne.attr = childMeta->attribute;
+        de.sne.fst_clus_hi =
+            (u16)(childMeta->firstClus >> 16);                     // first clus high 16 bits
+        de.sne.fst_clus_lo = (u16)(childMeta->firstClus & 0xffff); // low 16 bits
+        de.sne.file_size = childMeta->fileSize;                    // filesize is updated in eupdate()
+        de.sne._nt_res = childMeta->reserve;
+        off = relocClus(fs, dirMeta, off, 1);
+        rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off, sizeof(de));
+    }
+    return off += sizeof(de);
+}
+
 /**
  * @brief 在指定目录下创建具有指定属性和文件名的文件
  *
@@ -534,6 +710,7 @@ DirMeta *metaAlloc(DirMeta *parent, char *name, int attr)
 
     child->fileSize = 0;
     child->firstClus = 0;
+    // 这是因为文件大小是 0 ，所以并不对应 inode
     metaFreeInode(child);
     child->parent = parent;
     // 头插法
@@ -929,7 +1106,7 @@ static void readDentryInfo(DirMeta *meta, Dentry *entry)
 }
 
 /**
- * @brief 读出 dirMeta 对应偏移偏移下的特定 childMeta，并计算对应的 dentry 的数量
+ * @brief 根据 dirMeta 对应偏移 off 读出特定 childMeta，并计算对应的 dentry 的数量
  *
  * @param dirMeta 目录 meta
  * @param childMeta 子文件 meta
@@ -1034,6 +1211,7 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
             loadDirMetas(fs, meta);
         }
         dirMetaAlloc(&meta);
+        // 一个 dentry 是 32 bit
         off += count << 5;
     }
     // 释放一下
@@ -1130,7 +1308,7 @@ int fatInit(FileSystem *fs)
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
-        printk("sec: %d\n", sec);
+        // printk("sec: %d\n", sec);
         for (u32 j = 0; j < entryPerSec; j++)
         {
             if (((u32 *)(b->data))[j])
@@ -1147,4 +1325,34 @@ int fatInit(FileSystem *fs)
 
     printk("[FAT32 init]fat init end\n");
     return 0;
+}
+
+/**
+ * @brief 在 OS 结束的时候，需要将所有的目录 Meta 导出到 FAT 磁盘上。
+ *
+ * @param fs 文件系统
+ * @param curMeta 当前目录文件 meta
+ */
+void dumpDirMetas(FileSystem *fs, DirMeta *curMeta)
+{
+    u32 off = 0;
+    // generate .
+    off = makeDentry(curMeta, curMeta, off);
+    // generate ..，对于根目录 .. 和 . 是一样的
+    if (curMeta == &curMeta->fileSystem->root)
+    {
+        off = makeDentry(curMeta, curMeta, off);
+    }
+    else
+    {
+        off = makeDentry(curMeta, curMeta->parent, off);
+    }
+    for (DirMeta *childMeta = curMeta->firstChild; childMeta; childMeta = childMeta->nextBrother)
+    {
+        off = makeDentry(curMeta, childMeta, off);
+        if (childMeta->attribute & ATTR_DIRECTORY)
+        {
+            dumpDirMetas(fs, childMeta);
+        }
+    }
 }

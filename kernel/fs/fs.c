@@ -53,7 +53,7 @@ void initRootFileSystem()
     // test meta
     void testMeta();
     testMeta();
-    // assert(1 == 2);
+    assert(1 == 2);
     // 创建 dev 文件夹
     DirMeta *meta = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);
     // vda1 是系统分区，也就是操作系统所在的分区。通常被挂载到根目录 / 下
