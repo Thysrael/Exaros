@@ -35,10 +35,20 @@
 		"syscall_lib.h": "c",
 		"lib_main.h": "c",
 		"string.h": "c",
-		"fs.h": "c"
+		"fs.h": "c",
+		"mmap.h": "c",
+		"stdlib.h": "c"
 	},
-	"doxdocgen.file.fileOrder": ["file", "brief", "date", "empty", "copyright"],
-	"doxdocgen.file.copyrightTag": ["@copyright Copyright (c) {year}"],
+	"doxdocgen.file.fileOrder": [
+		"file",
+		"brief",
+		"date",
+		"empty",
+		"copyright"
+	],
+	"doxdocgen.file.copyrightTag": [
+		"@copyright Copyright (c) {year}"
+	],
 	"doxdocgen.generic.briefTemplate": "@brief {text}",
 	"multiCommand.commands": [
 		{

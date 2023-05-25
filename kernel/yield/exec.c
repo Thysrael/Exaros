@@ -72,6 +72,9 @@ u64 exec(char *path, char **argv)
 
     u64 *oldPageTable = p->pgdir;
 
+    p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
+    p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+
     // 为新进程申请一个页表
     int r = allocPgdir(&page);
     if (r < 0)
@@ -79,7 +82,6 @@ u64 exec(char *path, char **argv)
         panic("pgdir alloc error\n");
         return r;
     }
-    p->mmapHeapBottom = USER_HEAP_BOTTOM;
     pagetable = (u64 *)page2PA(page);
     extern char trampoline[];
     extern char trapframe[];

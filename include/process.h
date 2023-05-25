@@ -152,8 +152,8 @@ typedef struct Process
     u64 currentKernelSp;
     int reason;
     u32 retValue; // 进程返回值
-    // u64 brkHeapBottom;
-    u64 mmapHeapBottom;
+    u64 brkHeapTop;
+    u64 mmapHeapTop;
     DirMeta *execFile;
     // SignalSet blocked;
     // SignalSet pending;
