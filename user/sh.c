@@ -1,9 +1,17 @@
+/**
+ * @file sh.c
+ * @brief 用户终端
+ * Copy from tsh(qs)
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include "stddef.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 #include "unistd.h"
-#include "file.h"
 
 #define MAX_TOKENS 128
 #define MAX_ARGS 64
@@ -125,6 +133,10 @@ void readline(char *buf, size_t n)
 
 int main()
 {
+    dev(1, O_RDWR);
+    dup(0);
+    dup(0);
+
     print_head();
     // while (1)
     // {

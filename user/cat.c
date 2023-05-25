@@ -1,9 +1,16 @@
+/**
+ * @file cat.c
+ * @brief 用户进程 cat
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include "stddef.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 #include "unistd.h"
-#include "file.h"
 
 char buf[512];
 
