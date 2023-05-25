@@ -989,20 +989,31 @@ void syscallMapMemory()
         tf->a0 = -1;
         return;
     }
-    if (MAP_SHARED(flags))
+
+    // 忽略 MAP_SHARED & MAP_PRIVATE
+    // 均当作 MAP_PRIVATE 处理
+    file->off = offset;
+    if (fileread(file, true, addr, length) < 0)
     {
-        /* TODO */
-        tf->a0 = addr;
+        tf->a0 = -1;
         return;
     }
-    if (MAP_PRIVATE(flags))
-    {
-        /* TODO */
-        tf->a0 = addr;
-        return;
-    }
-    tf->a0 = -1;
+    tf->a0 = addr;
     return;
+    // if (MAP_SHARED(flags))
+    // {
+    //     /* TODO */
+    //     tf->a0 = addr;
+    //     return;
+    // }
+    // if (MAP_PRIVATE(flags))
+    // {
+    //     /* TODO */
+    //     tf->a0 = addr;
+    //     return;
+    // }
+    // tf->a0 = -1;
+    // return;
 }
 
 /**
