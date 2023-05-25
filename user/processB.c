@@ -6,6 +6,7 @@ int main(int argc, char **argv)
     {
         putchar('@');
     }
+    putchar('\n');
     while (1)
         ;
     return 0;

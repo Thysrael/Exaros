@@ -755,7 +755,7 @@ DirMeta *metaCreate(int fd, char *path, short type, int mode)
     {
         return NULL;
     }
-    printk("parentDir filename: %s\n", parentDir->filename);
+
     // 虚拟文件权限 mode 转 fat 格式的权限 mode
     if (type == T_DIR)
     {
@@ -1205,7 +1205,6 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
         // 头插法
         meta->nextBrother = parent->firstChild;
         parent->firstChild = meta;
-        printk("name: %s, parent: %s\n", meta->filename, parent->filename);
         // 如果 meta 是目录文件，就递归处理
         if ((meta->attribute & ATTR_DIRECTORY) && (off > 32 || parent == &fs->root))
         {
@@ -1227,7 +1226,7 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
  */
 int fatInit(FileSystem *fs)
 {
-    printk("[FAT32 init]fat init begin\n");
+    printk("[FAT32 init] fat init begin\n");
     Buf *b = fs->read(fs, 0);
     if (b == 0)
     {
@@ -1258,17 +1257,17 @@ int fatInit(FileSystem *fs)
     brelse(b);
 
     // 打印 superblock 信息
-    printk("[FAT32 init]bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
-    printk("[FAT32 init]secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
-    printk("[FAT32 init]rsvdSecCnt: %d\n", fs->superBlock.BPB.rsvdSecCnt);
-    printk("[FAT32 init]numFATs: %d\n", fs->superBlock.BPB.numFATs);
-    printk("[FAT32 init]totSec: %d\n", fs->superBlock.BPB.totSec);
-    printk("[FAT32 init]FATsz: %d\n", fs->superBlock.BPB.FATsz);
-    printk("[FAT32 init]rootClus: %d\n", fs->superBlock.BPB.rootClus);
-    printk("[FAT32 init]firstDataSec: %d\n", fs->superBlock.firstDataSec);
-    printk("[FAT32 init]dataSecCnt: %d\n", fs->superBlock.dataSecCnt);
-    printk("[FAT32 init]dataClusCnt: %d\n", fs->superBlock.dataClusCnt);
-    printk("[FAT32 init]bytsPerClus: %d\n", fs->superBlock.bytsPerClus);
+    printk("[FAT32 init] bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
+    printk("[FAT32 init] secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
+    printk("[FAT32 init] rsvdSecCnt: %d\n", fs->superBlock.BPB.rsvdSecCnt);
+    printk("[FAT32 init] numFATs: %d\n", fs->superBlock.BPB.numFATs);
+    printk("[FAT32 init] totSec: %d\n", fs->superBlock.BPB.totSec);
+    printk("[FAT32 init] FATsz: %d\n", fs->superBlock.BPB.FATsz);
+    printk("[FAT32 init] rootClus: %d\n", fs->superBlock.BPB.rootClus);
+    printk("[FAT32 init] firstDataSec: %d\n", fs->superBlock.firstDataSec);
+    printk("[FAT32 init] dataSecCnt: %d\n", fs->superBlock.dataSecCnt);
+    printk("[FAT32 init] dataClusCnt: %d\n", fs->superBlock.dataClusCnt);
+    printk("[FAT32 init] bytsPerClus: %d\n", fs->superBlock.bytsPerClus);
 
     // make sure that bytsPerSec has the same value with BUFFER_SIZE
     if (BUFFER_SIZE != fs->superBlock.BPB.bytsPerSec)
@@ -1323,7 +1322,7 @@ int fatInit(FileSystem *fs)
     // 构造 dirMetas
     loadDirMetas(fs, &fs->root);
 
-    printk("[FAT32 init]fat init end\n");
+    printk("[FAT32 init] fat init end\n");
     return 0;
 }
 
