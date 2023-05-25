@@ -1,3 +1,11 @@
+/**
+ * @file print.c
+ * @brief stdio.h print 相关函数实现
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include "stddef.h"
 #include "stdio.h"
 #include "unistd.h"

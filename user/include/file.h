@@ -1,3 +1,14 @@
+/**
+ * @file file.h
+ * @brief 用户读写文件需要的宏
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
+
+#ifndef _USER_FILE_H_
+#define _USER_FILE_H_
+
 #define O_RDONLY 0x000
 #define O_WRONLY 0x001
 #define O_RDWR 0x002
@@ -46,3 +57,5 @@
 // #define	_FNONBLOCK	0x4000	/* non blocking I/O (POSIX style) */
 // #define	_FNDELAY	_FNONBLOCK	/* non blocking I/O (4.2 style) */
 // #define	_FNOCTTY	0x8000	/* don't assign a ctty on this open */
+
+#endif

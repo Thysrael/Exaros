@@ -37,11 +37,11 @@ $(modules):
 fat: $(user_dir)
 	if [ ! -f "$(fs_img)" ]; then \
 		echo "making fs image..."; \
-		dd if=/dev/zero of=$(fs_img) bs=4M count=1; fi
+		dd if=/dev/zero of=$(fs_img) bs=8M count=5; fi
 	mkfs.vfat -F 32 $(fs_img); 
 	@sudo mount $(fs_img) $(mnt_path)
 	@sudo cp -r user/target/* $(mnt_path)/
-	sudo cp -r testcase/** $(mnt_path)/
+	@sudo cp -r testcase/** $(mnt_path)/
 	@sudo umount $(mnt_path)
 
 umount:

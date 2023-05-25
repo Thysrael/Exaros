@@ -1,3 +1,11 @@
+/**
+ * @file string.c
+ * @brief stdio.h 相关函数实现
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include "stddef.h"
 #include "unistd.h"
 #include "string.h"

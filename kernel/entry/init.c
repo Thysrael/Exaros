@@ -59,6 +59,7 @@ void main(u64 hartId)
     clearBSS();
     printk("Hello, Exaros!\n");
 
+    consoleInit();
     memoryInit();
 
     processInit();

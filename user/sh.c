@@ -1,9 +1,17 @@
+/**
+ * @file sh.c
+ * @brief 用户终端
+ * Copy from tsh(qs)
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #include "stddef.h"
 #include "stdio.h"
 #include "stdlib.h"
 #include "string.h"
 #include "unistd.h"
-#include "file.h"
 
 #define MAX_TOKENS 128
 #define MAX_ARGS 64
@@ -125,6 +133,10 @@ void readline(char *buf, size_t n)
 
 int main()
 {
+    dev(1, O_RDWR);
+    dup(0);
+    dup(0);
+
     print_head();
     // while (1)
     // {
@@ -248,13 +260,13 @@ void execute_command(Command command, int fd_in, int fd_out)
             if (command.file_out)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
-                int out = open(command.file_out, O_RDWR | O_CREATE_GPP | O_TRUNC);
+                int out = open(command.file_out, O_RDWR | O_CREATE | O_TRUNC);
                 dup2(out, STDOUT);
             }
             else if (command.file_append)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
-                int append = open(command.file_append, O_WRONLY | O_CREATE_GPP | O_APPEND);
+                int append = open(command.file_append, O_WRONLY | O_CREATE | O_APPEND);
                 dup2(append, STDOUT);
             }
             else if (fd_out > 0)

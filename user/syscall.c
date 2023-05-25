@@ -1,5 +1,11 @@
-#ifndef _USER_SYSCALL_C_
-#define _USER_SYSCALL_C_
+/**
+ * @file syscall.c
+ * @brief unistd.h 相关函数实现
+ * 提供用户封装好的 syscall
+ * @date 2023-05-25
+ *
+ * @copyright Copyright (c) 2023
+ */
 
 #include "stddef.h"
 #include "stdio.h"
@@ -234,4 +240,7 @@ int umount(const char *special)
     return syscall(SYS_umount2, special, 0);
 }
 
-#endif
+int dev(int fd, int mode)
+{
+    return syscall(SYS_dev, fd, mode);
+}

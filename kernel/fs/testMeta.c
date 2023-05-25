@@ -10,7 +10,7 @@ char testContentToRead[10] = {0};
 void testMeta()
 {
     printk("[testMeta] testing fat.......\n");
-    DirMeta *testfile = metaCreate(AT_FDCWD, "/testfile", T_FILE, O_CREATE_GLIBC | O_RDWR);
+    DirMeta *testfile = metaCreate(AT_FDCWD, "/testfile", T_FILE, O_CREATE | O_RDWR);
     if (testfile == NULL)
     {
         panic("[testMeta] create file error\n");

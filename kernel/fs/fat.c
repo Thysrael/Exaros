@@ -154,15 +154,17 @@ static u32 allocClus(FileSystem *fs)
 {
     // 获得位图地址
     u64 *clusterBitmap = (u64 *)getFileSystemClusterBitmap(fs);
-    // 计算 fs 中簇的总数
+    // 计算 fs 中簇的总数，通过计算 FAT 表中有多少个表项获得
     int totalClusterNumber = fs->superBlock.BPB.FATsz * fs->superBlock.BPB.bytsPerSec / sizeof(u32);
+    // 一个 clusterBitmap[i] 有 64 bit，可以看做将 64 个 cluster 为一组，clusterBitmap[i] 是第 i 组
     for (int i = 0; i < (totalClusterNumber / 64); i++)
     {
         if (~clusterBitmap[i])
         {
+            // bit 可以看做在第 i 组第 bit 个 cluster 是空闲的
             int bit = LOW_BIT64(~clusterBitmap[i]);
             clusterBitmap[i] |= (1UL << bit);
-            // 找到没有被分配的簇
+            // 找到空闲的簇号，就是 i * 64 + bit 的意思
             int cluster = (i << 6) | bit;
             Buf *b;
             u32 entryPerSec = fs->superBlock.BPB.bytsPerSec / sizeof(u32);
@@ -191,6 +193,8 @@ static void freeClus(FileSystem *fs, u32 cluster)
 {
     writeFat(fs, cluster, 0);
     u64 *clusterBitmap = (u64 *)getFileSystemClusterBitmap(fs);
+    // cluster >> 6 == cluster / 64，此时计算的是 cluster 的组号
+    // cluster & 63 是组内编号，将其清空
     clusterBitmap[cluster >> 6] &= ~(1UL << (cluster & 63));
 }
 
@@ -1299,12 +1303,12 @@ int fatInit(FileSystem *fs)
             panic("");
         }
         cnt += PAGE_SIZE;
-    } while (cnt * 8 < totalClusterNumber);
+    } while (cnt * sizeof(u8) < totalClusterNumber);
 
     // 填写 cluster bitmap
     u32 sec = fs->superBlock.BPB.rsvdSecCnt;
     u32 entryPerSec = fs->superBlock.BPB.bytsPerSec / sizeof(u32);
-
+    // 遍历读取 FAT 表的所有扇区，本质是遍历所有的 FAT 表项，并根据是否为 0 标记 bitmap
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
