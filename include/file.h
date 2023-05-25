@@ -14,6 +14,8 @@
 #include "pipe.h"
 
 #define NDEV 4
+#define DEV_SD 0
+#define DEV_CONSOLE 1
 #define NFILE 512 // Number of fd that all process can open
 
 // map major device number to device functions.
