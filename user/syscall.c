@@ -234,4 +234,9 @@ int umount(const char *special)
     return syscall(SYS_umount2, special, 0);
 }
 
+int dev(int fd, int mode)
+{
+    return syscall(SYS_dev, fd, mode);
+}
+
 #endif
