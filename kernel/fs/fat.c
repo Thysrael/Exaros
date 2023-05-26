@@ -1303,7 +1303,7 @@ int fatInit(FileSystem *fs)
             panic("");
         }
         cnt += PAGE_SIZE;
-    } while (cnt * sizeof(u8) < totalClusterNumber);
+    } while (cnt * 8 < totalClusterNumber);
 
     // 填写 cluster bitmap
     u32 sec = fs->superBlock.BPB.rsvdSecCnt;
