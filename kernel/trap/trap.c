@@ -204,6 +204,7 @@ void userHandler()
         case EXCEPTION_ECALL:
             // printk("ecall\n");
             tf->epc += 4;
+            printk("a7: %d\n", tf->a7);
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:

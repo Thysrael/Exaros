@@ -498,6 +498,7 @@ void wakeup(void *channel)
 // {
 // }
 
+#define SIGCHLD 17
 /**
  * @brief 功能：创建一个子进程；
  *
@@ -510,4 +511,91 @@ void wakeup(void *channel)
  */
 void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
 {
+    Trapframe *trapframe = getHartTrapFrame();
+    if (flags != SIGCHLD)
+    {
+        // 这里写的和参考代码不一样
+        trapframe->a0 = -1;
+        return;
+    }
+    Process *process, *myprocess;
+    int hartId = getTp();
+    int r = processAlloc(&process, currentProcess[hartId]->processId);
+
+    printk("123\n");
+
+    myprocess = myProcess();
+    process->cwd = myProcess()->cwd; // when we fork, we should keep cwd
+    if (r < 0)
+    {
+        trapframe->a0 = r;
+        return;
+    }
+
+    for (int i = 0; i < NOFILE; i++)
+    {
+        if (myprocess->ofile[i])
+        {
+            filedup(myprocess->ofile[i]);
+            process->ofile[i] = myprocess->ofile[i];
+        }
+    }
+    process->priority = currentProcess[hartId]->priority;
+    memmove(&process->trapframe, trapframe, sizeof(Trapframe));
+    process->trapframe.a0 = 0;
+    if (stack != 0)
+    {
+        process->trapframe.sp = stack;
+    }
+    if (ptid != NULL)
+    {
+        copyout(currentProcess[hartId]->pgdir, ptid, (char *)&currentProcess[hartId]->processId, sizeof(u32));
+    }
+    if (ctid != NULL)
+    {
+        copyout(currentProcess[hartId]->pgdir, ctid, (char *)&process->processId, sizeof(u32));
+    }
+
+    trapframe->a0 = process->processId;
+    u64 i, j, k;
+    printk("123\n");
+    for (i = 0; i < 512; i++)
+    {
+        if (!(currentProcess[hartId]->pgdir[i] & PTE_VALID_BIT))
+        {
+            continue;
+        }
+        u64 *pa = (u64 *)PTE2PA(currentProcess[hartId]->pgdir[i]);
+        for (j = 0; j < 512; j++)
+        {
+            if (!(pa[j] & PTE_VALID_BIT))
+            {
+                continue;
+            }
+            u64 *pa2 = (u64 *)PTE2PA(pa[j]);
+            for (k = 0; k < 512; k++)
+            {
+                if (!(pa2[k] & PTE_VALID_BIT))
+                {
+                    continue;
+                }
+                u64 va = (i << 30) + (j << 21) + (k << 12);
+                if (va == TRAMPOLINE || va == TRAPFRAME)
+                {
+                    continue;
+                }
+                if (pa2[k] & PTE_WRITE_BIT)
+                {
+                    pa2[k] |= PTE_COW_BIT;
+                    pa2[k] &= ~PTE_WRITE_BIT;
+                }
+                printk("123 va:%lx\n", va);
+                pageMap(process->pgdir, va, PTE2PA(pa2[k]), PTE2PERM(pa2[k]));
+            }
+        }
+    }
+
+    LIST_INSERT_TAIL(&scheduleList[0], process, scheduleLink);
+
+    return;
 }

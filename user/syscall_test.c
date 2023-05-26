@@ -1,8 +1,7 @@
 #include "unistd.h"
+#include "stdio.h"
 
-char *syscallList[] = {"getpid", "getppid", "dup", "exit", "yield", "pipe", "times", "gettimeofday", "sleep", "dup2",
-                       "getcwd", "open", "read", "write", "close", "execve", "chdir", "waitpid", "brk", "wait", "fork", "mkdir_",
-                       "openat", "fstat", "mmap", "munmap", "clone", "mount", "umount", "unlink", "getdents", "uname", "sh"};
+char *syscallList[] = {"sh"};
 
 char *argv[] = {NULL};
 
@@ -13,11 +12,17 @@ char *argp[] = {NULL};
 
 int main()
 {
+    printf("hello, test.\n");
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         int pid = fork();
         if (pid == 0)
         {
+            putchar('p');
+            putchar('i');
+            putchar('d');
+            putchar('0');
+            putchar('\n');
             execve(syscallList[i], argv, argp);
         }
         else

@@ -4,13 +4,13 @@
 #include <riscv.h>
 
 // debug 开关
-// #define CNX_DEBUG_
+#define CNX_DEBUG_
 
 #ifdef CNX_DEBUG_
-#define CNX_DEBUG(...)                                                                              \
-    do {                                                                                            \
-        printk("[CNX_DEBUG] hartId %d at %s: %d in %s(): ", getTp(), __FILE__, __LINE__, __func__); \
-        printk(__VA_ARGS__);                                                                        \
+#define CNX_DEBUG(...)                                                     \
+    do {                                                                   \
+        printk("[CNX] at %s: %d in %s(): ", __FILE__, __LINE__, __func__); \
+        printk(__VA_ARGS__);                                               \
     } while (0)
 #else
 #define CNX_DEBUG(...)
