@@ -12,6 +12,7 @@
 #include <pipe.h>
 #include <fs.h>
 #include <mmap.h>
+#include <debug.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -177,6 +178,7 @@ void syscallWrite(void)
         return;
     }
 
+    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
 }
 
@@ -536,6 +538,7 @@ void syscallDevice(void)
     f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
     tf->a0 = fd;
+    QS_DEBUG("[syscall] Device %d open\n", fd);
     return;
 
 bad:
