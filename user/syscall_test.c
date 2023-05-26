@@ -15,20 +15,19 @@ int main()
     printf("hello, test.\n");
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
-        int pid = fork();
-        if (pid == 0)
-        {
-            putchar('p');
-            putchar('i');
-            putchar('d');
-            putchar('0');
-            putchar('\n');
-            execve(syscallList[i], argv, argp);
-        }
-        else
-        {
-            wait(0);
-        }
+        printf("test bin: %s\n", syscallList[i]);
+        execve(syscallList[i], argv, argp);
+        // int pid = fork();
+        // if (pid == 0)
+        // {
+        //     printf("%d\n", i);
+        //     printf("pid0\n");
+        //     // execve(syscallList[i], argv, argp);
+        // }
+        // else
+        // {
+        //     wait(0);
+        // }
     }
     return 0;
 }

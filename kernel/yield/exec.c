@@ -40,7 +40,11 @@ static int loadSeg(u64 *pagetable,
 
 static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
 {
-    printk("prepseg;");
+    // printk("prepseg;");
+    if (va % PAGE_SIZE != 0)
+    {
+        printk("seg va begin = 0x%lx\n", va);
+    }
     assert(va % PAGE_SIZE == 0);
     for (int i = va; i < va + filesz; i += PAGE_SIZE)
     {
@@ -51,7 +55,7 @@ static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
         pageInsert(pagetable, i, p,
                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
     }
-    printk("prepsegend;");
+    // printk("prepsegend;");
     return 0;
 }
 
@@ -64,7 +68,6 @@ static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
  */
 u64 exec(char *path, char **argv)
 {
-    printk(" exec1 ");
     int i, off;
     u64 argc, sp, ustack[MAX_ARG], stackbase;
     Ehdr elf;
@@ -79,8 +82,7 @@ u64 exec(char *path, char **argv)
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
 
-    printk(" exec2 ");
-    // 为新进程申请一个页表
+    printk("exec\n");
     int r = allocPgdir(&page);
 
     if (r < 0)
@@ -88,20 +90,22 @@ u64 exec(char *path, char **argv)
         panic("pgdir alloc error\n");
         return r;
     }
-    printk("exec3 ");
     pagetable = (u64 *)page2PA(page);
+    printk("pagetable addr = 0x%lx\n", pagetable);
+    printk("exec\n");
+
     extern char trampoline[];
     extern char trapframe[];
 
-    pageInsert(pagetable, TRAMPOLINE, pa2Page((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    pageInsert(pagetable, TRAPFRAME, pa2Page((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(pagetable, TRAMPOLINE, (u64)trampoline, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(pagetable, TRAPFRAME, (u64)trapframe, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
     if ((dm = metaName(AT_FDCWD, path, true)) == 0)
     {
         printk("find file error, path: %s\n", path);
         return -1;
     }
-    printk("exec4 ");
+    printk("exec\n");
 
     // 读 elf header
     if (metaRead(dm, 0, (u64)&elf, 0, sizeof(elf)) != sizeof(elf))
@@ -109,13 +113,13 @@ u64 exec(char *path, char **argv)
         printk("read header error\n");
         goto bad;
     }
-    printk("exec5 ");
+    printk("exec\n");
     if (!isElfFormat((u8 *)&elf))
     {
         printk("not elf format\n");
         goto bad;
     }
-
+    printk("exec\n");
     // begin map
     for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph))
     {
@@ -134,7 +138,7 @@ u64 exec(char *path, char **argv)
         if (loadSeg(pagetable, ph.vaddr, dm, ph.offset, ph.filesz) < 0)
             goto bad;
     }
-    printk("exec7 ");
+    printk("exec\n");
     sp = USER_STACK_TOP;
     stackbase = sp - PAGE_SIZE;
     if (pageAlloc(&page))
@@ -142,7 +146,7 @@ u64 exec(char *path, char **argv)
         printk("allock stack error\n");
         goto bad;
     }
-    printk("exec6 ");
+    printk("exec\n");
     pageInsert(pagetable, stackbase, page,
                PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
 
@@ -162,7 +166,7 @@ u64 exec(char *path, char **argv)
     // ustack[argc] = argc;? todo
     ustack[argc] = 0;
 
-    printk("exec8 ");
+    printk("exec\n");
     // push the array of argv[] pointers.
     sp -= (argc + 1) * sizeof(u64);
     sp -= sp % 16;
@@ -186,8 +190,8 @@ u64 exec(char *path, char **argv)
     // Commit to the user image.
     p->pgdir = pagetable;
     getHartTrapFrame()->epc = elf.entry; // initial program counter = main
-    printk("epc:: %lx");
-    getHartTrapFrame()->sp = sp;         // initial stack pointer
+    // printk("epc:: %lx");
+    getHartTrapFrame()->sp = sp; // initial stack pointer
 
     // free old pagetable
     pgdirFree(oldPageTable);

@@ -171,8 +171,8 @@ extern void userTrap();
  */
 int allocPgdir(Page **page)
 {
-    int r = pageAlloc(page);
-    if (r)
+    int r;
+    if ((r = pageAlloc(page)) < 0)
         return r;
     (*page)->ref++;
     return 0;
@@ -244,15 +244,16 @@ int setupProcess(Process *p)
     // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
     // 为每个进程开一页的内核栈
     r = pageAlloc(&page);
-    kernelPageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
-                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
+            PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
     extern char trampoline[];
     extern char trapframe[];
-    // kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
-    // kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
-    kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    // 尝试更严格的权限管理
+    // pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
+    // pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
+    pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     return 0;
 }
 
@@ -395,7 +396,7 @@ void processRun(Process *p)
  */
 void yield()
 {
-    printk("yield\n");
+    // printk("yield\n");
     int hartId = getTp();
     int count = processTimeCount[hartId];
     int point = processBelongList[hartId];
@@ -530,8 +531,6 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
     int hartId = getTp();
     int r = processAlloc(&process, currentProcess[hartId]->processId);
 
-    printk("123\n");
-
     myprocess = myProcess();
     process->cwd = myProcess()->cwd; // when we fork, we should keep cwd
     if (r < 0)
@@ -566,7 +565,6 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
 
     trapframe->a0 = process->processId;
     u64 i, j, k;
-    printk("123\n");
     for (i = 0; i < 512; i++)
     {
         if (!(currentProcess[hartId]->pgdir[i] & PTE_VALID_BIT))
@@ -597,7 +595,6 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
                     pa2[k] |= PTE_COW_BIT;
                     pa2[k] &= ~PTE_WRITE_BIT;
                 }
-                printk("123 va:%lx\n", va);
                 pageMap(process->pgdir, va, PTE2PA(pa2[k]), PTE2PERM(pa2[k]));
             }
         }
