@@ -1086,6 +1086,22 @@ void syscallUnMapMemory()
 void syscallExec()
 {
     printk("^");
+
+    // 以下四个 pagealloc 测试用，发现第四次 pagealloc 会报错， pageAlloc 在 memset 的时候会缺页
+    printk(" test*1 ");
+    Page *pp;
+    pageAlloc(&pp);
+    pageAlloc(&pp);
+    pageAlloc(&pp);
+    pageAlloc(&pp);
+    /*
+pp: 87f93000
+pp: 87fb2000
+pp: 87fb1000
+pp: 8020d000 // error
+    */
+    printk(" test*2 ");
+
     Trapframe *tf = getHartTrapFrame();
     char path[MAX_PATH_LEN], *argv[MAX_ARG];
     u64 uargv, uarg;

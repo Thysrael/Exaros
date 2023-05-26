@@ -47,6 +47,7 @@ static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
         Page *p;
         if (pageAlloc(&p) < 0)
             return -1;
+        printk("pageallocend;");
         pageInsert(pagetable, i, p,
                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
     }
@@ -81,6 +82,7 @@ u64 exec(char *path, char **argv)
     printk(" exec2 ");
     // 为新进程申请一个页表
     int r = allocPgdir(&page);
+
     if (r < 0)
     {
         panic("pgdir alloc error\n");
