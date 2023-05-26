@@ -84,6 +84,7 @@ static int fdalloc(File *f)
  */
 void syscallDup(void)
 {
+    QS_DEBUG("[syscall] dup begin.\n");
     Trapframe *tf = getHartTrapFrame();
     File *f;
     // 待复制文件描述符
@@ -92,6 +93,7 @@ void syscallDup(void)
     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
     {
         tf->a0 = -1;
+        QS_DEBUG("[syscall] dup error1.\n");
         return;
     }
 
@@ -99,11 +101,13 @@ void syscallDup(void)
     if ((fd = fdalloc(f)) < 0)
     {
         tf->a0 = -1;
+        QS_DEBUG("[syscall] dup error2.\n");
         return;
     }
 
     filedup(f);
     tf->a0 = fd;
+    QS_DEBUG("[syscall] dup end. fd = %d\n", fd);
 }
 
 /**
@@ -161,6 +165,7 @@ void syscallRead(void)
 
 void syscallWrite(void)
 {
+    QS_DEBUG("[syscall] write begin.\n");
     Trapframe *tf = getHartTrapFrame();
     File *f;
     int len = tf->a2, fd = tf->a0;
@@ -179,8 +184,8 @@ void syscallWrite(void)
         return;
     }
 
-    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
+    QS_DEBUG("[syscall] write end.\n");
 }
 
 /**
@@ -292,6 +297,7 @@ void syscallGetDirent()
  */
 void syscallOpenAt(void)
 {
+    QS_DEBUG("[syscall] openAt begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int startFd = tf->a0, flags = tf->a2, mode = tf->a3;
     char path[FAT32_MAX_PATH];
@@ -362,6 +368,7 @@ void syscallOpenAt(void)
         file->curChild = NULL;
 
     tf->a0 = fd;
+    QS_DEBUG("[syscall] openAt end. fd = %d\n", fd);
 bad:
     return;
 }
@@ -374,6 +381,7 @@ bad:
  */
 void syscallMakeDirAt(void)
 {
+    QS_DEBUG("[syscall] mkdir begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int dirFd = tf->a0, mode = tf->a2;
     char path[FAT32_MAX_PATH];
@@ -402,7 +410,7 @@ void syscallMakeDirAt(void)
     {
         goto bad;
     }
-
+    QS_DEBUG("[syscall] mkdir end.\n");
     tf->a0 = 0;
     return;
 
@@ -416,6 +424,7 @@ bad:
  */
 void syscallChangeDir(void)
 {
+    QS_DEBUG("[syscall] CWD begin.\n");
     Trapframe *tf = getHartTrapFrame();
     char path[FAT32_MAX_PATH];
     DirMeta *meta;
@@ -436,6 +445,7 @@ void syscallChangeDir(void)
 
     process->cwd = meta;
     tf->a0 = 0;
+    QS_DEBUG("[syscall] CWD end.\n");
 }
 
 /**
@@ -466,6 +476,7 @@ void syscallGetWorkDir(void)
 
 void syscallPipe(void)
 {
+    QS_DEBUG("[syscall] pipe begin\n");
     Trapframe *tf = getHartTrapFrame();
     u64 fdarray = tf->a0; // user pointer to array of two integers
     struct File *rf, *wf;
@@ -474,6 +485,7 @@ void syscallPipe(void)
 
     if (pipeNew(&rf, &wf) < 0)
     {
+        QS_DEBUG("[syscall] pipe error\n");
         goto bad;
     }
 
@@ -484,6 +496,7 @@ void syscallPipe(void)
             p->ofile[fd0] = 0;
         fileclose(rf);
         fileclose(wf);
+        QS_DEBUG("[syscall] pipe error\n");
         goto bad;
     }
 
@@ -493,10 +506,12 @@ void syscallPipe(void)
         p->ofile[fd1] = 0;
         fileclose(rf);
         fileclose(wf);
+        QS_DEBUG("[syscall] pipe error\n");
         goto bad;
     }
 
     tf->a0 = 0;
+    QS_DEBUG("[syscall] pipe end.\n");
     return;
 
 bad:

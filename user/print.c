@@ -385,3 +385,9 @@ static void print(const char *fmt, va_list ap)
         }
     }
 }
+
+void panic(char *m)
+{
+    puts(m);
+    exit(-100);
+}
