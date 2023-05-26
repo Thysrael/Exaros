@@ -1,7 +1,41 @@
 #include "unistd.h"
 #include "stdio.h"
 
-char *syscallList[] = {"brk"};
+char *syscallList[] = {
+    "brk",
+    "chdir",
+    "clone",
+    "close",
+    "dup",
+    "dup2",
+    "execve",
+    "exit",
+    "fork",
+    "fstat",
+    "getcwd",
+    "getdents",
+    "getpid",
+    "getppid",
+    "gettimeofday",
+    "mkdir_",
+    "mmap",
+    "mount",
+    "munmap",
+    "open",
+    "openat",
+    "pipe",
+    "read",
+    "sleep",
+    "test_echo",
+    "times",
+    "umount",
+    "uname",
+    "unlink",
+    "wait",
+    "waitpid",
+    "write",
+    "yield",
+};
 
 char *argv[] = {NULL};
 
