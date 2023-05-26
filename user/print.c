@@ -19,35 +19,50 @@ static void printString(char *buf, char *s, int length, int ladjust);
 static void printNum(char *buf, unsigned long u, int base, int negFlag,
                      int length, int ladjust, char padc, int upcase);
 static inline void putBuffer(const char *s);
-static void print(const char *fmt, va_list ap);
+static void fprint(const char *fmt, va_list ap, int fd);
 
 int getchar()
 {
-    char byte = 0;
-    read(stdin, &byte, 1);
+    char byte;
+    read(STDIN, &byte, 1);
     return byte;
 }
 
-int putchar(int c)
+int fgetc(int fd)
 {
-    // char byte = c;
-    // return write(stdout, &byte, 1);
-    // SYSCALL_PUTCHAR = 4
-    return syscall(4, c);
+    char byte;
+    read(fd, &byte, 1);
+    return byte;
+}
+
+int putchar(int ch)
+{
+    char byte = ch;
+    return write(STDOUT, &byte, 1);
+}
+
+int fputc(int ch, int fd)
+{
+    char byte = ch;
+    return write(fd, &byte, 1);
 }
 
 int puts(const char *s)
 {
-    // char byte = c;
-    // return write(stdout, &byte, 1);
-    // SYSCALL_PUTCHAR = 4
-    int r;
     while (*s != 0)
     {
-        if ((r = putchar(*s)) < 0)
-        {
-            return r;
-        }
+        fputc(*s, STDOUT);
+        s++;
+    }
+    fputc('\n', STDOUT);
+    return 0;
+}
+
+int fputs(const char *s, int fd)
+{
+    while (*s != 0)
+    {
+        fputc(*s, fd);
         s++;
     }
     return 0;
@@ -57,7 +72,15 @@ void printf(const char *fmt, ...)
 {
     va_list ap;
     va_start(ap, fmt);
-    print(fmt, ap);
+    fprint(fmt, ap, STDOUT);
+    va_end(ap);
+}
+
+void fprintf(int fd, const char *fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    fprint(fmt, ap, fd);
     va_end(ap);
 }
 
@@ -200,7 +223,7 @@ static void printNum(char *buf, unsigned long u, int base, int negFlag,
     buf[length] = '\0';
 }
 
-static void print(const char *fmt, va_list ap)
+static void fprint(const char *fmt, va_list ap, int fd)
 {
     char buf[BUF_SIZE];
 
@@ -218,9 +241,9 @@ static void print(const char *fmt, va_list ap)
         {
             if (fmt[i] == '\n')
             {
-                putchar('\r');
+                fputc('\r', fd);
             }
-            putchar(fmt[i]);
+            fputc(fmt[i], fd);
             continue;
         }
 
@@ -284,7 +307,7 @@ static void print(const char *fmt, va_list ap)
         case 'c':
             c = (char)va_arg(ap, uint);
             printChar(buf, c, width, ladjust);
-            putchar(c);
+            fputc(c, fd);
             break;
 
         case 'D':
@@ -381,7 +404,7 @@ static void print(const char *fmt, va_list ap)
             break;
 
         default:
-            putchar(c);
+            fputc(c, fd);
             break;
         }
     }
