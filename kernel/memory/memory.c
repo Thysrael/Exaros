@@ -297,7 +297,7 @@ i32 pageAlloc(Page **ppage)
     }
     page = LIST_FIRST(&freePageList);
     LIST_REMOVE(page, link);
-    memset((void *)page2PA(page), 0, PAGE_SIZE);
+    // memset((void *)page2PA(page), 0, PAGE_SIZE);
     // bzero((void *)page2PA(page), PAGE_SIZE);
     *ppage = page;
     return 0;
@@ -371,6 +371,7 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
         }
     }
     try(pageWalk(pgdir, va, true, &pte));
+    printk("pte:: %lx\n", pte);
     *pte = page2Pte(pp) | perm | PTE_VALID_BIT;
     pp->ref++;
     return 0;

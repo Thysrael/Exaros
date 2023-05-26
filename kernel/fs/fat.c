@@ -937,6 +937,7 @@ static DirMeta *jumpToLinkDirMeta(DirMeta *link)
 {
     char buf[FAT32_MAX_FILENAME];
     // 迭代直至找到非链接文件
+    printk("link:: %lx\n", (u64)link);
     while (link && link->reserve == DT_LNK)
     {
         metaRead(link, 0, (u64)buf, 0, FAT32_MAX_FILENAME);
@@ -978,6 +979,7 @@ static DirMeta *lookupPath(int fd, char *path, int parent, char *name, bool jump
     else if (*path != '\0' && fd == AT_FDCWD)
     {
         cur = myProcess()->cwd;
+        printk("xdlj: %lx\n", myProcess()->cwd);
     }
     else
     {
@@ -986,6 +988,7 @@ static DirMeta *lookupPath(int fd, char *path, int parent, char *name, bool jump
 
     while ((path = skipelem(path, name)) != 0)
     {
+        printk("cur:: %lx", (u64)cur); // 68?
         cur = jumpToLinkDirMeta(cur);
         if (!(cur->attribute & ATTR_DIRECTORY))
         {

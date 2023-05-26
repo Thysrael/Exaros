@@ -204,8 +204,8 @@ void userHandler()
         case EXCEPTION_ECALL:
             // printk("ecall\n");
             tf->epc += 4;
-            // printk("a7: %d\n", tf->a7);
-            intr_on();
+            printk("a7: %d\n", tf->a7);
+            // intr_on();
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
@@ -243,7 +243,7 @@ void userTrapReturn()
     extern char trampoline[];
 
     int hartId = getTp();
-
+    intr_off();
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 

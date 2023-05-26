@@ -1085,6 +1085,7 @@ void syscallUnMapMemory()
  */
 void syscallExec()
 {
+    printk("^");
     Trapframe *tf = getHartTrapFrame();
     char path[MAX_PATH_LEN], *argv[MAX_ARG];
     u64 uargv, uarg;
@@ -1095,6 +1096,8 @@ void syscallExec()
         return;
     }
     // 全部指令是因为给进程传递参数是用零作为指针数组的结尾
+
+    printk("*syscalle xec1");
     memset(argv, 0, sizeof(argv));
     for (int i = 0;; i++)
     {
@@ -1124,6 +1127,7 @@ void syscallExec()
         if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
             goto bad;
     }
+    printk("syscalle xec2");
     int ret = exec(path, argv);
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1131,6 +1135,7 @@ void syscallExec()
         pageFree(pa2Page((u64)argv[i]));
     }
     tf->a0 = ret;
+    printk("sucessfully exec\n");
     return;
 bad:
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)

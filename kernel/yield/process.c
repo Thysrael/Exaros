@@ -209,6 +209,9 @@ void pgdirFree(u64 *pgdir)
     }
     paDecreaseRef((u64)pgdir);
 }
+
+extern FileSystem *rootFileSystem;
+extern FileSystem fileSystem[32];
 /**
  * @brief 为进程申请页表，并且建立 trampoline 和 trapframe 的映射
  * 为进程的内核栈建立映射，这样进程在陷入内核的时候才不会报错
@@ -234,7 +237,10 @@ int setupProcess(Process *p)
     p->parentId = 0;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->channel = 0;
 
+    p->cwd = &(rootFileSystem->root);
+    // printk("p-> cwd: %lx, %lx\n", p->cwd, fileSystem);
     // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
     // 为每个进程开一页的内核栈
     r = pageAlloc(&page);
@@ -361,6 +367,7 @@ void processRun(Process *p)
             first = 0;
             initRootFileSystem();
             // setNextTimeout();
+            p->cwd = &(rootFileSystem->root);
         }
         else
         {
@@ -388,7 +395,7 @@ void processRun(Process *p)
  */
 void yield()
 {
-    // printk("yield\n");
+    printk("yield\n");
     int hartId = getTp();
     int count = processTimeCount[hartId];
     int point = processBelongList[hartId];
@@ -404,6 +411,7 @@ void yield()
 
     while ((count == 0) || !process || (process->state != RUNNABLE))
     {
+        intr_on();
         if (process)
             LIST_INSERT_TAIL(&scheduleList[point ^ 1], process, scheduleLink);
         if (LIST_EMPTY(&scheduleList[point]))
