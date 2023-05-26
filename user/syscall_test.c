@@ -13,7 +13,8 @@ char *argp[] = {NULL};
 int main()
 {
     dev(1, O_RDWR);
-
+    dup(0);
+    dup(0);
     printf("hello, test.\n");
     write(0, "*", 1);
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
