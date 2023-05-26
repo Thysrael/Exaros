@@ -2,39 +2,40 @@
 #include "stdio.h"
 
 char *syscallList[] = {
-    "brk",
-    "chdir",
-    "clone",
-    "close",
-    "dup",
-    "dup2",
-    "execve",
-    "exit",
-    "fork",
-    "fstat",
-    "getcwd",
-    "getdents",
-    "getpid",
-    "getppid",
-    "gettimeofday",
+    // "brk",
+    // "chdir",
+    // "clone",
+    // "close",
+    // "dup",
+    // "dup2",
+    // "execve",
+    // "exit",
+    // "fork",
+    // "fstat",
+    // "getcwd",
+    // "getdents",
+    // "getpid",
+    // "getppid",
+    // "gettimeofday",
     "mkdir_",
-    "mmap",
-    "mount",
-    "munmap",
-    "open",
-    "openat",
-    "pipe",
-    "read",
-    "sleep",
-    "test_echo",
-    "times",
-    "umount",
-    "uname",
-    "unlink",
-    "wait",
-    "waitpid",
-    "write",
-    "yield",
+    // "mmap",
+    // "mount",
+    // "munmap",
+    // "open",
+    // "openat",
+    // "pipe",
+    // "read",
+    // "sleep",
+    // "test_echo",
+    // "times",
+    // "umount",
+    // "uname",
+    // "unlink",
+    // "wait",
+    // "waitpid",
+    // "write",
+    // "yield",
+    // "sh",
 };
 
 char *argv[] = {NULL};
@@ -50,7 +51,7 @@ int main()
     dup(0);
     dup(0);
     printf("hello, test.\n");
-    write(0, "*", 1);
+
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         printf("test bin: %s\n", syscallList[i]);
@@ -58,8 +59,8 @@ int main()
         int pid = fork();
         if (pid == 0)
         {
-            printf("%d\n", i);
-            printf("pid0\n");
+            // printf("%d\n", i);
+            // printf("pid0\n");
             // execve(syscallList[i], argv, argp);
         }
         else

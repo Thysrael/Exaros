@@ -134,10 +134,6 @@ void readline(char *buf, size_t n)
 
 int main()
 {
-    dev(1, O_RDWR);
-    dup(0);
-    dup(0);
-
     print_head();
     // while (1)
     // {

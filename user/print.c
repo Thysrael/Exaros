@@ -32,7 +32,6 @@ int putchar(int c)
 {
     // char byte = c;
     // return write(stdout, &byte, 1);
-    // SYSCALL_PUTCHAR = 4
     return syscall(4, c);
 }
 
