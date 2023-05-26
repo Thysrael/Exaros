@@ -179,6 +179,7 @@ void syscallWrite(void)
         return;
     }
 
+    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
 }
 
@@ -538,6 +539,7 @@ void syscallDevice(void)
     f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
     tf->a0 = fd;
+    QS_DEBUG("[syscall] Device %d open\n", fd);
     return;
 
 bad:

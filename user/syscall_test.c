@@ -1,7 +1,41 @@
 #include "unistd.h"
 #include "stdio.h"
 
-char *syscallList[] = {"brk"};
+char *syscallList[] = {
+    "brk",
+    "chdir",
+    "clone",
+    "close",
+    "dup",
+    "dup2",
+    "execve",
+    "exit",
+    "fork",
+    "fstat",
+    "getcwd",
+    "getdents",
+    "getpid",
+    "getppid",
+    "gettimeofday",
+    "mkdir_",
+    "mmap",
+    "mount",
+    "munmap",
+    "open",
+    "openat",
+    "pipe",
+    "read",
+    "sleep",
+    "test_echo",
+    "times",
+    "umount",
+    "uname",
+    "unlink",
+    "wait",
+    "waitpid",
+    "write",
+    "yield",
+};
 
 char *argv[] = {NULL};
 
@@ -22,17 +56,18 @@ int main()
     {
         printf("test bin: %s\n", syscallList[i]);
         execve(syscallList[i], argv, argp);
-        // int pid = fork();
-        // if (pid == 0)
-        // {
-        //     printf("%d\n", i);
-        //     printf("pid0\n");
-        //     // execve(syscallList[i], argv, argp);
-        // }
-        // else
-        // {
-        //     wait(0);
-        // }
+
+        int pid = fork();
+        if (pid == 0)
+        {
+            printf("%d\n", i);
+            printf("pid0\n");
+            // execve(syscallList[i], argv, argp);
+        }
+        else
+        {
+            wait(0);
+        }
     }
     return 0;
 }
