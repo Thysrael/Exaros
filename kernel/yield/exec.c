@@ -51,7 +51,6 @@ static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
         Page *p;
         if (pageAlloc(&p) < 0)
             return -1;
-        printk("pageallocend;");
         pageInsert(pagetable, i, p,
                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
     }
@@ -82,7 +81,6 @@ u64 exec(char *path, char **argv)
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
 
-    printk(" exec2 ");
     // 为新进程申请一个页表
     int r = allocPgdir(&page);
 
@@ -92,8 +90,7 @@ u64 exec(char *path, char **argv)
         return r;
     }
     pagetable = (u64 *)page2PA(page);
-    printk("pagetable addr = 0x%lx\n", pagetable);
-    printk("exec3\n");
+    // printk("pagetable addr = 0x%lx\n", pagetable);
 
     extern char trampoline[];
     extern char trapframe[];
@@ -106,7 +103,6 @@ u64 exec(char *path, char **argv)
         printk("find file error, path: %s\n", path);
         return -1;
     }
-    printk("exec4\n");
 
     // 读 elf header
     if (metaRead(dm, 0, (u64)&elf, 0, sizeof(elf)) != sizeof(elf))
@@ -114,13 +110,11 @@ u64 exec(char *path, char **argv)
         printk("read header error\n");
         goto bad;
     }
-    printk("exec5\n");
     if (!isElfFormat((u8 *)&elf))
     {
         printk("not elf format\n");
         goto bad;
     }
-    printk("exec6\n");
     // begin map
     for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph))
     {
@@ -139,7 +133,6 @@ u64 exec(char *path, char **argv)
         if (loadSeg(pagetable, ph.vaddr, dm, ph.offset, ph.filesz) < 0)
             goto bad;
     }
-    printk("exec7\n");
     sp = USER_STACK_TOP;
     stackbase = sp - PAGE_SIZE;
     if (pageAlloc(&page))
@@ -147,7 +140,6 @@ u64 exec(char *path, char **argv)
         printk("allock stack error\n");
         goto bad;
     }
-    printk("exec8\n");
     pageInsert(pagetable, stackbase, page,
                PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
 
@@ -167,7 +159,6 @@ u64 exec(char *path, char **argv)
     // ustack[argc] = argc;? todo
     ustack[argc] = 0;
 
-    printk("exec9\n");
     // push the array of argv[] pointers.
     sp -= (argc + 1) * sizeof(u64);
     sp -= sp % 16;

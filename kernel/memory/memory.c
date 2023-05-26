@@ -300,7 +300,7 @@ i32 pageAlloc(Page **ppage)
     page = LIST_FIRST(&freePageList);
     LIST_REMOVE(page, link);
 
-    printk("pp: %lx\n", (u64)page2PA(page));
+    // printk("pp: %lx\n", (u64)page2PA(page));
     memset((void *)page2PA(page), 0, PAGE_SIZE);
     // bzero((void *)page2PA(page), PAGE_SIZE);
     *ppage = page;

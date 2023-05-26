@@ -165,6 +165,7 @@ void syscallWrite(void)
     File *f;
     int len = tf->a2, fd = tf->a0;
     u64 uva = tf->a1;
+    CNX_DEBUG("len:%d,\n", len);
 
     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
     {

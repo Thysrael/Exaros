@@ -1315,7 +1315,7 @@ int fatInit(FileSystem *fs)
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
-        printk("sec: %d\n", i);
+        CNX_DEBUG("sec: %d\n", i);
         for (u32 j = 0; j < entryPerSec; j++)
         {
             if (((u32 *)(b->data))[j])

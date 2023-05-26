@@ -50,12 +50,14 @@ int main()
     dev(1, O_RDWR);
     dup(0);
     dup(0);
+
     printf("hello, test.\n");
 
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         printf("test bin: %s\n", syscallList[i]);
         execve(syscallList[i], argv, argp);
+
         int pid = fork();
         if (pid == 0)
         {
