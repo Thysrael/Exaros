@@ -22,6 +22,7 @@
 #define stderr STDERR
 
 #define EOF_ASCII 4
+#define EOF EOF_ASCII
 
 #define va_start(ap, last) (__builtin_va_start(ap, last))
 #define va_arg(ap, type) (__builtin_va_arg(ap, type))
@@ -33,8 +34,13 @@ typedef unsigned long int uintmax_t;
 typedef long int intmax_t;
 
 int getchar();
-int putchar(int);
+int fgetc(int fd);
+int fgets(char *buf, int count, int fd);
+int putchar(int ch);
+int fputc(int ch, int fd);
 int puts(const char *s);
+int fputs(const char *s, int fd);
 void printf(const char *fmt, ...);
+void fprintf(int fd, const char *fmt, ...);
 
 #endif // __STDIO_H__
