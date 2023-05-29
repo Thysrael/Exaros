@@ -62,7 +62,7 @@ static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
 u64 exec(char *path, char **argv)
 {
     int i, off;
-    u64 argc, sp, ustack[MAX_ARG], stackbase;
+    u64 argc, sp, ustack[MAX_ARG + 1], stackbase;
     Ehdr elf;
     DirMeta *dm;
     Phdr ph;
@@ -136,6 +136,7 @@ u64 exec(char *path, char **argv)
                PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
 
     // Push argument strings, prepare rest of stack in ustack.
+    ustack[0] = argc;
     for (argc = 0; argv[argc]; argc++)
     {
         if (argc >= MAX_ARG)
@@ -146,22 +147,22 @@ u64 exec(char *path, char **argv)
             goto bad;
         if (copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
             goto bad;
-        ustack[argc] = sp;
+        ustack[argc + 1] = sp;
     }
     // ustack[argc] = argc;? todo
-    ustack[argc] = 0;
+    ustack[argc + 1] = 0;
 
     // push the array of argv[] pointers.
-    sp -= (argc + 1) * sizeof(u64);
+    sp -= (argc + 2) * sizeof(u64);
     sp -= sp % 16;
     if (sp < stackbase)
         goto bad;
-    if (copyout(pagetable, sp, (char *)ustack, (argc + 1) * sizeof(u64)) < 0)
+    if (copyout(pagetable, sp, (char *)ustack, (argc + 2) * sizeof(u64)) < 0)
         goto bad;
 
     // main(argc, argv)
     // a1 是第二个参数的地址
-    getHartTrapFrame()->a1 = sp;
+    // getHartTrapFrame()->a1 = sp;
 
     // Save program name for debugging.
     /*
@@ -179,7 +180,8 @@ u64 exec(char *path, char **argv)
     // free old pagetable
     pgdirFree(oldPageTable);
     asm volatile("fence.i");
-    return argc; // this ends up in a0, the first argument to main(argc, argv)
+    // return argc; // this ends up in a0, the first argument to main(argc, argv)
+    return 0;
 
 bad:
     if (pagetable)
