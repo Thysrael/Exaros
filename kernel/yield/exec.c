@@ -136,7 +136,6 @@ u64 exec(char *path, char **argv)
                PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
 
     // Push argument strings, prepare rest of stack in ustack.
-    ustack[0] = argc;
     for (argc = 0; argv[argc]; argc++)
     {
         if (argc >= MAX_ARG)
