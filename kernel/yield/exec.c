@@ -150,6 +150,7 @@ u64 exec(char *path, char **argv)
         ustack[argc + 1] = sp;
     }
     // ustack[argc] = argc;? todo
+    ustack[0] = argc;
     ustack[argc + 1] = 0;
 
     // push the array of argv[] pointers.
