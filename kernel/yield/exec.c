@@ -40,7 +40,12 @@ static int loadSeg(u64 *pagetable,
 
 static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
 {
-    assert(va % PAGE_SIZE == 0);
+    // printk("prepseg;");
+    if (va % PAGE_SIZE != 0)
+    {
+        printk("seg va begin = 0x%lx\n", va);
+    }
+    // assert(va % PAGE_SIZE == 0);
     for (int i = va; i < va + filesz; i += PAGE_SIZE)
     {
         Page *p;
@@ -49,6 +54,7 @@ static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
         pageInsert(pagetable, i, p,
                    PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
     }
+    // printk("prepsegend;");
     return 0;
 }
 
@@ -77,17 +83,20 @@ u64 exec(char *path, char **argv)
 
     // 为新进程申请一个页表
     int r = allocPgdir(&page);
+
     if (r < 0)
     {
         panic("pgdir alloc error\n");
         return r;
     }
     pagetable = (u64 *)page2PA(page);
+    // printk("pagetable addr = 0x%lx\n", pagetable);
+
     extern char trampoline[];
     extern char trapframe[];
 
-    pageInsert(pagetable, TRAMPOLINE, pa2Page((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    pageInsert(pagetable, TRAPFRAME, pa2Page((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(pagetable, TRAMPOLINE, (u64)trampoline, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(pagetable, TRAPFRAME, (u64)trapframe, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
     if ((dm = metaName(AT_FDCWD, path, true)) == 0)
     {
@@ -106,7 +115,6 @@ u64 exec(char *path, char **argv)
         printk("not elf format\n");
         goto bad;
     }
-
     // begin map
     for (i = 0, off = elf.phoff; i < elf.phnum; i++, off += sizeof(ph))
     {
@@ -174,7 +182,8 @@ u64 exec(char *path, char **argv)
     // Commit to the user image.
     p->pgdir = pagetable;
     getHartTrapFrame()->epc = elf.entry; // initial program counter = main
-    getHartTrapFrame()->sp = sp;         // initial stack pointer
+    // printk("epc:: %lx");
+    getHartTrapFrame()->sp = sp; // initial stack pointer
 
     // free old pagetable
     pgdirFree(oldPageTable);

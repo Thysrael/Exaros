@@ -39,7 +39,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
         if (page == NULL)
         {
             if (pageAlloc(&page) < 0) return -E_NO_MEM;
-            kernelPageMap(pcs->pgdir, va, page2PA(page), perm);
+            pageInsert(pcs->pgdir, va, page, perm);
         }
         r = MIN(binSize, PAGE_SIZE - offset);
         memmove((void *)page2PA(page) + offset, binary, r);
@@ -47,8 +47,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
     for (i = r; i < binSize; i += r)
     {
         if (pageAlloc(&page) != 0) return -E_NO_MEM;
-
-        kernelPageMap(pcs->pgdir, va + i, page2PA(page), perm);
+        pageInsert(pcs->pgdir, va + i, page, perm);
         r = MIN(PAGE_SIZE, binSize - i);
         memmove((void *)page2PA(page), binary + i, r);
     }
@@ -59,7 +58,7 @@ int codeMapper(u64 va, u32 segmentSize, u8 *binary, u32 binSize, void *process)
         if (page == NULL)
         {
             if (pageAlloc(&page) < 0) return -E_NO_MEM;
-            kernelPageMap(pcs->pgdir, va + i, page2PA(page), perm);
+            pageInsert(pcs->pgdir, va + i, page, perm);
         }
         r = MIN(segmentSize - i, PAGE_SIZE - offset);
         bzero((void *)page2PA(page) + offset, r);

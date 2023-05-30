@@ -12,6 +12,7 @@
 #include <pipe.h>
 #include <fs.h>
 #include <mmap.h>
+#include <debug.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -164,6 +165,7 @@ void syscallWrite(void)
     File *f;
     int len = tf->a2, fd = tf->a0;
     u64 uva = tf->a1;
+    CNX_DEBUG("len:%d,\n", len);
 
     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
     {
@@ -177,6 +179,7 @@ void syscallWrite(void)
         return;
     }
 
+    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
 }
 
@@ -536,6 +539,7 @@ void syscallDevice(void)
     f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
     tf->a0 = fd;
+    QS_DEBUG("[syscall] Device %d open\n", fd);
     return;
 
 bad:
@@ -808,6 +812,10 @@ void syscallPutString()
 
 void syscallWait()
 {
+}
+
+void syscallExit()
+{
     Trapframe *trapframe = getHartTrapFrame();
     Process *process;
     int ret, ec = trapframe->a0;
@@ -823,10 +831,6 @@ void syscallWait()
     processDestory(process);
     // will not reach here
     panic("sycall exit error");
-}
-
-void syscallExit()
-{
 }
 void syscallGetCpuTimes()
 {
@@ -1124,6 +1128,7 @@ void syscallExec()
         if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
             goto bad;
     }
+    // printk("syscalle xec2");
     int ret = exec(path, argv);
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1131,6 +1136,7 @@ void syscallExec()
         pageFree(pa2Page((u64)argv[i]));
     }
     tf->a0 = ret;
+    // printk("sucessfully exec\n");
     return;
 bad:
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)

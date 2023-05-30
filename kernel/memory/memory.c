@@ -43,6 +43,7 @@ void freePageInit()
 {
     u64 i;
     u64 kernelPageNum = ((u64)kernelEnd - PHYSICAL_MEMORY_BASE) / PAGE_SIZE;
+    // 内核占用的 page 永远不会被释放
     for (i = 0; i < kernelPageNum; ++i)
     {
         pages[i].ref = 1;
@@ -284,6 +285,7 @@ i32 pageWalk(u64 *pgdir, u64 va, bool create, u64 **ppte)
 
 /**
  * @brief 分配一个空闲物理页
+ * 从链表取出一个空闲页，不修改 ref
  *
  * @param ppage 页管理块二级指针
  * @return i32 非 0 异常
@@ -297,6 +299,8 @@ i32 pageAlloc(Page **ppage)
     }
     page = LIST_FIRST(&freePageList);
     LIST_REMOVE(page, link);
+
+    // printk("pp: %lx\n", (u64)page2PA(page));
     memset((void *)page2PA(page), 0, PAGE_SIZE);
     // bzero((void *)page2PA(page), PAGE_SIZE);
     *ppage = page;
@@ -371,6 +375,7 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
         }
     }
     try(pageWalk(pgdir, va, true, &pte));
+    // printk("pte:: %lx\n", pte);
     *pte = page2Pte(pp) | perm | PTE_VALID_BIT;
     pp->ref++;
     return 0;
