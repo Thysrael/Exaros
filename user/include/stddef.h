@@ -58,6 +58,8 @@ typedef __builtin_va_list va_list;
 // #define O_CREATE 0x200
 #define O_CREATE 0x40
 #define O_DIRECTORY 0x0200000
+#define O_APPEND 02000
+#define O_TRUNC 01000
 
 #define DIR 0x040000
 #define FILE 0x100000
