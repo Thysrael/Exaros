@@ -26,6 +26,7 @@ ProcessList scheduleList[2];
 Process *currentProcess[CORE_NUM] = {0};
 static int processTimeCount[CORE_NUM] = {0};
 static int processBelongList[CORE_NUM] = {0};
+struct Spinlock freeProcessesLock, scheduleListLock, processIdLock, waitLock, currentProcessLock;
 
 /**
  * @brief 获取当前这个核正在运行的进程
@@ -108,15 +109,21 @@ void processFree(Process *p)
 
     // todo 写好文件系统之后要在这里释放掉进程占用的文件资源
 
-    // if (p->parentId > 0)
-    // {
-    //     Process *parentProcess;
-    //     pid2Process(p->parentId, &parentProcess, 0);
-    //     // if (r == 0)
-    //     // {
-    //     //     wakeup(parentProcess);
-    //     // }
-    // }
+    if (p->parentId > 0)
+    {
+        Process *parentProcess;
+        int r = pid2Process(p->parentId, &parentProcess, 0);
+        // if (r < 0) {
+        //     panic("Can't get parent process, current process is %x, parent is %x\n", p->id, p->parentId);
+        // }
+        // printf("[Free] process %x wake up %x\n", p->id, parentProcess);
+        // The parent process may die before the child process
+
+        if (r == 0)
+        {
+            wakeup(parentProcess);
+        }
+    }
 }
 
 /**
@@ -436,7 +443,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    // printk("hartID %d yield process %lx\n", hartId, process->processId);
+    printk("hartID %d yield process %lx\n", hartId, process->processId);
     processRun(process);
 }
 
@@ -512,12 +519,59 @@ void wakeup(void *channel)
 }
 
 /**
- * @brief
+ * @brief 等待进程 targetProcessId 改变状态，
  *
  */
-// void wait(int targetProcessId, u64 addr)
-// {
-// }
+int wait(int targetProcessId, u64 addr)
+{
+    Process *p = myProcess();
+    int haveChildProcess, pid;
+
+    acquireLock(&waitLock);
+
+    while (true)
+    {
+        haveChildProcess = 0;
+        for (int i = 0; i < PROCESS_TOTAL_NUMBER; ++i)
+        {
+            Process *np = &processes[i];
+            acquireLock(&np->lock);
+            if (np->parentId == p->processId)
+            {
+                haveChildProcess = 1;
+                if ((targetProcessId == -1 || np->processId == targetProcessId) && np->state == ZOMBIE)
+                {
+                    pid = np->processId;
+                    if (addr != 0 && copyout(p->pgdir, addr, (char *)&np->retValue, sizeof(np->retValue)) < 0)
+                    {
+                        releaseLock(&np->lock);
+                        releaseLock(&waitLock);
+                        return -1;
+                    }
+                    acquireLock(&freeProcessesLock);
+                    // updateAncestorsCpuTime(np);
+                    np->state = UNUSED;
+                    LIST_INSERT_HEAD(&freeProcesses, np, link); // test pipe
+                    // printf("[Process Free] Free an process %d\n", (u32)(np - processes));
+                    releaseLock(&freeProcessesLock);
+                    releaseLock(&np->lock);
+                    releaseLock(&waitLock);
+                    return pid;
+                }
+            }
+            releaseLock(&np->lock);
+        }
+
+        if (!haveChildProcess)
+        {
+            releaseLock(&waitLock);
+            return -1;
+        }
+
+        // printf("[WAIT]porcess id %x wait for %x\n", p->id, p);
+        sleep(p, &waitLock);
+    }
+}
 
 #define SIGCHLD 17
 /**

@@ -812,6 +812,10 @@ void syscallPutString()
 
 void syscallWait()
 {
+    Trapframe *trapframe = getHartTrapFrame();
+    int pid = trapframe->a0;
+    u64 addr = trapframe->a1;
+    trapframe->a0 = wait(pid, addr);
 }
 
 void syscallExit()

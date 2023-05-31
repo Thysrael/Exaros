@@ -183,7 +183,7 @@ u64 getProcessTopSp(Process *p);
 void sleep(void *channel, Spinlock *lk);
 void wakeup(void *channel);
 void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
-
+int wait(int targetProcessId, u64 addr);
 u64 exec(char *path, char **argv);
 
 #endif
