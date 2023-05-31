@@ -341,7 +341,8 @@ void processRun(Process *p)
     Trapframe *trapframe = getHartTrapFrame();
 
     // 保存当前进程的 trapfreme 到进程结构体中
-    if (currentProcess[getTp()] && (currentProcess[getTp()]->state == RUNNING))
+    if (currentProcess[getTp()])
+    // if (currentProcess[getTp()] && (currentProcess[getTp()]->state == RUNNING))
     {
         memmove(&currentProcess[getTp()]->trapframe, trapframe, sizeof(Trapframe));
     }
@@ -354,6 +355,7 @@ void processRun(Process *p)
     if (p->reason == 1)
     {
         p->reason = 0;
+        // printk("sleeprec, sp: %lx, ra: %lx\n", p->currentKernelSp, *((u64 *)(p->currentKernelSp) - 1));
         memmove(trapframe, &currentProcess[hartid]->trapframe, sizeof(Trapframe));
         asm volatile("ld sp, 0(%0)"
                      :
@@ -366,6 +368,11 @@ void processRun(Process *p)
         if (first)
         {
             first = 0;
+
+            // 把 hartTrapframe 中的东西拷贝到 hartTrapframe 中
+            // 是因为 process run最开始如果是 (currentProcess[getTp()]) ，就要把 harttrapframe 拷贝到 process->tf
+            // 但是第一个进程在 run 的时候 harttf 里面根本没有东西，就会导致用  0 覆盖
+            memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
             initRootFileSystem();
             // setNextTimeout();
             p->cwd = &(rootFileSystem->root);
@@ -406,7 +413,8 @@ void yield()
 
     if (process && process->state == RUNNING)
     {
-        memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
+        // 这一句没必要，因为在 processrun 里面是要拷贝的
+        // memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
         process->state = RUNNABLE;
     }
 
@@ -463,6 +471,10 @@ void sleep(void *channel, Spinlock *lk)
     p->reason = 1;
     releaseLock(&(p->lock));
 
+    // asm volatile("sd sp, 0(%0)"
+    //              :
+    //              : "r"(&p->currentKernelSp));
+    // printk("sleepsave, sp: %lx \n", p->currentKernelSp);
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));
