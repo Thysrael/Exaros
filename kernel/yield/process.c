@@ -251,7 +251,7 @@ int setupProcess(Process *p)
     // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
     // 为每个进程开一页的内核栈
     r = pageAlloc(&page);
-    printk("mmapva: %lx\n", getProcessTopSp(p) - PAGE_SIZE);
+    // printk("mmapva: %lx\n", getProcessTopSp(p) - PAGE_SIZE);
     pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
             PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
@@ -446,11 +446,11 @@ void yield()
     // 在这里关掉中断，不然 sleep 到一半的时候被打断
     intr_off();
 
-    printk("currentKernelSp: %lx \n", process->currentKernelSp);
+    // printk("currentKernelSp: %lx \n", process->currentKernelSp);
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    printk("hartID %d yield process %lx\n", hartId, process->processId);
+    // printk("hartID %d yield process %lx\n", hartId, process->processId);
     processRun(process);
 }
 
@@ -488,7 +488,7 @@ void sleep(void *channel, Spinlock *lk)
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));
-    printk("sleepsave, sp: %lx \n", p->currentKernelSp);
+    // printk("sleepsave, sp: %lx \n", p->currentKernelSp);
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));

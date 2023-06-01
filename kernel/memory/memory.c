@@ -158,8 +158,9 @@ i32 kernelPageMap(u64 *pgdir, u64 va, u64 pa, u64 perm)
     try(pageWalk(pgdir, va, false, &pte));
     if ((pte != NULL) && PTE_VALID(*pte))
     {
-        panic("Remapping");
-        return -E_UNSPECIFIED;
+        // panic("Remapping");
+        // return -E_UNSPECIFIED;
+        pageRemove(pgdir, va);
     }
     try(pageWalk(pgdir, va, true, &pte));
     *pte = PA2PTE(pa) | perm | PTE_VALID_BIT;
