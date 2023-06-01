@@ -251,6 +251,7 @@ int setupProcess(Process *p)
     // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
     // 为每个进程开一页的内核栈
     r = pageAlloc(&page);
+    printk("mmapva: %lx\n", getProcessTopSp(p) - PAGE_SIZE);
     pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
             PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
@@ -424,10 +425,11 @@ void yield()
         // memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
         process->state = RUNNABLE;
     }
+    // 防止死锁，假如只有一个进程而这个进程被 sleep 了，在这里应该接受外部中断
+    intr_on();
 
     while ((count == 0) || !process || (process->state != RUNNABLE))
     {
-        intr_on();
         if (process)
             LIST_INSERT_TAIL(&scheduleList[point ^ 1], process, scheduleLink);
         if (LIST_EMPTY(&scheduleList[point]))
@@ -440,6 +442,11 @@ void yield()
         }
         // printk("finding a process to yield... %d, %d, %d\n", count, process->state, (int)intr_get());
     }
+
+    // 在这里关掉中断，不然 sleep 到一半的时候被打断
+    intr_off();
+
+    printk("currentKernelSp: %lx \n", process->currentKernelSp);
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
@@ -478,10 +485,10 @@ void sleep(void *channel, Spinlock *lk)
     p->reason = 1;
     releaseLock(&(p->lock));
 
-    // asm volatile("sd sp, 0(%0)"
-    //              :
-    //              : "r"(&p->currentKernelSp));
-    // printk("sleepsave, sp: %lx \n", p->currentKernelSp);
+    asm volatile("sd sp, 0(%0)"
+                 :
+                 : "r"(&p->currentKernelSp));
+    printk("sleepsave, sp: %lx \n", p->currentKernelSp);
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));
