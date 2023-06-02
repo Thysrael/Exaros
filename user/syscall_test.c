@@ -23,7 +23,7 @@ char *syscallList[] = {
     "munmap",
     "open",
     "openat",
-    // "pipe",
+    "pipe",
     "read",
     "sleep",
     "test_echo",
@@ -55,7 +55,7 @@ int main()
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         // printf("test bin: %s\n", syscallList[i]);
-        execve("brk", argv, argp);
+        // execve("pipe", argv, argp);
 
         int pid = fork();
         if (pid == 0)
