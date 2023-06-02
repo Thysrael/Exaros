@@ -389,7 +389,7 @@ void processRun(Process *p)
         }
         else
         {
-            setNextTimeout();
+            // setNextTimeout();
         }
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
