@@ -962,11 +962,12 @@ void syscallMapMemory()
     // 自定的位置
 
     Process *p = myProcess();
-    int alloc = (addr = NULL);
+    int alloc = (addr == NULL);
     if (alloc == 0)
     {
         panic("Syscall mmap can't handle addr(0x%x) != 0", addr);
     }
+    addr = p->mmapHeapTop;
     u64 start = p->mmapHeapTop; // mmapHeapTop 必然是页对齐的
     u64 end = ALIGN_UP(start + length, PAGE_SIZE);
     if (end > USER_MMAP_HEAP_TOP)
