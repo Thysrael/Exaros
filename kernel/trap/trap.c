@@ -133,6 +133,7 @@ void kernelHandler()
     u64 sstatus = readSstatus();
 
     CNX_DEBUG("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
+    // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
 
     // Trapframe *trapframe = getHartTrapFrame();
 
@@ -188,7 +189,7 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
+    // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)

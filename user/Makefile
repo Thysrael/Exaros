@@ -1,5 +1,5 @@
 INCLUDES	:=	-I./include
-USER_LIB	:=	crt.o main.o syscall.o print.o string.o 
+USER_LIB	:=	crt.o main.o syscall.o print.o string.o stdlib.o
 # 如果希望拷到磁盘中，则需要无后缀文件名，否则只需要 x 即可嵌入内核
 USER_TARGET	:=	processA.x processB.x processC.x sh.x syscall_test.x sh test.x
 BINTOC		:=	../utility/bintoc
