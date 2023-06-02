@@ -246,6 +246,24 @@ static inline void intr_off()
     writeSstatus(readSstatus() & ~SSTATUS_SIE);
 }
 
+
+// supervisor-mode cycle counter
+static inline u64 r_time() {
+	u64 x;
+  	// asm volatile("csrr %0, time" : "=r" (x) );
+  	// this instruction will trap in SBI
+	asm volatile("rdtime %0" : "=r" (x) );
+	return x;
+}
+
+static inline u64 r_cycle()
+{
+    u64 x;
+    asm volatile("rdcycle %0"
+                 : "=r"(x));
+    return x;
+}
+
 #define SV39 (8)
 #define MAKE_SATP(mode, ppn) (((u64)mode << 60) | (u64)ppn)
 

@@ -84,12 +84,12 @@ void userTrapReturn();
 void printTrapframe(Trapframe *tf);
 
 // about timer
-#define TIMER_INTERVAL 10000000
+#define TIMER_INTERVAL 40000000
 
 typedef struct TimeSpec
 {
     u64 second;
-    long nanoSecond;
+    long microSecond;
 } TimeSpec;
 
 typedef struct IntervalTimer

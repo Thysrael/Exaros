@@ -74,8 +74,8 @@ void main(u64 hartId)
     plicinit();
     plicinithart();
 
-    PROCESS_CREATE_PRIORITY(syscall_test, 1);
-    // PROCESS_CREATE_PRIORITY(processA, 1);
+    PROCESS_CREATE_PRIORITY(syscall_test, 10);
+    // PROCESS_CREATE_PRIORITY(processA, 1); // 凑数的进程，什么都不干
     // PROCESS_CREATE_PRIORITY(processB, 1);
     // PROCESS_CREATE_PRIORITY(processC, 1);
     // PROCESS_CREATE_PRIORITY(test, 1);

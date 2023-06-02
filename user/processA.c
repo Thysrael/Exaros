@@ -1,7 +1,18 @@
+#include "stddef.h"
 #include "stdio.h"
+#include "stdlib.h"
+#include "string.h"
+#include "unistd.h"
+#include "file.h"
 
-int main(int argc, char **argv)
+int main()
 {
-    printf("Hello, processA\n");
+    // dev(1, O_RDWR);
+    // dup(0);
+    // dup(0);
+    // printf("Hello, processA\n");
+    while (1)
+        ;
+
     return 0;
 }

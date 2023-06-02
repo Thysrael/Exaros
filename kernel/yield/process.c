@@ -246,6 +246,7 @@ int setupProcess(Process *p)
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
     p->channel = 0;
+    p->awakeTime = 0;
 
     p->cwd = &(rootFileSystem->root);
     // printk("p-> cwd: %lx, %lx\n", p->cwd, fileSystem);
@@ -429,7 +430,7 @@ void yield()
     // 防止死锁，假如只有一个进程而这个进程被 sleep 了，在这里应该接受外部中断
     intr_on();
 
-    while ((count == 0) || !process || (process->state != RUNNABLE))
+    while ((count == 0) || !process || (process->state != RUNNABLE) || (process->awakeTime > r_time()))
     {
         if (process)
             LIST_INSERT_TAIL(&scheduleList[point ^ 1], process, scheduleLink);
@@ -453,6 +454,12 @@ void yield()
     processBelongList[hartId] = point;
     CNX_DEBUG("hartID %d yield process %lx\n", hartId, process->processId);
 
+    // syscall_watetime 的范围值设置为 0
+    if (process->awakeTime > 0)
+    {
+        getHartTrapFrame()->a0 = 0;
+        process->awakeTime = 0;
+    }
     processRun(process);
 }
 
@@ -678,4 +685,10 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
     LIST_INSERT_TAIL(&scheduleList[0], process, scheduleLink);
 
     return;
+}
+
+void kernelProcessCpuTimeEnd()
+{
+    Process *p = myProcess();
+    p->processTime.lastKernelTime = r_time();
 }

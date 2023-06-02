@@ -18,12 +18,12 @@ char *syscallList[] = {
     "getppid",
     "gettimeofday",
     "mkdir_",
-    // "mmap",
+    "mmap",
     "mount",
-    // "munmap",
+    "munmap",
     "open",
     "openat",
-    //"pipe",
+    // "pipe",
     "read",
     "sleep",
     "test_echo",
@@ -50,12 +50,12 @@ int main()
     dup(0);
     dup(0);
 
-    printf("hello, test.\n");
-    write(1, "*", 1);
+    // printf("hello, test.\n");
+    // write(1, "*", 1);
     for (int i = 0; i < sizeof(syscallList) / sizeof(char *); i++)
     {
         // printf("test bin: %s\n", syscallList[i]);
-        // execve(syscallList[i], argv, argp);
+        execve("brk", argv, argp);
 
         int pid = fork();
         if (pid == 0)

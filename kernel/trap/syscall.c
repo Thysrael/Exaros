@@ -836,14 +836,51 @@ void syscallExit()
     // will not reach here
     panic("sycall exit error");
 }
+
+/**
+ * @brief
+ *
+ */
 void syscallGetCpuTimes()
 {
+    Trapframe *tf = getHartTrapFrame();
+    int cow;
+    CpuTimes *ct = (CpuTimes *)va2PA(myProcess()->pgdir, tf->a0, &cow);
+    if (cow)
+    {
+        cowHandler(myProcess()->pgdir, tf->a0);
+    }
+    *ct = myProcess()->cpuTime;
+    tf->a0 = (r_cycle() & 0x3FFFFFFF);
 }
+
+/**
+ * @brief 获取当前时间
+ *
+ */
 void syscallGetTime()
 {
+    Trapframe *tf = getHartTrapFrame();
+    u64 time = r_time();
+    TimeSpec ts;
+    ts.second = time / 1000000;
+    ts.microSecond = time % 1000000;
+    copyout(myProcess()->pgdir, tf->a0, (char *)&ts, sizeof(TimeSpec));
+    tf->a0 = 0;
 }
+
+/**
+ * @brief 进程 sleep 一段时间
+ *
+ */
 void syscallSleepTime()
 {
+    Trapframe *tf = getHartTrapFrame();
+    TimeSpec ts;
+    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
+    myProcess()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
+    kernelProcessCpuTimeEnd();
+    yield();
 }
 
 /**
