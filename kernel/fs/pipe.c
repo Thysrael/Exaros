@@ -114,6 +114,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
 
     u64 *pageTable = myProcess()->pgdir;
     u64 pa = addr;
+    acquireLock(&pi->lock);
     if (isUser)
     {
         pa = va2PA(pageTable, addr, &cow);
@@ -168,6 +169,7 @@ int pipeWrite(Pipe *pi, bool isUser, u64 addr, int n)
         }
     }
     wakeup(&pi->nread);
+    releaseLock(&pi->lock);
     assert(i != 0);
     return i;
 }
@@ -186,6 +188,7 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
     char ch;
     u64 *pageTable = myProcess()->pgdir;
     u64 pa = addr;
+    acquireLock(&pi->lock);
     if (isUser)
     {
         pa = va2PA(pageTable, addr, NULL);
@@ -222,5 +225,6 @@ int pipeRead(Pipe *pi, bool isUser, u64 addr, int n)
         }
     }
     wakeup(&pi->nwrite); // DOC: piperead-wakeup
+    releaseLock(&pi->lock);
     return i;
 }
