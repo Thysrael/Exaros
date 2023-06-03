@@ -70,5 +70,6 @@ int main()
             wait(0);
         }
     }
+    shutdown();
     return 0;
 }

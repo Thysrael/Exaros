@@ -244,3 +244,8 @@ int dev(int fd, int mode)
 {
     return syscall(SYS_dev, fd, mode);
 }
+
+int shutdown()
+{
+    return syscall(SYS_shutdown);
+}

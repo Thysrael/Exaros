@@ -49,7 +49,9 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UMOUNT] syscallUmount,
     [SYSCALL_LINKAT] syscallLinkAt,
     [SYSCALL_UNLINKAT] syscallUnlinkAt,
-    [SYSCALL_UNAME] syscallUname};
+    [SYSCALL_UNAME] syscallUname,
+    [SYSCALL_SHUTDOWN] syscallShutdown,
+};
 
 void syscallPutchar()
 {
@@ -1201,12 +1203,18 @@ void syscallUname()
         char machine[65];
         char domainname[65];
     } uname;
-    strncpy(uname.sysname, "my_linux", 65);
+    strncpy(uname.sysname, "ExarOs", 65);
     strncpy(uname.nodename, "my_node", 65);
-    strncpy(uname.release, "MIPS-OS", 65);
+    strncpy(uname.release, "0.1.0", 65);
     strncpy(uname.version, "0.1.0", 65);
-    strncpy(uname.machine, "Risc-V sifive_u", 65);
+    strncpy(uname.machine, "Risc-V virt", 65);
     strncpy(uname.domainname, "Beijing", 65);
     Trapframe *tf = getHartTrapFrame();
     copyout(myProcess()->pgdir, tf->a0, (char *)&uname, sizeof(struct utsname));
+}
+
+void syscallShutdown()
+{
+    SBI_CALL_0(SBI_SHUTDOWN);
+    return;
 }

@@ -39,6 +39,8 @@
 #define SYSCALL_GET_PID 172
 #define SYSCALL_GET_PARENT_PID 173
 
+#define SYSCALL_SHUTDOWN 210
+
 #define SYSCALL_BRK 214
 
 #define SYSCALL_UNMAP_MEMORY 215
@@ -82,6 +84,7 @@ void syscallMount(void);
 void syscallUmount(void);
 void syscallUnlinkAt(void);
 void syscallLinkAt(void);
+void syscallShutdown(void);
 
 extern void (*syscallVector[])(void);
 
