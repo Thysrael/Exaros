@@ -133,6 +133,7 @@ void kernelHandler()
     u64 sstatus = readSstatus();
 
     CNX_DEBUG("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
+    // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
 
     // Trapframe *trapframe = getHartTrapFrame();
 
@@ -188,7 +189,7 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", scause, stval, readSepc(), readSip());
+    // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
@@ -204,7 +205,8 @@ void userHandler()
         case EXCEPTION_ECALL:
             // printk("ecall\n");
             tf->epc += 4;
-            printk("a7: %d\n", tf->a7);
+            CNX_DEBUG("a7: %d\n", tf->a7);
+            // intr_on();
             syscallVector[tf->a7]();
             break;
         case EXCEPTION_LOAD_FAULT:
@@ -242,7 +244,7 @@ void userTrapReturn()
     extern char trampoline[];
 
     int hartId = getTp();
-
+    intr_off();
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
@@ -274,41 +276,41 @@ void userTrapReturn()
  */
 void printTrapframe(Trapframe *tf)
 {
-    printk(" a0: %lx\n \
-    a1: %lx\n \
-    a2: %lx\n \
-    a3: %lx\n \
-    a4: %lx\n \
-    a5: %lx\n \
-    a6: %lx\n \
-    a7: %lx\n \
-    t0: %lx\n \
-    t1: %lx\n \
-    t2: %lx\n \
-    t3: %lx\n \
-    t4: %lx\n \
-    t5: %lx\n \
-    t6: %lx\n \
-    s0: %lx\n \
-    s1: %lx\n \
-    s2: %lx\n \
-    s3: %lx\n \
-    s4: %lx\n \
-    s5: %lx\n \
-    s6: %lx\n \
-    s7: %lx\n \
-    s8: %lx\n \
-    s9: %lx\n \
-    s10: %lx\n \
-    s11: %lx\n \
-    ra: %lx\n \
-    sp: %lx\n \
-    gp: %lx\n \
-    tp: %lx\n \
-    epc: %lx\n \
-    kernelSp: %lx\n \
-    kernelSatp: %lx\n \
-    trapHandler: %lx\n \
+    printk(" a0: %lx \
+    a1: %lx \
+    a2: %lx \
+    a3: %lx \
+    a4: %lx \
+    a5: %lx \
+    a6: %lx \
+    a7: %lx \
+    t0: %lx \
+    t1: %lx \
+    t2: %lx \
+    t3: %lx \
+    t4: %lx \
+    t5: %lx \
+    t6: %lx \
+    s0: %lx \
+    s1: %lx \
+    s2: %lx \
+    s3: %lx \
+    s4: %lx \
+    s5: %lx \
+    s6: %lx \
+    s7: %lx \
+    s8: %lx \
+    s9: %lx \
+    s10: %lx \
+    s11: %lx \
+    ra: %lx \
+    sp: %lx \
+    gp: %lx \
+    tp: %lx \
+    epc: %lx \
+    kernelSp: %lx \
+    kernelSatp: %lx \
+    trapHandler: %lx \
     kernelHartId: %lx\n",
            tf->a0, tf->a1, tf->a2, tf->a3, tf->a4,
            tf->a5, tf->a6, tf->a7, tf->t0, tf->t1,

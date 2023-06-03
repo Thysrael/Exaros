@@ -12,6 +12,7 @@
 #include "stdlib.h"
 #include "string.h"
 #include "unistd.h"
+#include "file.h"
 
 #define MAX_TOKENS 128
 #define MAX_ARGS 64

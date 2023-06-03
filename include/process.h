@@ -130,15 +130,23 @@ typedef struct Trapframe
 
 typedef LIST_ENTRY(ProcessListEntry, Process) ProcessListEntry;
 
+typedef struct CpuTimes
+{
+    long user;
+    long kernel;
+    long deadChildrenUser;
+    long deadChildrenKernel;
+} CpuTimes;
+
 // 进程控制块
 typedef struct Process
 {
     Trapframe trapframe; // 进程异常时保存寄存器的地方
     struct ProcessTime processTime;
-    // CpuTimes cpuTime;
+    CpuTimes cpuTime;
     ProcessListEntry link;
     ProcessListEntry scheduleLink;
-    // u64 awakeTime;
+    u64 awakeTime; // 进程应该醒来的时间
     u64 *pgdir;    // 进程页表地址
     u32 processId; // 进程 id
     u32 parentId;  // 父进程 id
@@ -183,7 +191,8 @@ u64 getProcessTopSp(Process *p);
 void sleep(void *channel, Spinlock *lk);
 void wakeup(void *channel);
 void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
-
+int wait(int targetProcessId, u64 addr);
 u64 exec(char *path, char **argv);
+void kernelProcessCpuTimeEnd();
 
 #endif

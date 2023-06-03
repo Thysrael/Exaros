@@ -937,6 +937,7 @@ static DirMeta *jumpToLinkDirMeta(DirMeta *link)
 {
     char buf[FAT32_MAX_FILENAME];
     // 迭代直至找到非链接文件
+    // printk("link:: %lx\n", (u64)link);
     while (link && link->reserve == DT_LNK)
     {
         metaRead(link, 0, (u64)buf, 0, FAT32_MAX_FILENAME);
@@ -978,6 +979,7 @@ static DirMeta *lookupPath(int fd, char *path, int parent, char *name, bool jump
     else if (*path != '\0' && fd == AT_FDCWD)
     {
         cur = myProcess()->cwd;
+        // printk("xdlj: %lx\n", myProcess()->cwd);
     }
     else
     {
@@ -986,6 +988,7 @@ static DirMeta *lookupPath(int fd, char *path, int parent, char *name, bool jump
 
     while ((path = skipelem(path, name)) != 0)
     {
+        // printk("cur:: %lx", (u64)cur); // 68?
         cur = jumpToLinkDirMeta(cur);
         if (!(cur->attribute & ATTR_DIRECTORY))
         {
@@ -1230,7 +1233,7 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
  */
 int fatInit(FileSystem *fs)
 {
-    printk("[FAT32 init] fat init begin\n");
+    QS_DEBUG("[FAT32 init] fat init begin\n");
     Buf *b = fs->read(fs, 0);
     if (b == 0)
     {
@@ -1261,17 +1264,17 @@ int fatInit(FileSystem *fs)
     brelse(b);
 
     // 打印 superblock 信息
-    printk("[FAT32 init] bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
-    printk("[FAT32 init] secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
-    printk("[FAT32 init] rsvdSecCnt: %d\n", fs->superBlock.BPB.rsvdSecCnt);
-    printk("[FAT32 init] numFATs: %d\n", fs->superBlock.BPB.numFATs);
-    printk("[FAT32 init] totSec: %d\n", fs->superBlock.BPB.totSec);
-    printk("[FAT32 init] FATsz: %d\n", fs->superBlock.BPB.FATsz);
-    printk("[FAT32 init] rootClus: %d\n", fs->superBlock.BPB.rootClus);
-    printk("[FAT32 init] firstDataSec: %d\n", fs->superBlock.firstDataSec);
-    printk("[FAT32 init] dataSecCnt: %d\n", fs->superBlock.dataSecCnt);
-    printk("[FAT32 init] dataClusCnt: %d\n", fs->superBlock.dataClusCnt);
-    printk("[FAT32 init] bytsPerClus: %d\n", fs->superBlock.bytsPerClus);
+    QS_DEBUG("[FAT32 init] bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
+    QS_DEBUG("[FAT32 init] secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
+    QS_DEBUG("[FAT32 init] rsvdSecCnt: %d\n", fs->superBlock.BPB.rsvdSecCnt);
+    QS_DEBUG("[FAT32 init] numFATs: %d\n", fs->superBlock.BPB.numFATs);
+    QS_DEBUG("[FAT32 init] totSec: %d\n", fs->superBlock.BPB.totSec);
+    QS_DEBUG("[FAT32 init] FATsz: %d\n", fs->superBlock.BPB.FATsz);
+    QS_DEBUG("[FAT32 init] rootClus: %d\n", fs->superBlock.BPB.rootClus);
+    QS_DEBUG("[FAT32 init] firstDataSec: %d\n", fs->superBlock.firstDataSec);
+    QS_DEBUG("[FAT32 init] dataSecCnt: %d\n", fs->superBlock.dataSecCnt);
+    QS_DEBUG("[FAT32 init] dataClusCnt: %d\n", fs->superBlock.dataClusCnt);
+    QS_DEBUG("[FAT32 init] bytsPerClus: %d\n", fs->superBlock.bytsPerClus);
 
     // make sure that bytsPerSec has the same value with BUFFER_SIZE
     if (BUFFER_SIZE != fs->superBlock.BPB.bytsPerSec)
@@ -1312,7 +1315,7 @@ int fatInit(FileSystem *fs)
     for (u32 i = 0; i < fs->superBlock.BPB.FATsz; i++, sec++)
     {
         b = fs->read(fs, sec);
-        printk("sec: %d\n", i);
+        CNX_DEBUG("sec: %d\n", i);
         for (u32 j = 0; j < entryPerSec; j++)
         {
             if (((u32 *)(b->data))[j])
@@ -1327,7 +1330,7 @@ int fatInit(FileSystem *fs)
     // 构造 dirMetas
     loadDirMetas(fs, &fs->root);
 
-    printk("[FAT32 init] fat init end\n");
+    QS_DEBUG("[FAT32 init] fat init end\n");
     return 0;
 }
 

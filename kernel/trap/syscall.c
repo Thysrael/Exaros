@@ -12,6 +12,7 @@
 #include <pipe.h>
 #include <fs.h>
 #include <mmap.h>
+#include <debug.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -164,6 +165,7 @@ void syscallWrite(void)
     File *f;
     int len = tf->a2, fd = tf->a0;
     u64 uva = tf->a1;
+    CNX_DEBUG("len:%d,\n", len);
 
     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
     {
@@ -177,6 +179,7 @@ void syscallWrite(void)
         return;
     }
 
+    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
 }
 
@@ -536,6 +539,7 @@ void syscallDevice(void)
     f->writable = (omode & O_WRONLY) || (omode & O_RDWR);
 
     tf->a0 = fd;
+    QS_DEBUG("[syscall] Device %d open\n", fd);
     return;
 
 bad:
@@ -809,6 +813,14 @@ void syscallPutString()
 void syscallWait()
 {
     Trapframe *trapframe = getHartTrapFrame();
+    int pid = trapframe->a0;
+    u64 addr = trapframe->a1;
+    trapframe->a0 = wait(pid, addr);
+}
+
+void syscallExit()
+{
+    Trapframe *trapframe = getHartTrapFrame();
     Process *process;
     int ret, ec = trapframe->a0;
 
@@ -825,17 +837,50 @@ void syscallWait()
     panic("sycall exit error");
 }
 
-void syscallExit()
-{
-}
+/**
+ * @brief
+ *
+ */
 void syscallGetCpuTimes()
 {
+    Trapframe *tf = getHartTrapFrame();
+    int cow;
+    CpuTimes *ct = (CpuTimes *)va2PA(myProcess()->pgdir, tf->a0, &cow);
+    if (cow)
+    {
+        cowHandler(myProcess()->pgdir, tf->a0);
+    }
+    *ct = myProcess()->cpuTime;
+    tf->a0 = (r_cycle() & 0x3FFFFFFF);
 }
+
+/**
+ * @brief 获取当前时间
+ *
+ */
 void syscallGetTime()
 {
+    Trapframe *tf = getHartTrapFrame();
+    u64 time = r_time();
+    TimeSpec ts;
+    ts.second = time / 1000000;
+    ts.microSecond = time % 1000000;
+    copyout(myProcess()->pgdir, tf->a0, (char *)&ts, sizeof(TimeSpec));
+    tf->a0 = 0;
 }
+
+/**
+ * @brief 进程 sleep 一段时间
+ *
+ */
 void syscallSleepTime()
 {
+    Trapframe *tf = getHartTrapFrame();
+    TimeSpec ts;
+    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
+    myProcess()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
+    kernelProcessCpuTimeEnd();
+    yield();
 }
 
 /**
@@ -954,11 +999,12 @@ void syscallMapMemory()
     // 自定的位置
 
     Process *p = myProcess();
-    int alloc = (addr = NULL);
+    int alloc = (addr == NULL);
     if (alloc == 0)
     {
         panic("Syscall mmap can't handle addr(0x%x) != 0", addr);
     }
+    addr = p->mmapHeapTop;
     u64 start = p->mmapHeapTop; // mmapHeapTop 必然是页对齐的
     u64 end = ALIGN_UP(start + length, PAGE_SIZE);
     if (end > USER_MMAP_HEAP_TOP)
@@ -1124,6 +1170,7 @@ void syscallExec()
         if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
             goto bad;
     }
+    // printk("syscalle xec2");
     int ret = exec(path, argv);
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1131,6 +1178,7 @@ void syscallExec()
         pageFree(pa2Page((u64)argv[i]));
     }
     tf->a0 = ret;
+    // printk("sucessfully exec\n");
     return;
 bad:
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)

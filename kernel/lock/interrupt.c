@@ -14,7 +14,6 @@ void interruptPush(void)
 
     // 禁用中断
     intr_off();
-
     struct Hart *hart = myHart();
     if (hart->interruptLayer == 0)
         hart->lastInterruptEnable = oldInterruptEnable;

@@ -17,6 +17,7 @@
 #include <yield.h>
 #include <trap.h>
 #include <elf.h>
+#include <debug.h>
 #include <lock.h>
 #include <fs.h>
 
@@ -26,6 +27,7 @@ ProcessList scheduleList[2];
 Process *currentProcess[CORE_NUM] = {0};
 static int processTimeCount[CORE_NUM] = {0};
 static int processBelongList[CORE_NUM] = {0};
+struct Spinlock freeProcessesLock, scheduleListLock, processIdLock, waitLock, currentProcessLock;
 
 /**
  * @brief 获取当前这个核正在运行的进程
@@ -108,15 +110,21 @@ void processFree(Process *p)
 
     // todo 写好文件系统之后要在这里释放掉进程占用的文件资源
 
-    // if (p->parentId > 0)
-    // {
-    //     Process *parentProcess;
-    //     pid2Process(p->parentId, &parentProcess, 0);
-    //     // if (r == 0)
-    //     // {
-    //     //     wakeup(parentProcess);
-    //     // }
-    // }
+    if (p->parentId > 0)
+    {
+        Process *parentProcess;
+        int r = pid2Process(p->parentId, &parentProcess, 0);
+        // if (r < 0) {
+        //     panic("Can't get parent process, current process is %x, parent is %x\n", p->id, p->parentId);
+        // }
+        // printf("[Free] process %x wake up %x\n", p->id, parentProcess);
+        // The parent process may die before the child process
+
+        if (r == 0)
+        {
+            wakeup(parentProcess);
+        }
+    }
 }
 
 /**
@@ -171,8 +179,8 @@ extern void userTrap();
  */
 int allocPgdir(Page **page)
 {
-    int r = pageAlloc(page);
-    if (r)
+    int r;
+    if ((r = pageAlloc(page)) < 0)
         return r;
     (*page)->ref++;
     return 0;
@@ -209,6 +217,9 @@ void pgdirFree(u64 *pgdir)
     }
     paDecreaseRef((u64)pgdir);
 }
+
+extern FileSystem *rootFileSystem;
+extern FileSystem fileSystem[32];
 /**
  * @brief 为进程申请页表，并且建立 trampoline 和 trapframe 的映射
  * 为进程的内核栈建立映射，这样进程在陷入内核的时候才不会报错
@@ -234,19 +245,25 @@ int setupProcess(Process *p)
     p->parentId = 0;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->channel = 0;
+    p->awakeTime = 0;
 
+    p->cwd = &(rootFileSystem->root);
+    // printk("p-> cwd: %lx, %lx\n", p->cwd, fileSystem);
     // 设置内核栈，就是进程在进入内核 trap 的时候使用的栈
     // 为每个进程开一页的内核栈
     r = pageAlloc(&page);
-    kernelPageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
-                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    // printk("mmapva: %lx\n", getProcessTopSp(p) - PAGE_SIZE);
+    pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
+            PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
     extern char trampoline[];
     extern char trapframe[];
-    // kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
-    // kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
-    kernelPageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    kernelPageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    // 尝试更严格的权限管理
+    // pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
+    // pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
+    pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     return 0;
 }
 
@@ -359,7 +376,8 @@ void processRun(Process *p)
     Trapframe *trapframe = getHartTrapFrame();
 
     // 保存当前进程的 trapfreme 到进程结构体中
-    if (currentProcess[getTp()] && (currentProcess[getTp()]->state == RUNNING))
+    if (currentProcess[getTp()])
+    // if (currentProcess[getTp()] && (currentProcess[getTp()]->state == RUNNING))
     {
         memmove(&currentProcess[getTp()]->trapframe, trapframe, sizeof(Trapframe));
     }
@@ -372,6 +390,7 @@ void processRun(Process *p)
     if (p->reason == 1)
     {
         p->reason = 0;
+        // printk("sleeprec, sp: %lx, ra: %lx\n", p->currentKernelSp, *((u64 *)(p->currentKernelSp) - 1));
         memmove(trapframe, &currentProcess[hartid]->trapframe, sizeof(Trapframe));
         asm volatile("ld sp, 0(%0)"
                      :
@@ -384,12 +403,18 @@ void processRun(Process *p)
         if (first)
         {
             first = 0;
+
+            // 把 hartTrapframe 中的东西拷贝到 hartTrapframe 中
+            // 是因为 process run最开始如果是 (currentProcess[getTp()]) ，就要把 harttrapframe 拷贝到 process->tf
+            // 但是第一个进程在 run 的时候 harttf 里面根本没有东西，就会导致用  0 覆盖
+            memmove(trapframe, &(currentProcess[hartid]->trapframe), sizeof(Trapframe));
             initRootFileSystem();
             // setNextTimeout();
+            p->cwd = &(rootFileSystem->root);
         }
         else
         {
-            setNextTimeout();
+            // setNextTimeout();
         }
         // 切换页表
         // 拷贝进程的 trapframe 到 hart 对应的 trapframe
@@ -423,11 +448,14 @@ void yield()
 
     if (process && process->state == RUNNING)
     {
-        memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
+        // 这一句没必要，因为在 processrun 里面是要拷贝的
+        // memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
         process->state = RUNNABLE;
     }
+    // 防止死锁，假如只有一个进程而这个进程被 sleep 了，在这里应该接受外部中断
+    intr_on();
 
-    while ((count == 0) || !process || (process->state != RUNNABLE))
+    while ((count == 0) || !process || (process->state != RUNNABLE) || (process->awakeTime > r_time()))
     {
         if (process)
             LIST_INSERT_TAIL(&scheduleList[point ^ 1], process, scheduleLink);
@@ -439,12 +467,24 @@ void yield()
             LIST_REMOVE(process, scheduleLink);
             count = process->priority;
         }
-        // printk("finding a process to yield... %d, %d\n", count, process->state);
+        // printk("finding a process to yield... %d, %d, %d\n", count, process->state, (int)intr_get());
     }
+
+    // 在这里关掉中断，不然 sleep 到一半的时候被打断
+    intr_off();
+
+    CNX_DEBUG("currentKernelSp: %lx \n", process->currentKernelSp);
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    // printk("hartID %d yield process %lx\n", hartId, process->processId);
+    CNX_DEBUG("hartID %d yield process %lx\n", hartId, process->processId);
+
+    // syscall_watetime 的范围值设置为 0
+    if (process->awakeTime > 0)
+    {
+        getHartTrapFrame()->a0 = 0;
+        process->awakeTime = 0;
+    }
     processRun(process);
 }
 
@@ -482,6 +522,10 @@ void sleep(void *channel, Spinlock *lk)
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&p->currentKernelSp));
+    // printk("sleepsave, sp: %lx \n", p->currentKernelSp);
+    asm volatile("sd sp, 0(%0)"
+                 :
+                 : "r"(&p->currentKernelSp));
 
     // 保存寄存器
     sleepSave();
@@ -516,12 +560,59 @@ void wakeup(void *channel)
 }
 
 /**
- * @brief
+ * @brief 等待进程 targetProcessId 改变状态，
  *
  */
-// void wait(int targetProcessId, u64 addr)
-// {
-// }
+int wait(int targetProcessId, u64 addr)
+{
+    Process *p = myProcess();
+    int haveChildProcess, pid;
+
+    acquireLock(&waitLock);
+
+    while (true)
+    {
+        haveChildProcess = 0;
+        for (int i = 0; i < PROCESS_TOTAL_NUMBER; ++i)
+        {
+            Process *np = &processes[i];
+            acquireLock(&np->lock);
+            if (np->parentId == p->processId)
+            {
+                haveChildProcess = 1;
+                if ((targetProcessId == -1 || np->processId == targetProcessId) && np->state == ZOMBIE)
+                {
+                    pid = np->processId;
+                    if (addr != 0 && copyout(p->pgdir, addr, (char *)&np->retValue, sizeof(np->retValue)) < 0)
+                    {
+                        releaseLock(&np->lock);
+                        releaseLock(&waitLock);
+                        return -1;
+                    }
+                    acquireLock(&freeProcessesLock);
+                    // updateAncestorsCpuTime(np);
+                    np->state = UNUSED;
+                    LIST_INSERT_HEAD(&freeProcesses, np, link); // test pipe
+                    // printf("[Process Free] Free an process %d\n", (u32)(np - processes));
+                    releaseLock(&freeProcessesLock);
+                    releaseLock(&np->lock);
+                    releaseLock(&waitLock);
+                    return pid;
+                }
+            }
+            releaseLock(&np->lock);
+        }
+
+        if (!haveChildProcess)
+        {
+            releaseLock(&waitLock);
+            return -1;
+        }
+
+        // printf("[WAIT]porcess id %x wait for %x\n", p->id, p);
+        sleep(p, &waitLock);
+    }
+}
 
 #define SIGCHLD 17
 /**
@@ -546,8 +637,6 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
     Process *process, *myprocess;
     int hartId = getTp();
     int r = processAlloc(&process, currentProcess[hartId]->processId);
-
-    printk("123\n");
 
     myprocess = myProcess();
     process->cwd = myProcess()->cwd; // when we fork, we should keep cwd
@@ -583,7 +672,6 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
 
     trapframe->a0 = process->processId;
     u64 i, j, k;
-    printk("123\n");
     for (i = 0; i < 512; i++)
     {
         if (!(currentProcess[hartId]->pgdir[i] & PTE_VALID_BIT))
@@ -614,7 +702,6 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
                     pa2[k] |= PTE_COW_BIT;
                     pa2[k] &= ~PTE_WRITE_BIT;
                 }
-                printk("123 va:%lx\n", va);
                 pageMap(process->pgdir, va, PTE2PA(pa2[k]), PTE2PERM(pa2[k]));
             }
         }
@@ -623,4 +710,10 @@ void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid)
     LIST_INSERT_TAIL(&scheduleList[0], process, scheduleLink);
 
     return;
+}
+
+void kernelProcessCpuTimeEnd()
+{
+    Process *p = myProcess();
+    p->processTime.lastKernelTime = r_time();
 }
