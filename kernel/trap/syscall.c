@@ -903,8 +903,16 @@ void syscallBrk()
         return;
     }
     Process *p = myProcess();
+    // printk("addr: %lx\n", addr);
+    if (addr != 0)
+    {
+        addr &= ((1ul << 32) - 1);
+        addr |= (0x3cul << 32);
+    }
+    // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
+        // printk("brkHeapTop: %lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
