@@ -35,6 +35,7 @@ char *syscallList[] = {
     "waitpid",
     "write",
     "yield",
+    // "sh",
 };
 
 char *argv[] = {NULL};
