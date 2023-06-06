@@ -97,37 +97,73 @@ pid_t Fork();
 // wrapper the waitpid
 void Wait(pid_t pid);
 
+void deleteChar()
+{
+    printf("\b");
+    printf(" ");
+    printf("\b");
+}
+
+#define CTRL_C 0x03
+#define CTRL_D 0x04
+#define BACKSPACE 0x7f // 事实上 bs 是 \b = 8
+#define DELETE 0x08
+
 void readline(char *buf, size_t n)
 {
     int r;
     for (int i = 0; i < n; i++)
     {
-        if ((r = read(0, buf + i, 1)) != 1)
+        if ((r = read(stdin, buf + i, 1)) != 1)
         {
+            printf("read error: %d\n", r);
             if (r < 0)
             {
                 printf("read error: %d\n", r);
             }
             exit(0);
         }
-        if (buf[i] == 0x08 || buf[i] == 0x7f) // BS (Backspace) & DEL (Delete)
+        if (buf[i] == BACKSPACE)
         {
             if (i > 0)
+            {
                 i -= 2;
+                deleteChar();
+            }
             else
-                i = -1;
-            // 增加一个删除
-            // if (buf[i] != '\b')
-            //     printf("\b");
+            {
+                i -= 1;
+            }
         }
-        if (buf[i] == '\r' || buf[i] == '\n')
+        else if (buf[i] == DELETE)
+        {
+            i -= 1;
+        }
+        else if (buf[i] == '\r' || buf[i] == '\n')
         {
             buf[i] = 0;
             return;
         }
+        else if (buf[i] == CTRL_C)
+        {
+            buf[0] = 0;
+            return;
+        }
+        else if (buf[i] == CTRL_D)
+        {
+            if (i == 0)
+            {
+                return;
+            }
+            i--;
+        }
+        else
+        {
+            printf("%c", buf[i]);
+        }
     }
     printf("line too long\n");
-    while ((r = read(0, buf, 1)) == 1 && buf[0] != '\r' && buf[0] != '\n')
+    while ((r = read(stdin, buf, 1)) == 1 && buf[0] != '\r' && buf[0] != '\n')
         ; // 删除太长的内容
     buf[0] = 0;
 }
@@ -139,15 +175,18 @@ int main()
     dup(0);
 
     print_head();
-    // while (1)
-    // {
-    //     print_prompt();
-    //     // fgets(line_buf, BUFF_SIZE, stdin);
-    //     readline(line_buf, BUFF_SIZE);
-    //     if (line_buf[0] == EOF_ASCII)
-    //         quit();
-    //     eval();
-    // }
+    while (1)
+    {
+        print_prompt();
+        readline(line_buf, BUFF_SIZE);
+        printf("\n");
+        if (line_buf[0] == CTRL_D)
+        {
+            quit();
+        }
+        // printf("command: %s\n", line_buf);
+        eval();
+    }
     while (1)
         ;
     return 0;
@@ -162,7 +201,7 @@ void unix_error(char *msg)
 
 void quit()
 {
-    printf("\n\n                 \033[0;32m ThyShell closes ...\n\n");
+    printf("\033[0;32mThyShell closes ...\n");
     exit(0);
 }
 
@@ -314,11 +353,8 @@ void tokenize()
     char *cur = line_buf;
     char *start;
     State state = STATE_NORMAL;
-    // skip the ' '
     while (*cur && (*cur == ' ')) cur++;
-
     start = cur;
-    line_buf[strlen(line_buf) - 1] = '\0';
 
     while (1)
     {
