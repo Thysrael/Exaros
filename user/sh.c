@@ -201,7 +201,7 @@ void unix_error(char *msg)
 
 void quit()
 {
-    printf("\033[0;32mThyShell closes ...\n");
+    printf("\033[0;32mThyShell closes ...\033[0m\n");
     exit(0);
 }
 
@@ -247,7 +247,7 @@ void print_prompt()
     // }
     // use "\033[" to change color
     // printf("ThyShell \033[0;32m%s\033[0m $ ", path);
-    printf("%s > ", path);
+    printf("\033[0;32m%s\033[0m > ", path);
     // free(path);
 }
 
