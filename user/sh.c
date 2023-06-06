@@ -195,7 +195,7 @@ int main()
 void unix_error(char *msg)
 {
     // fprintf(stderr, "%s: %s\n", msg, strerror(errno));
-    printf("Error: %s\n", msg);
+    printf("\033[0;31mExec Error: %s\033[0m\n", msg);
     exit(0);
 }
 
