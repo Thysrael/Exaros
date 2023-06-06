@@ -50,6 +50,11 @@ umount:
 mount:
 	sudo mount -t vfat $(fs_img) $(mnt_path)
 
+show:
+	sudo mount -t vfat $(fs_img) $(mnt_path)
+	tree /mnt
+	sudo umount $(mnt_path)
+
 clean:
 	for module in $(modules);						\
 		do 											\

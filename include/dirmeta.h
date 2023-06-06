@@ -25,7 +25,7 @@ typedef struct DirMeta
     u32 fileSize;  // 文件的字节大小
 
     u32 curClus;         // 文件的当前簇
-    u32 inodeMaxCluster; // 应该是已经缓存过的 cluster
+    u32 inodeMaxCluster; // 已经缓存过的 cluster 的数量
     u32 clusCnt;         // 簇的数量
     Inode inode;         // 用来检索已经用过的簇
 

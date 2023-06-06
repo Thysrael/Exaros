@@ -1223,6 +1223,10 @@ void syscallUname()
 
 void syscallShutdown()
 {
+#ifdef FAT_DUMP
+    extern FileSystem *rootFileSystem;
+    dumpDirMetas(rootFileSystem, &(rootFileSystem->root));
+#endif
     SBI_CALL_0(SBI_SHUTDOWN);
     return;
 }

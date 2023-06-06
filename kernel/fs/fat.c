@@ -257,18 +257,24 @@ u32 rwClus(FileSystem *fs, u32 cluster, int write, int user, u64 data, u32 off, 
 }
 
 /**
- * 根据给定的偏移量和文件目录项，重新计算当前簇号（meta->curClus）和簇内偏移量
+ * 根据给定的偏移量和文件目录项，重新计算当前簇号（meta->curClus）和簇内偏移量。
+ * 在读写文件的时候都需要先调用这个函数，是因为只有这样才能确定需要读写哪里（以 sector 为单位）
+ * 这个函数本质是一个 fileRelativeOffset -> (curCluster, curClusterRelativeOffset) 的映射
  * @param   meta        给定的文件目录项，修改它的 curClus
- * @param   off         the offset from the beginning of the relative file
- * @param   alloc       whether alloc new cluster when meeting end of FAT chains
+ * @param   off         相对于文件的偏移量
+ * @param   alloc       当 FAT 簇链结束时，是否在簇尾分配一个新簇
  * @return              相对于当前簇的偏移量
  */
 int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc)
 {
+    // printk("reloc %s\n", meta->filename);
+    // 簇号从 2 开始
     assert(meta->firstClus != 0);
     assert(meta->inodeMaxCluster > 0);
     assert(meta->firstClus == meta->inode.item[0]);
-    // 计算偏移量 `off` 所在的簇号
+    // 计算偏移量 `off` 所在的簇号（并不是数据区的绝对簇号，而是相对于这个文件，这个簇是第几个簇）
+    // 我们这里称 clusNum 为文件簇索引
+    // 我们计算文件簇索引是很容易的，也就是我们知道了他是链表的第几个节点，但是并不知道他的绝对簇号是啥
     int clusNum = off / fs->superBlock.bytsPerClus;
     // 计算 offset 的簇内偏移
     int ret = off % fs->superBlock.bytsPerClus;
@@ -280,15 +286,16 @@ int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc)
         return ret;
     }
 
-    // 如果没有被缓存，那么就需要先更新 curClus 为最后一个然后进行迭代
+    // 如果没有被缓存，那么就需要先更新 curClus 为当前被缓存的最后一个，然后进行迭代缓存
     if (meta->inodeMaxCluster > 0)
     {
         metaFindInode(meta, meta->inodeMaxCluster - 1);
     }
-    // 迭代直到满足要求
+    // 沿着簇链迭代，将没有被缓存的每个簇都缓存入 Inode
     while (clusNum > meta->clusCnt)
     {
         int clus = readFat(fs, meta->curClus);
+        // 簇链尾部
         if (clus >= FAT32_EOC)
         {
             if (alloc)
@@ -306,43 +313,8 @@ int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc)
         meta->curClus = clus;
         meta->clusCnt++;
 
-        // 分配结束后，进行 inode 的更新
-        u32 pos = meta->clusCnt;
-        assert(pos == meta->inodeMaxCluster);
-        meta->inodeMaxCluster++;
-        if (pos < INODE_SECOND_LEVEL_BOTTOM)
-        {
-            meta->inode.item[pos] = clus;
-            continue;
-        }
-        if (pos < INODE_THIRD_LEVEL_BOTTOM)
-        {
-            int idx1 = INODE_SECOND_ITEM_BASE + (pos - INODE_SECOND_LEVEL_BOTTOM) / INODE_ITEM_NUM;
-            int idx2 = (pos - INODE_SECOND_LEVEL_BOTTOM) % INODE_ITEM_NUM;
-            if (idx2 == 0)
-            {
-                meta->inode.item[idx1] = inodeAlloc();
-            }
-            inodes[meta->inode.item[idx1]].item[idx2] = clus;
-            continue;
-        }
-        if (pos < INODE_THIRD_LEVEL_TOP)
-        {
-            int idx1 = INODE_THIRD_ITEM_BASE + (pos - INODE_THIRD_LEVEL_BOTTOM) / INODE_ITEM_NUM / INODE_ITEM_NUM;
-            int idx2 = (pos - INODE_THIRD_LEVEL_BOTTOM) / INODE_ITEM_NUM % INODE_ITEM_NUM;
-            int idx3 = (pos - INODE_THIRD_LEVEL_BOTTOM) % INODE_ITEM_NUM;
-            if (idx3 == 0)
-            {
-                if (idx2 == 0)
-                {
-                    meta->inode.item[idx1] = inodeAlloc();
-                }
-                inodes[meta->inode.item[idx1]].item[idx2] = inodeAlloc();
-            }
-            inodes[inodes[meta->inode.item[idx1]].item[idx2]].item[idx3] = clus;
-            continue;
-        }
-        panic("");
+        // 分配结束后，进行 inode 的缓存
+        metaCacheInode(meta, clus);
     }
     return ret;
 }
@@ -502,6 +474,12 @@ static DirMeta *dirlookup(DirMeta *parentDir, char *filename)
     return NULL;
 }
 
+/**
+ * @brief 根据文件名产生短文件名，用于填写 sne
+ *
+ * @param shortname 生成的 shortname
+ * @param name 文件名
+ */
 static void generateShortName(char *shortname, char *name)
 {
     static char illegal[] = {
@@ -580,7 +558,7 @@ static u8 calChecksum(uchar *shortname)
 }
 
 /**
- * @brief 产生一组 FAT 标准的目录项，并写回磁盘
+ * @brief 产生 childMeta 对应的一组 FAT 标准的目录项，并写回磁盘
  *
  * @param dirMeta 目录 meta
  * @param childMeta 文件 meta
@@ -589,6 +567,8 @@ static u8 calChecksum(uchar *shortname)
  */
 static int makeDentry(DirMeta *dirMeta, DirMeta *childMeta, u32 off)
 {
+    // printk("\tmake dentry. dir = %s, child = %s, off = %d\n", dirMeta->filename, childMeta->filename, off);
+    // dirMeta 是否是目录
     if (!(dirMeta->attribute & ATTR_DIRECTORY))
         panic("makeDentry: not dir");
     if (off % sizeof(Dentry))
@@ -598,6 +578,7 @@ static int makeDentry(DirMeta *dirMeta, DirMeta *childMeta, u32 off)
     FileSystem *fs = childMeta->fileSystem;
     Dentry de;
     memset(&de, 0, sizeof(de));
+    // 特殊处理 . 和 ..
     if (off <= 32)
     {
         // 分别对应 . 和 ..
@@ -610,25 +591,31 @@ static int makeDentry(DirMeta *dirMeta, DirMeta *childMeta, u32 off)
             strncpy(de.sne.name, "..         ", sizeof(de.sne.name));
         }
         de.sne.attr = ATTR_DIRECTORY;
-        de.sne.fst_clus_hi =
-            (u16)(childMeta->firstClus >> 16);                     // first clus high 16 bits
+        // 写入 firstCluster
+        de.sne.fst_clus_hi = (u16)(childMeta->firstClus >> 16);    // first clus high 16 bits
         de.sne.fst_clus_lo = (u16)(childMeta->firstClus & 0xffff); // low 16 bits
-        de.sne.file_size = 0;                                      // filesize is updated in eupdate()
+        de.sne.file_size = childMeta->fileSize;
         de.sne._nt_res = childMeta->reserve;
+        // 写入条目
         off = relocClus(fs, dirMeta, off, 1);
         rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off, sizeof(de));
+        return off + sizeof(de);
     }
     else
     {
-        int entcnt = (strlen(childMeta->filename) + CHAR_LONG_NAME - 1) / CHAR_LONG_NAME; // count of l-n-entries, rounds up
+        // lne 的个数
+        int lneCnt = (strlen(childMeta->filename) + CHAR_LONG_NAME - 1) / CHAR_LONG_NAME;
+        // 产生短文件名
         char shortname[CHAR_SHORT_NAME + 1];
         memset(shortname, 0, sizeof(shortname));
         generateShortName(shortname, childMeta->filename);
+
+        // 构造 lne
         de.lne.checksum = calChecksum((uchar *)shortname);
         de.lne.attr = ATTR_LONG_NAME;
-        for (int i = entcnt; i > 0; i--)
+        for (int i = lneCnt; i > 0; i--)
         {
-            if ((de.lne.order = i) == entcnt)
+            if ((de.lne.order = i) == lneCnt)
             {
                 de.lne.order |= LAST_LONG_ENTRY;
             }
@@ -664,18 +651,18 @@ static int makeDentry(DirMeta *dirMeta, DirMeta *childMeta, u32 off)
             rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off2, sizeof(de));
             off += sizeof(de);
         }
+        // 写入短目录项
         memset(&de, 0, sizeof(de));
         strncpy(de.sne.name, shortname, sizeof(de.sne.name));
         de.sne.attr = childMeta->attribute;
-        de.sne.fst_clus_hi =
-            (u16)(childMeta->firstClus >> 16);                     // first clus high 16 bits
+        de.sne.fst_clus_hi = (u16)(childMeta->firstClus >> 16);    // first clus high 16 bits
         de.sne.fst_clus_lo = (u16)(childMeta->firstClus & 0xffff); // low 16 bits
-        de.sne.file_size = childMeta->fileSize;                    // filesize is updated in eupdate()
+        de.sne.file_size = childMeta->fileSize;
         de.sne._nt_res = childMeta->reserve;
-        off = relocClus(fs, dirMeta, off, 1);
-        rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off, sizeof(de));
+        int off1 = relocClus(fs, dirMeta, off, 1);
+        rwClus(fs, dirMeta->curClus, 1, 0, (u64)&de, off1, sizeof(de));
+        return off + sizeof(de);
     }
-    return off += sizeof(de);
 }
 
 /**
@@ -1215,7 +1202,14 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
         // 如果 meta 是目录文件，就递归处理
         if ((meta->attribute & ATTR_DIRECTORY) && (off > 32 || parent == &fs->root))
         {
+#ifdef FAT_DUMP
+            if (strncmp(meta->filename, ".", CHAR_SHORT_NAME) != 0 && strncmp(meta->filename, "..", CHAR_SHORT_NAME) != 0)
+            {
+                loadDirMetas(fs, meta);
+            }
+#else
             loadDirMetas(fs, meta);
+#endif
         }
         dirMetaAlloc(&meta);
         // 一个 dentry 是 32 bit
@@ -1356,7 +1350,16 @@ void dumpDirMetas(FileSystem *fs, DirMeta *curMeta)
     }
     for (DirMeta *childMeta = curMeta->firstChild; childMeta; childMeta = childMeta->nextBrother)
     {
+        // printk("\tchild meta %s\n", childMeta->filename);
         off = makeDentry(curMeta, childMeta, off);
+        if (!strncmp(childMeta->filename, ".", CHAR_SHORT_NAME))
+        {
+            continue;
+        }
+        if (!strncmp(childMeta->filename, "..", CHAR_SHORT_NAME))
+        {
+            continue;
+        }
         if (childMeta->attribute & ATTR_DIRECTORY)
         {
             dumpDirMetas(fs, childMeta);

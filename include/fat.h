@@ -25,16 +25,19 @@ typedef struct FileSystem FileSystem;
 
 // FAT 表中内容
 #define FAT32_EOC 0x0ffffff8
-
-#define LAST_LONG_ENTRY 0x40
-#define EMPTY_ENTRY 0xe5  // 表示该条目未被分配
-#define END_OF_ENTRY 0x00 // 表示该条目未被分配，同时此后的条目也未被分配
+// LFN Order 的内容
+#define LAST_LONG_ENTRY 0x40 // 表示 LFN 的最后一部分
+#define EMPTY_ENTRY 0xe5     // 表示该条目未被分配
+#define END_OF_ENTRY 0x00    // 表示该条目未被分配，同时此后的条目也未被分配
 
 // FAT 的一些长度宏
-#define CHAR_LONG_NAME 13
+#define CHAR_LONG_NAME 13 // 一个 LFN 中文件名的选项
 #define CHAR_SHORT_NAME 11
 #define FAT32_MAX_FILENAME 255
 #define FAT32_MAX_PATH 260
+
+// 是否导出目录
+// #define FAT_DUMP
 
 typedef struct SuperBlock
 {
@@ -50,7 +53,7 @@ typedef struct SuperBlock
         u8 numFATs;     // FAT 表的数量，也就是大概就是 2
         u32 totSec;     // 总扇区数，包括所有区域
         u32 FATsz;      // 每个 FAT 表的扇区数
-        u32 rootClus;   // 根目录（也就是数据区）所在的簇号
+        u32 rootClus;   // 根目录（也就是数据区的起始目录）所在的簇号
     } BPB;              // 是 BIOS 参数块（BIOS Parameter Block）的缩写
 } SuperBlock;
 
@@ -72,8 +75,8 @@ typedef struct short_name_entry
     u16 fst_clus_hi; // 文件起始簇号的高 16 位
     u16 _lst_wrt_time;
     u16 _lst_wrt_date;
-    u16 fst_clus_lo;
-    u32 file_size; // 文件大小，以字节为单位
+    u16 fst_clus_lo; // 文件起始簇号的低 16 位
+    u32 file_size;   // 文件大小，以字节为单位
 } __attribute__((packed, aligned(4))) short_name_entry_t;
 
 /**
