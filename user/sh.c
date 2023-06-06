@@ -290,38 +290,34 @@ void execute_command(Command command, int fd_in, int fd_out)
             if (command.file_in)
             {
                 int in = open(command.file_in, O_RDONLY);
-                dup2(in, STDIN);
+                dup2(in, stdin);
             }
             else if (fd_in > 0)
             {
-                dup2(fd_in, STDIN);
+                dup2(fd_in, stdin);
             }
 
             if (command.file_out)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
                 int out = open(command.file_out, O_RDWR | O_CREATE | O_TRUNC);
-                dup2(out, STDOUT);
+                dup2(out, stdout);
             }
             else if (command.file_append)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
                 int append = open(command.file_append, O_WRONLY | O_CREATE | O_APPEND);
-                dup2(append, STDOUT);
+                dup2(append, stdout);
             }
             else if (fd_out > 0)
             {
-                dup2(fd_out, STDOUT);
+                dup2(fd_out, stdout);
             }
             char *newenviron[] = {NULL}; // 未实现 environ
             execve(command.argv[0], command.argv, newenviron);
             unix_error(command.argv[0]);
         }
         wait(0);
-        // else
-        // {
-        //     waitpid(pid);
-        // }
     }
 }
 
