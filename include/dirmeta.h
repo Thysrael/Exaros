@@ -30,8 +30,8 @@ typedef struct DirMeta
     Inode inode;         // 用来检索已经用过的簇
 
     u8 reserve; // 保留字段，主要用于指示该文件是否是链接
-    FileSystem *fileSystem;
     /* for OS */
+    FileSystem *fileSystem;
     enum
     {
         ZERO = 10,

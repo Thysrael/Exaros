@@ -915,7 +915,8 @@ static char *skipelem(char *path, char *name)
 }
 
 /**
- * @brief 找到链接文件的 target meta
+ * @brief 找到链接文件的 target meta，因为链接文件中记录着实际文件的绝对路径，
+ * 所以就是根据路径
  *
  * @param link 链接 meta
  * @return DirMeta* 目标 meta
