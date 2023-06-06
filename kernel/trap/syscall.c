@@ -650,6 +650,15 @@ void syscallUmount()
     tf->a0 = 0;
 }
 
+/**
+ * @brief 新建一个链接，本质是在 newPath 处创建一个文件，然后存入 oldPath
+ *
+ * @param oldDirFd 待链接的文件描述符
+ * @param oldPath 待链接的文件文件
+ * @param newDirFd 链接文件描述符
+ * @param newPath 链接文件的路径
+ * @return int 0 为成功
+ */
 int do_linkat(int oldDirFd, char *oldPath, int newDirFd, char *newPath)
 {
     DirMeta *entryPoint, *targetPoint = NULL;
@@ -1223,6 +1232,10 @@ void syscallUname()
 
 void syscallShutdown()
 {
+#ifdef FAT_DUMP
+    extern FileSystem *rootFileSystem;
+    dumpDirMetas(rootFileSystem, &(rootFileSystem->root));
+#endif
     SBI_CALL_0(SBI_SHUTDOWN);
     return;
 }
