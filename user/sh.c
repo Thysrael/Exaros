@@ -104,6 +104,7 @@ void Wait(pid_t pid);
 #define DELETE 0x08
 #define ENTER 0x0D
 #define ANSI 0x1b
+#define TAB 0x09
 
 void readline(char *buf, size_t n)
 {
@@ -139,7 +140,7 @@ void readline(char *buf, size_t n)
                 if (!pos)
                 {
                     pos = 0;
-                    buf[pos++] = CTRL_C;
+                    buf[pos++] = CTRL_D;
                     buf[pos] = 0;
                     return;
                 }
@@ -148,6 +149,9 @@ void readline(char *buf, size_t n)
             {
                 buf[pos] = 0;
                 return;
+            }
+            else if (read_buf[0] == TAB)
+            {
             }
             else
             {
@@ -175,6 +179,10 @@ int main()
         print_prompt();
         readline(line_buf, BUFF_SIZE);
         printf("\n");
+        if (line_buf[0] == CTRL_C)
+        {
+            continue;
+        }
         if (line_buf[0] == CTRL_D)
         {
             quit();
