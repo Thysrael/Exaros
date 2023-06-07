@@ -15,24 +15,24 @@ static int loadSeg(u64 *pagetable,
                    u64 offset,
                    u64 sz)
 {
-    u64 i, n;
     u64 pa;
     int cow;
-    for (i = 0; i < sz; i += PAGE_SIZE)
+    u64 n;
+    u64 begin = va;
+    u64 end = va + sz;
+    while (begin < end)
     {
-        pa = va2PA(pagetable, va + i, &cow);
+        pa = va2PA(pagetable, begin, &cow);
         if (pa == NULL)
             panic("loadSeg: address should exist");
         if (cow)
         {
-            cowHandler(pagetable, va + i);
+            cowHandler(pagetable, begin);
         }
-        if (sz - i < PAGE_SIZE)
-            n = sz - i;
-        else
-            n = PAGE_SIZE;
-        if (metaRead(dm, 0, (u64)pa, offset + i, n) != n)
+        n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
+        if (metaRead(dm, 0, (u64)pa, offset + (begin - va), n) != n)
             return -1;
+        begin += n;
     }
 
     return 0;
@@ -41,20 +41,30 @@ static int loadSeg(u64 *pagetable,
 static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
 {
     // printk("prepseg;");
-    if (va % PAGE_SIZE != 0)
-    {
-        printk("seg va begin = 0x%lx\n", va);
-    }
+    // if (va % PAGE_SIZE != 0)
+    // {
+    //     printk("seg va begin = 0x%lx\n", va);
+    // }
     // assert(va % PAGE_SIZE == 0);
-    for (int i = va; i < va + filesz; i += PAGE_SIZE)
+    Page *p;
+    u64 pa;
+    int cow;
+    u64 begin = va;
+    u64 end = va + filesz;
+    u64 n;
+    while (begin < end)
     {
-        Page *p;
-        if (pageAlloc(&p) < 0)
-            return -1;
-        pageInsert(pagetable, i, p,
-                   PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+        pa = va2PA(pagetable, begin, &cow);
+        if (pa == NULL)
+        {
+            if (pageAlloc(&p) < 0)
+                return -1;
+            pageInsert(pagetable, begin, p,
+                       PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
+        }
+        n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
+        begin += n;
     }
-    // printk("prepsegend;");
     return 0;
 }
 
@@ -128,8 +138,8 @@ u64 exec(char *path, char **argv)
             goto bad;
         if (prepSeg(pagetable, ph.vaddr, ph.memsz))
             goto bad;
-        if ((ph.vaddr % PAGE_SIZE) != 0)
-            goto bad;
+        // if ((ph.vaddr % PAGE_SIZE) != 0)
+        //     goto bad;
         if (loadSeg(pagetable, ph.vaddr, dm, ph.offset, ph.filesz) < 0)
             goto bad;
     }
