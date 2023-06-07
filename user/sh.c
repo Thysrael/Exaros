@@ -69,6 +69,7 @@ Command commands[MAX_COMMANDS];
 int command_cur;
 
 char line_buf[BUFF_SIZE];
+char read_buf[BUFF_SIZE];
 
 // print the error informatino and quit
 void unix_error(char *msg);
@@ -97,75 +98,73 @@ pid_t Fork();
 // wrapper the waitpid
 void Wait(pid_t pid);
 
-void deleteChar()
-{
-    printf("\b");
-    printf(" ");
-    printf("\b");
-}
-
 #define CTRL_C 0x03
 #define CTRL_D 0x04
-#define BACKSPACE 0x7f // 事实上 bs 是 \b = 8
+#define BACKSPACE 0x7f
 #define DELETE 0x08
+#define ENTER 0x0D
+#define ANSI 0x1b
+#define TAB 0x09
 
 void readline(char *buf, size_t n)
 {
+    int pos = 0;
     int r;
-    for (int i = 0; i < n; i++)
+    while (1)
     {
-        if ((r = read(stdin, buf + i, 1)) != 1)
+        r = read(stdin, read_buf, BUFF_SIZE);
+        switch (r)
         {
-            printf("read error: %d\n", r);
-            if (r < 0)
+        case 0:
+            printf("Error\n");
+            break;
+        case 1:
+            if (read_buf[0] == BACKSPACE)
             {
-                printf("read error: %d\n", r);
+                if (pos)
+                {
+                    pos--;
+                    printf("\033[1D");
+                    printf("\033[1P");
+                }
             }
-            exit(0);
-        }
-        if (buf[i] == BACKSPACE)
-        {
-            if (i > 0)
+            else if (read_buf[0] == CTRL_C)
             {
-                i -= 2;
-                deleteChar();
+                pos = 0;
+                buf[pos++] = CTRL_C;
+                buf[pos] = 0;
+                return;
+            }
+            else if (read_buf[0] == CTRL_D)
+            {
+                if (!pos)
+                {
+                    pos = 0;
+                    buf[pos++] = CTRL_D;
+                    buf[pos] = 0;
+                    return;
+                }
+            }
+            else if (read_buf[0] == ENTER)
+            {
+                buf[pos] = 0;
+                return;
+            }
+            else if (read_buf[0] == TAB)
+            {
             }
             else
             {
-                i -= 1;
+                printf("%c", read_buf[0]);
+                buf[pos++] = read_buf[0];
             }
-        }
-        else if (buf[i] == DELETE)
-        {
-            i -= 1;
-        }
-        else if (buf[i] == '\r' || buf[i] == '\n')
-        {
-            buf[i] = 0;
-            return;
-        }
-        else if (buf[i] == CTRL_C)
-        {
-            buf[0] = 0;
-            return;
-        }
-        else if (buf[i] == CTRL_D)
-        {
-            if (i == 0)
-            {
-                return;
-            }
-            i--;
-        }
-        else
-        {
-            printf("%c", buf[i]);
+            break;
+        case 2:
+        case 3:
+        case 4:
+        default: break;
         }
     }
-    printf("line too long\n");
-    while ((r = read(stdin, buf, 1)) == 1 && buf[0] != '\r' && buf[0] != '\n')
-        ; // 删除太长的内容
-    buf[0] = 0;
 }
 
 int main()
@@ -180,11 +179,14 @@ int main()
         print_prompt();
         readline(line_buf, BUFF_SIZE);
         printf("\n");
+        if (line_buf[0] == CTRL_C)
+        {
+            continue;
+        }
         if (line_buf[0] == CTRL_D)
         {
             quit();
         }
-        // printf("command: %s\n", line_buf);
         eval();
     }
     while (1)
@@ -194,14 +196,13 @@ int main()
 
 void unix_error(char *msg)
 {
-    // fprintf(stderr, "%s: %s\n", msg, strerror(errno));
-    printf("\033[0;31mExec Error: %s\033[0m\n", msg);
+    printf("\033[31mError in command: %s\033[0m\n", msg);
     exit(0);
 }
 
 void quit()
 {
-    printf("\033[0;32mThyShell closes ...\033[0m\n");
+    printf("\033[32mThyShell closes ...\033[0m\n");
     exit(0);
 }
 
@@ -223,12 +224,14 @@ pid_t Fork()
 
 void print_head()
 {
-    printf("\033[0;32m\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+    printf("\033[32m");
+    printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
     printf("::                                                         ::\n");
     printf("::                      Thysrael Shell                     ::\n");
     printf("::                                                         ::\n");
     printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
-    printf("\n                 Can you hear me, my sweetie?\033[0m\n\n");
+    printf("\n                 Can you hear me, my sweetie?\n");
+    printf("\033[0m\n");
 }
 
 void print_prompt()
@@ -329,9 +332,15 @@ int builtin_command(Command command)
     {
         if (chdir(command.argv[1]) != 0)
         {
-            // fprintf(stderr, "Error: cannot cd :%s\n", command.argv[1]);
-            printf("cannot cd %s\n", command.argv[1]);
+            printf("\033[31m");
+            printf("cannot cd %s", command.argv[1]);
+            printf("\033[0m\n");
         }
+        return 1;
+    }
+    else if (!strcmp(command.argv[0], "clear"))
+    {
+        printf("\033[2J");
         return 1;
     }
     return 0;
