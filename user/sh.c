@@ -195,13 +195,13 @@ int main()
 void unix_error(char *msg)
 {
     // fprintf(stderr, "%s: %s\n", msg, strerror(errno));
-    printf("Error: %s\n", msg);
+    printf("\033[0;31mExec Error: %s\033[0m\n", msg);
     exit(0);
 }
 
 void quit()
 {
-    printf("\033[0;32mThyShell closes ...\n");
+    printf("\033[0;32mThyShell closes ...\033[0m\n");
     exit(0);
 }
 
@@ -247,7 +247,7 @@ void print_prompt()
     // }
     // use "\033[" to change color
     // printf("ThyShell \033[0;32m%s\033[0m $ ", path);
-    printf("%s > ", path);
+    printf("\033[0;32m%s\033[0m > ", path);
     // free(path);
 }
 
