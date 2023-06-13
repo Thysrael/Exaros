@@ -202,25 +202,9 @@ void unix_error(char *msg)
 
 void quit()
 {
-    printf("\033[32mThyShell closes ...\033[0m\n");
+    printf("\033[32m### ThyShell closed ###\033[0m\n");
     exit(0);
 }
-
-pid_t Fork()
-{
-    pid_t pid;
-    if ((pid = fork()) < 0)
-        unix_error("Fork error");
-    return pid;
-}
-
-// void Wait(pid_t pid)
-// {
-//     int status;
-//     waitpid(pid, &status, 0);
-//     if (!WIFEXITED(status))
-//         printf("child %d terminated abnormally\n", pid);
-// }
 
 void print_head()
 {
@@ -250,7 +234,7 @@ void print_prompt()
     // }
     // use "\033[" to change color
     // printf("ThyShell \033[0;32m%s\033[0m $ ", path);
-    printf("\033[0;32m%s\033[0m > ", path);
+    printf("$ \033[32m%s\033[0m ", path);
     // free(path);
 }
 
@@ -287,7 +271,7 @@ void execute_command(Command command, int fd_in, int fd_out)
 {
     if (!builtin_command(command))
     {
-        pid_t pid = Fork();
+        pid_t pid = fork();
         if (pid == 0)
         {
             if (command.file_in)

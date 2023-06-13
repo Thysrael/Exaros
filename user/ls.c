@@ -62,14 +62,14 @@ void ls(char *path)
 
 int main(int argc, char **argv)
 {
-    dev(1, O_RDWR);
-    dup(0);
-    dup(0);
-    for (int i = 0; i < argc; ++i)
-    {
-        printf("%s ", argv[i]);
-    }
-    printf("\n");
+    // dev(1, O_RDWR);
+    // dup(0);
+    // dup(0);
+    // for (int i = 0; i < argc; ++i)
+    // {
+    //     printf("%s ", argv[i]);
+    // }
+    // printf("\n");
     // 如果没有参数
     if (argc < 2)
     {
