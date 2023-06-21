@@ -203,6 +203,7 @@ void unix_error(char *msg)
 void quit()
 {
     printf("\033[32mThyShell closes ...\033[0m\n");
+    shutdown();
     exit(0);
 }
 

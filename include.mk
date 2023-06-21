@@ -15,6 +15,15 @@ CFLAGS 	+=	-fno-omit-frame-pointer -ffreestanding -fno-common -nostdlib -mno-rel
 CFLAGS 	+= 	$(shell $(GCC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS 	+= 	-MD -ggdb -g
 CFLAGS 	+= -I.
+
+DEBUG 	:= n
+ARCH	:= sifive
+ifeq ($(MAKECMDGOALS), debug)
+	DEBUG = y
+endif
+ifeq ($(MAKECMDGOALS), virt)
+	ARCH = virt
+endif
 # These options are about riscv arch
 ifeq ($(DEBUG),y)
 	CFLAGS 	+= -mabi=lp64
@@ -27,10 +36,16 @@ CFLAGS 	+= -mcmodel=medany
 LDFLAGS	:= -z max-page-size=4096
 
 # qemu options
-QFLAGS 	:= -machine virt 
+ifeq ($(ARCH), virt)
+	QFLAGS 	:= -machine virt 
+	QFLAGS 	+= -drive file=sdcard.img,if=none,format=raw,id=x0
+	QFLAGS 	+= -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+else 
+	QFLAGS	:= -machine sifive_u
+	QFLAGS 	+= -drive file=sdcard.img,if=sd,format=raw
+endif 
+
 QFLAGS	+= -smp 2
 QFLAGS	+= -bios default
 QFLAGS	+= -m 128M
 QFLAGS	+= -nographic
-QFLAGS 	+= -drive file=sdcard.img,if=none,format=raw,id=x0
-QFLAGS 	+= -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
