@@ -323,8 +323,33 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
     }
     p->trapframe.epc = entryPoint;
 
-    LIST_INSERT_TAIL(&scheduleList[0], p, scheduleLink);
+    Page *page;
+    if (pageAlloc(&page))
+    {
+        panic("allock stack error\n");
+    }
+    u64 sp = p->trapframe.sp;
+    pageInsert(p->pgdir, sp - PAGE_SIZE, page,
+               PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT);
 
+    char str[] = "create by kernel";
+    sp -= strlen(str) + 1;
+    sp -= sp % 16;
+    if (copyout(p->pgdir, sp, str, strlen(str) + 1) < 0) // sizeof(char) = 1
+    {
+        panic("copyout error");
+    }
+
+    printk("str = 0x%lx\n", sp);
+    u64 ustack[3] = {1, sp, 0};
+    sp -= 3 * sizeof(u64);
+    sp -= sp % 16;
+    if (copyout(p->pgdir, sp, (char *)ustack, 2 * sizeof(u64)))
+    {
+        panic("copyout error");
+    }
+    p->trapframe.sp = sp;
+    LIST_INSERT_TAIL(&scheduleList[0], p, scheduleLink);
     printk("created a process: %x\n", p->processId);
 }
 

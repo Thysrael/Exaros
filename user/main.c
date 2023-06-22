@@ -7,23 +7,15 @@
  * @copyright Copyright (c) 2023
  */
 
-#include <unistd.h>
+#include "unistd.h"
+#include "stdio.h"
 
-extern int main();
+extern int main(int argc, char **argv);
 
 int __start_main(long *p)
 {
-    // int argc = p[0];
-    // char **argv = (void *)(p + 1);
-    // exit(main(argc, argv));
-    exit(main());
+    int argc = p[0];
+    char **argv = (void *)(p + 1);
+    exit(main(argc, argv));
     return 0;
 }
-
-// extern int userMain();
-
-// void libMain(int argc, char **argv)
-// {
-//     int ret = userMain(argc, argv);
-//     exit(ret);
-// }
