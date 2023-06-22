@@ -82,7 +82,7 @@ void kernelPageInit()
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
     }
 
-    for (i = 0; i < 0x8000; i += PAGE_SIZE)
+    for (i = 0; i < 0x9000; i += PAGE_SIZE)
     {
         kernelPageMap(kernelPageDirectory, PLIC_V + 0x200000 + i, PLIC + 0x200000 + i,
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
