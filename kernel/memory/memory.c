@@ -88,9 +88,6 @@ void kernelPageInit()
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
     }
 
-    // kernelPageMap(kernelPageDirectory, PLIC_V + 0x200000, PLIC + 0x200000,
-    //               PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
-
     kernelPageMap(kernelPageDirectory, UART0, UART0,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 

@@ -37,6 +37,7 @@ typedef struct FileSystem
 static inline u64 getFileSystemClusterBitmap(FileSystem *fs)
 {
     extern FileSystem fileSystem[];
+    // 需要的空间大小：32 << 10 * PAGE_SIZE = 1<<15<<12 = 1<<27 = 0x800_0000
     return FILE_SYSTEM_CLUSTER_BITMAP_BASE + ((fs - fileSystem) << 10) * PAGE_SIZE;
 }
 
