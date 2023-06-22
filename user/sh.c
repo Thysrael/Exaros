@@ -69,6 +69,7 @@ Command commands[MAX_COMMANDS];
 int command_cur;
 
 char line_buf[BUFF_SIZE];
+char read_buf[BUFF_SIZE];
 
 // print the error informatino and quit
 void unix_error(char *msg);
@@ -97,39 +98,73 @@ pid_t Fork();
 // wrapper the waitpid
 void Wait(pid_t pid);
 
+#define CTRL_C 0x03
+#define CTRL_D 0x04
+#define BACKSPACE 0x7f
+#define DELETE 0x08
+#define ENTER 0x0D
+#define ANSI 0x1b
+#define TAB 0x09
+
 void readline(char *buf, size_t n)
 {
+    int pos = 0;
     int r;
-    for (int i = 0; i < n; i++)
+    while (1)
     {
-        if ((r = read(0, buf + i, 1)) != 1)
+        r = read(stdin, read_buf, BUFF_SIZE);
+        switch (r)
         {
-            if (r < 0)
+        case 0:
+            printf("Error\n");
+            break;
+        case 1:
+            if (read_buf[0] == BACKSPACE)
             {
-                printf("read error: %d\n", r);
+                if (pos)
+                {
+                    pos--;
+                    printf("\033[1D");
+                    printf("\033[1P");
+                }
             }
-            exit(0);
-        }
-        if (buf[i] == 0x08 || buf[i] == 0x7f) // BS (Backspace) & DEL (Delete)
-        {
-            if (i > 0)
-                i -= 2;
+            else if (read_buf[0] == CTRL_C)
+            {
+                pos = 0;
+                buf[pos++] = CTRL_C;
+                buf[pos] = 0;
+                return;
+            }
+            else if (read_buf[0] == CTRL_D)
+            {
+                if (!pos)
+                {
+                    pos = 0;
+                    buf[pos++] = CTRL_D;
+                    buf[pos] = 0;
+                    return;
+                }
+            }
+            else if (read_buf[0] == ENTER)
+            {
+                buf[pos] = 0;
+                return;
+            }
+            else if (read_buf[0] == TAB)
+            {
+            }
             else
-                i = -1;
-            // 增加一个删除
-            // if (buf[i] != '\b')
-            //     printf("\b");
-        }
-        if (buf[i] == '\r' || buf[i] == '\n')
-        {
-            buf[i] = 0;
-            return;
+            {
+                printf("%c", read_buf[0]);
+                buf[pos++] = read_buf[0];
+            }
+            break;
+        case 2:
+        case 3:
+        case 4:
+        default: break;
         }
     }
-    printf("line too long\n");
-    while ((r = read(0, buf, 1)) == 1 && buf[0] != '\r' && buf[0] != '\n')
-        ; // 删除太长的内容
-    buf[0] = 0;
 }
 
 int main()
@@ -139,15 +174,21 @@ int main()
     dup(0);
 
     print_head();
-    // while (1)
-    // {
-    //     print_prompt();
-    //     // fgets(line_buf, BUFF_SIZE, stdin);
-    //     readline(line_buf, BUFF_SIZE);
-    //     if (line_buf[0] == EOF_ASCII)
-    //         quit();
-    //     eval();
-    // }
+    while (1)
+    {
+        print_prompt();
+        readline(line_buf, BUFF_SIZE);
+        printf("\n");
+        if (line_buf[0] == CTRL_C)
+        {
+            continue;
+        }
+        if (line_buf[0] == CTRL_D)
+        {
+            quit();
+        }
+        eval();
+    }
     while (1)
         ;
     return 0;
@@ -155,41 +196,27 @@ int main()
 
 void unix_error(char *msg)
 {
-    // fprintf(stderr, "%s: %s\n", msg, strerror(errno));
-    printf("Error: %s\n", msg);
+    printf("\033[31mError in command: %s\033[0m\n", msg);
     exit(0);
 }
 
 void quit()
 {
-    printf("\n\n                 \033[0;32m ThyShell closes ...\n\n");
+    printf("\033[32m### ThyShell closed ###\033[0m\n");
+    shutdown();
     exit(0);
 }
 
-pid_t Fork()
-{
-    pid_t pid;
-    if ((pid = fork()) < 0)
-        unix_error("Fork error");
-    return pid;
-}
-
-// void Wait(pid_t pid)
-// {
-//     int status;
-//     waitpid(pid, &status, 0);
-//     if (!WIFEXITED(status))
-//         printf("child %d terminated abnormally\n", pid);
-// }
-
 void print_head()
 {
-    printf("\033[0;32m\n:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
+    printf("\033[32m");
+    printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
     printf("::                                                         ::\n");
     printf("::                      Thysrael Shell                     ::\n");
     printf("::                                                         ::\n");
     printf(":::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::\n");
-    printf("\n                 Can you hear me, my sweetie?\033[0m\n\n");
+    printf("\n                 Can you hear me, my sweetie?\n");
+    printf("\033[0m\n");
 }
 
 void print_prompt()
@@ -208,7 +235,7 @@ void print_prompt()
     // }
     // use "\033[" to change color
     // printf("ThyShell \033[0;32m%s\033[0m $ ", path);
-    printf("%s > ", path);
+    printf("$ \033[32m%s\033[0m ", path);
     // free(path);
 }
 
@@ -245,44 +272,40 @@ void execute_command(Command command, int fd_in, int fd_out)
 {
     if (!builtin_command(command))
     {
-        pid_t pid = Fork();
+        pid_t pid = fork();
         if (pid == 0)
         {
             if (command.file_in)
             {
                 int in = open(command.file_in, O_RDONLY);
-                dup2(in, STDIN);
+                dup2(in, stdin);
             }
             else if (fd_in > 0)
             {
-                dup2(fd_in, STDIN);
+                dup2(fd_in, stdin);
             }
 
             if (command.file_out)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
                 int out = open(command.file_out, O_RDWR | O_CREATE | O_TRUNC);
-                dup2(out, STDOUT);
+                dup2(out, stdout);
             }
             else if (command.file_append)
             {
                 // int out = open(command.file_out, O_RDWR | O_CREAT | O_TRUNC);
                 int append = open(command.file_append, O_WRONLY | O_CREATE | O_APPEND);
-                dup2(append, STDOUT);
+                dup2(append, stdout);
             }
             else if (fd_out > 0)
             {
-                dup2(fd_out, STDOUT);
+                dup2(fd_out, stdout);
             }
             char *newenviron[] = {NULL}; // 未实现 environ
             execve(command.argv[0], command.argv, newenviron);
             unix_error(command.argv[0]);
         }
         wait(0);
-        // else
-        // {
-        //     waitpid(pid);
-        // }
     }
 }
 
@@ -294,9 +317,15 @@ int builtin_command(Command command)
     {
         if (chdir(command.argv[1]) != 0)
         {
-            // fprintf(stderr, "Error: cannot cd :%s\n", command.argv[1]);
-            printf("cannot cd %s\n", command.argv[1]);
+            printf("\033[31m");
+            printf("cannot cd %s", command.argv[1]);
+            printf("\033[0m\n");
         }
+        return 1;
+    }
+    else if (!strcmp(command.argv[0], "clear"))
+    {
+        printf("\033[2J");
         return 1;
     }
     return 0;
@@ -314,11 +343,8 @@ void tokenize()
     char *cur = line_buf;
     char *start;
     State state = STATE_NORMAL;
-    // skip the ' '
     while (*cur && (*cur == ' ')) cur++;
-
     start = cur;
-    line_buf[strlen(line_buf) - 1] = '\0';
 
     while (1)
     {

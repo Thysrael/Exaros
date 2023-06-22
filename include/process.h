@@ -154,9 +154,9 @@ typedef struct Process
     u32 priority;            // 优先级
     enum ProcessState state; // 进程状态
     Spinlock lock;
-    DirMeta *cwd;            // 进程所在的路径
-    File *ofile[NOFILE];     // 进程打开的文件
-    u64 channel;             // 等待队列
+    DirMeta *cwd;        // 进程所在的路径
+    File *ofile[NOFILE]; // 进程打开的文件
+    u64 channel;         // 等待队列
     u64 currentKernelSp;
     int reason;
     u32 retValue; // 进程返回值

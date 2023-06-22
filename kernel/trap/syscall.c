@@ -49,7 +49,9 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UMOUNT] syscallUmount,
     [SYSCALL_LINKAT] syscallLinkAt,
     [SYSCALL_UNLINKAT] syscallUnlinkAt,
-    [SYSCALL_UNAME] syscallUname};
+    [SYSCALL_UNAME] syscallUname,
+    [SYSCALL_SHUTDOWN] syscallShutdown,
+};
 
 void syscallPutchar()
 {
@@ -648,6 +650,15 @@ void syscallUmount()
     tf->a0 = 0;
 }
 
+/**
+ * @brief 新建一个链接，本质是在 newPath 处创建一个文件，然后存入 oldPath
+ *
+ * @param oldDirFd 待链接的文件描述符
+ * @param oldPath 待链接的文件文件
+ * @param newDirFd 链接文件描述符
+ * @param newPath 链接文件的路径
+ * @return int 0 为成功
+ */
 int do_linkat(int oldDirFd, char *oldPath, int newDirFd, char *newPath)
 {
     DirMeta *entryPoint, *targetPoint = NULL;
@@ -901,8 +912,16 @@ void syscallBrk()
         return;
     }
     Process *p = myProcess();
+    // printk("addr: %lx\n", addr);
+    if (addr != 0)
+    {
+        addr &= ((1ul << 32) - 1);
+        addr |= (0x3cul << 32);
+    }
+    // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
+        // printk("brkHeapTop: %lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1201,12 +1220,22 @@ void syscallUname()
         char machine[65];
         char domainname[65];
     } uname;
-    strncpy(uname.sysname, "my_linux", 65);
+    strncpy(uname.sysname, "ExarOs", 65);
     strncpy(uname.nodename, "my_node", 65);
-    strncpy(uname.release, "MIPS-OS", 65);
+    strncpy(uname.release, "0.1.0", 65);
     strncpy(uname.version, "0.1.0", 65);
-    strncpy(uname.machine, "Risc-V sifive_u", 65);
+    strncpy(uname.machine, "Risc-V virt", 65);
     strncpy(uname.domainname, "Beijing", 65);
     Trapframe *tf = getHartTrapFrame();
     copyout(myProcess()->pgdir, tf->a0, (char *)&uname, sizeof(struct utsname));
+}
+
+void syscallShutdown()
+{
+#ifdef FAT_DUMP
+    extern FileSystem *rootFileSystem;
+    dumpDirMetas(rootFileSystem, &(rootFileSystem->root));
+#endif
+    SBI_CALL_0(SBI_SHUTDOWN);
+    return;
 }

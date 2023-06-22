@@ -52,4 +52,5 @@ int dup(int);
 int dup2(int, int);
 
 int dev(int fd, int mode);
+int shutdown();
 #endif // __UNISTD_H__

@@ -448,6 +448,8 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow)
     if (va >= VA_MAX)
         return 0;
     pageWalk(pgdir, va, 0, &pte);
+    if (pte == NULL)
+        return 0;
     if (!PTE_VALID(*pte))
         return 0;
     if (!PTE_USER(*pte))

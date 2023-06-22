@@ -4,6 +4,7 @@
  * 之后的 16 个整数记录一个 Inode 资源池的索引，表示二级 Inode。
  * 剩余的 40 个整数表示三级 Inode 索引。
  * 在这里，每个文件的大小最多包含 8 + 16 x 64 + 40 x 64 x 64 个簇
+ * Inode 的功能是记录着“簇索引”到“绝对簇号”的映射
  * @date 2023-05-11
  *
  * @copyright Copyright (c) 2023
@@ -31,9 +32,8 @@ typedef struct Inode
 #define INODE_THIRD_LEVEL_BOTTOM INODE_SECOND_LEVEL_TOP
 #define INODE_THIRD_LEVEL_TOP (INODE_THIRD_LEVEL_BOTTOM + (INODE_ITEM_NUM - INODE_THIRD_ITEM_BASE) * INODE_ITEM_NUM * INODE_ITEM_NUM)
 
-int inodeAlloc();
-void inodeFree(int i);
 void metaFreeInode(DirMeta *meta);
 void metaFindInode(DirMeta *meta, int pos);
+void metaCacheInode(DirMeta *meta, int clus);
 
 #endif

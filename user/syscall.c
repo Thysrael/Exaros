@@ -57,17 +57,8 @@ int sched_yield(void)
 
 pid_t fork(void)
 {
-    return syscall(SYS_clone, SIGCHLD, 0);
+    return syscall(SYS_clone, SIGCHLD, 0, 0, 0, 0);
 }
-
-// pid_t clone(int (*fn)(void *arg), void *arg, void *stack, size_t stack_size, unsigned long flags)
-// {
-//     if (stack)
-//         stack += stack_size;
-
-//     return __clone(fn, stack, flags, NULL, NULL, NULL);
-//     // return syscall(SYS_clone, fn, stack, flags, NULL, NULL, NULL);
-// }
 
 void exit(int code)
 {
@@ -81,7 +72,8 @@ int waitpid(int pid, int *code, int options)
 
 int exec(char *name)
 {
-    return syscall(SYS_execve, name);
+    char empty[] = {0};
+    return syscall(SYS_execve, name, empty, empty);
 }
 
 int execve(const char *name, char *const argv[], char *const argp[])
@@ -243,4 +235,9 @@ int umount(const char *special)
 int dev(int fd, int mode)
 {
     return syscall(SYS_dev, fd, mode);
+}
+
+int shutdown()
+{
+    return syscall(SYS_shutdown);
 }
