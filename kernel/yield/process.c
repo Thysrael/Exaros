@@ -254,6 +254,8 @@ int setupProcess(Process *p)
     // 为每个进程开一页的内核栈
     r = pageAlloc(&page);
     // printk("mmapva: %lx\n", getProcessTopSp(p) - PAGE_SIZE);
+
+    // 其实这里最多可以申请 9 页（因为留了 10 页）
     pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
             PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 

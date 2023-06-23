@@ -69,17 +69,24 @@ void kernelPageInit()
     extern char kernelEnd[];
     // extern char trampoline[];
 
-    kernelPageMap(kernelPageDirectory, CLINT_V, CLINT,
-                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
-
-    for (i = 0; i < 0x400000; i += PAGE_SIZE)
+    // CLINT 	200_0000 ~ 200_C000
+    for (i = 0; i < 0x100000; i += PAGE_SIZE)
+    {
+        kernelPageMap(kernelPageDirectory, CLINT_V + i, CLINT + i,
+                      PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+    }
+    // PLIC
+    for (i = 0; i < 0x4000; i += PAGE_SIZE)
     {
         kernelPageMap(kernelPageDirectory, PLIC_V + i, PLIC + i,
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
     }
 
-    // kernelPageMap(kernelPageDirectory, PLIC_V + 0x200000, PLIC + 0x200000,
-    //               PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+    for (i = 0; i < 0x9000; i += PAGE_SIZE)
+    {
+        kernelPageMap(kernelPageDirectory, PLIC_V + 0x200000 + i, PLIC + 0x200000 + i,
+                      PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+    }
 
     kernelPageMap(kernelPageDirectory, UART0, UART0,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
