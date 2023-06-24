@@ -389,9 +389,18 @@ i32 pageInsert(u64 *pgdir, u64 va, Page *pp, u64 perm)
     return 0;
 }
 
-int either_copyin(void *dst, int user_src, u64 src, u64 len)
+/**
+ * @brief 将一段内存内容拷贝到内核中
+ *
+ * @param dst 目的地址
+ * @param isUserSrc 源地址是否是用户地址
+ * @param src 源地址
+ * @param len 长度
+ * @return int 0 为成功
+ */
+int either_copyin(void *dst, int isUserSrc, u64 src, u64 len)
 {
-    if (user_src)
+    if (isUserSrc)
     {
         Process *p = myProcess();
         return copyin(p->pgdir, dst, src, len);
@@ -403,9 +412,18 @@ int either_copyin(void *dst, int user_src, u64 src, u64 len)
     }
 }
 
-int either_copyout(int user_dst, u64 dst, void *src, u64 len)
+/**
+ * @brief 将一段内存从内核中拷贝出来
+ *
+ * @param isUserDst 目的地址是否是用户地址
+ * @param dst 目的地址
+ * @param src 源地址
+ * @param len 长度
+ * @return int 0 为成功
+ */
+int either_copyout(int isUserDst, u64 dst, void *src, u64 len)
 {
-    if (user_dst)
+    if (isUserDst)
     {
         Process *p = myProcess();
         return copyout(p->pgdir, dst, (char *)src, len);

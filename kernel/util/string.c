@@ -27,6 +27,14 @@ int memcmp(const void *v1, const void *v2, u32 n)
     return 0;
 }
 
+/**
+ * @brief 从内核源地址拷贝一段内存到内核目的地址
+ *
+ * @param dst 目的地址
+ * @param src 源地址
+ * @param n 拷贝长度
+ * @return void* 目的地址
+ */
 void *memmove(void *dst, const void *src, u32 n)
 {
     const char *s;
@@ -40,7 +48,14 @@ void *memmove(void *dst, const void *src, u32 n)
     return dst;
 }
 
-// memcpy exists to placate GCC.  Use memmove.
+/**
+ * @brief 从内核源地址拷贝一段内存到内核目的地址，和 memmove 一样
+ *
+ * @param dst 目的地址
+ * @param src 源地址
+ * @param n 拷贝长度
+ * @return void* 目的地址
+ */
 void *memcpy(void *dst, const void *src, u32 n)
 {
     return memmove(dst, src, n);
