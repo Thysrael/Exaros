@@ -4,7 +4,7 @@
 #include <riscv.h>
 
 // debug 开关
-// #define CNX_DEBUG_
+#define CNX_DEBUG_
 // #define QS_DEBUG_
 // #define CHL_DEBUG_
 

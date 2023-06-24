@@ -20,6 +20,11 @@ void setNextTimeout()
     SBI_CALL_1(SBI_SET_TIMER, readRealTime() + TIMER_INTERVAL);
 }
 
+void closeTimeInt()
+{
+    SBI_CALL_1(SBI_SET_TIMER, readRealTime() * 2);
+}
+
 void timerTick()
 {
     ticks++;

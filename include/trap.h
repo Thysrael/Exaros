@@ -84,7 +84,7 @@ void userTrapReturn();
 void printTrapframe(Trapframe *tf);
 
 // about timer
-#define TIMER_INTERVAL 40000000
+#define TIMER_INTERVAL 1000000
 
 typedef struct TimeSpec
 {
@@ -114,6 +114,7 @@ TRAPFRAME  ----------------------
  */
 Trapframe *getHartTrapFrame();
 
+void closeTimeInt();
 void setNextTimeout();
 void timerTick();
 void setTimer(IntervalTimer new);

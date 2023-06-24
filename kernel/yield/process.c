@@ -456,9 +456,11 @@ void yield()
     }
     // 防止死锁，假如只有一个进程而这个进程被 sleep 了，在这里应该接受外部中断
     intr_on();
+    // 如果在这里触发了时钟中断怎么办？
 
     while ((count == 0) || !process || (process->state != RUNNABLE) || (process->awakeTime > r_time()))
     {
+        printk("?");
         if (process)
             LIST_INSERT_TAIL(&scheduleList[point ^ 1], process, scheduleLink);
         if (LIST_EMPTY(&scheduleList[point]))
@@ -466,6 +468,7 @@ void yield()
         if (!(LIST_EMPTY(&scheduleList[point])))
         {
             process = LIST_FIRST(&scheduleList[point]);
+            // printk(" %d ", process->processId);
             LIST_REMOVE(process, scheduleLink);
             count = process->priority;
         }

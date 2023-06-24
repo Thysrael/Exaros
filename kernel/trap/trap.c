@@ -39,7 +39,7 @@ void trapInit()
     writeSstatus(readSstatus() | SSTATUS_SIE | SSTATUS_SPIE);
 
     // 初始化时钟（为了防止输出太多东西，可以暂时注释掉）
-    // setNextTimeout();
+    setNextTimeout();
 
     printk("Trap init end.\n");
 }
@@ -107,14 +107,15 @@ int handleInterrupt()
         // the PLIC allows each device to raise at most one
         // interrupt at a time; tell the PLIC the device is
         // now allowed to interrupt again.
+        printk("***\n");
         if (irq)
             interruptCompleted(irq);
         // printk("external interrupt");
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
+        closeTimeInt();
         // user timer interrupt
-        timerTick();
         return TIMER_INTERRUPT;
         break;
     default:
@@ -172,6 +173,8 @@ void kernelHandler()
 
     writeSepc(sepc);
     writeSstatus(sstatus);
+
+    printk("^\n");
 }
 
 extern Process *currentProcess[];
@@ -244,7 +247,9 @@ void userTrapReturn()
     extern char trampoline[];
 
     int hartId = getTp();
+
     intr_off();
+    timerTick();
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
