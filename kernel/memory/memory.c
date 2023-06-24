@@ -94,6 +94,9 @@ void kernelPageInit()
     kernelPageMap(kernelPageDirectory, VIRTIO_V, VIRTIO,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
+    kernelPageMap(kernelPageDirectory, SPI, SPI,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+
     // 内核代码
     va = pa = (u64)textStart;
     size = (u64)textEnd - (u64)textStart;

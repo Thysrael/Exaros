@@ -19,6 +19,7 @@
 #include <file.h>
 #include <bio.h>
 #include <virtio.h>
+#include <sd.h>
 
 /**
  * @brief boot banner, `train` style character drawing.
@@ -67,7 +68,7 @@ void main(u64 hartId)
     // fs initialize
 
     binit();
-    virtioDiskInit();
+    sdInit();
     fileinit();
 
     trapInit();
