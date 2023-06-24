@@ -38,10 +38,20 @@
 		"fs.h": "c",
 		"mmap.h": "c",
 		"stdlib.h": "c",
-		"debug.h": "c"
+		"debug.h": "c",
+		"spi.h": "c",
+		"sd.h": "c"
 	},
-	"doxdocgen.file.fileOrder": ["file", "brief", "date", "empty", "copyright"],
-	"doxdocgen.file.copyrightTag": ["@copyright Copyright (c) {year}"],
+	"doxdocgen.file.fileOrder": [
+		"file",
+		"brief",
+		"date",
+		"empty",
+		"copyright"
+	],
+	"doxdocgen.file.copyrightTag": [
+		"@copyright Copyright (c) {year}"
+	],
 	"doxdocgen.generic.briefTemplate": "@brief {text}",
 	"multiCommand.commands": [
 		{
@@ -58,5 +68,6 @@
 		}
 	],
 	"C_Cpp.errorSquiggles": "enabled",
-	"C_Cpp.default.compilerPath": "/opt/riscv/bin/riscv64-unknown-elf-gcc"
+	"C_Cpp.default.compilerPath": "/opt/riscv/bin/riscv64-unknown-elf-gcc",
+	"C_Cpp.formatting": "clangFormat"
 }

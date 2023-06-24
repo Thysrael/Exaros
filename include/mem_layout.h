@@ -108,9 +108,9 @@
 #define CLINT (0x02000000ULL)
 #define PLIC (0x0c000000ULL)
 #define UART0 (0x10000000ULL)
+#define SPI (0x10050000ULL)
 // virtio mmio interface
 #define VIRTIO (0x10001000ULL)
-
 #define VIRT_OFFSET (0x3F00000000ULL) // 虚拟地址的偏移
 #define PLIC_V (PLIC + VIRT_OFFSET)
 #define CLINT_V (CLINT + VIRT_OFFSET)
@@ -136,6 +136,17 @@
 #define PLIC_SPRIORITY(hart) (PLIC_V + 0x201000 + (hart)*0x2000)
 #define PLIC_MCLAIM(hart) (PLIC_V + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC_V + 0x201004 + (hart)*0x2000)
+
+// SPI
+#define SPI_REG_SCKDIV (SPI + 0x00)
+#define SPI_REG_SCKMODE (SPI + 0x04)
+#define SPI_REG_CSID (SPI + 0x10)
+#define SPI_REG_CSDEF (SPI + 0x14)
+#define SPI_REG_CSMODE (SPI + 0x18)
+
+#define SPI_REG_FMT (SPI + 0x40)
+#define SPI_REG_TXFIFO (SPI + 0x48)
+#define SPI_REG_RXFIFO (SPI + 0x4c)
 
 #define KERNEL_STACK_SIZE (0x10000ULL) // 16 pages
 

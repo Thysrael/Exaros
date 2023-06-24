@@ -5,6 +5,7 @@
 #include <file.h>
 #include <fat.h>
 #include <fs.h>
+#include <sd.h>
 
 /**
  * @brief 这是一个双向链表
@@ -90,7 +91,8 @@ Buf *bread(int dev, u32 blockno)
     b = bget(dev, blockno);
     if (!b->valid)
     {
-        virtioDiskRW(b, 0);
+        // virtioDiskRW(b, 0);
+        sdRead(b->data, b->blockno, 1);
         b->valid = 1;
     }
     return b;
@@ -103,7 +105,8 @@ Buf *bread(int dev, u32 blockno)
  */
 void bwrite(Buf *b)
 {
-    virtioDiskRW(b, 1);
+    // virtioDiskRW(b, 1);
+    sdWrite(b->data, b->blockno, 1);
 }
 
 /**
