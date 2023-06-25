@@ -39,7 +39,7 @@ void trapInit()
     writeSstatus(readSstatus() | SSTATUS_SIE | SSTATUS_SPIE);
 
     // 初始化时钟（为了防止输出太多东西，可以暂时注释掉）
-    setNextTimeout();
+    // setNextTimeout();
 
     printk("Trap init end.\n");
 }
@@ -107,14 +107,13 @@ int handleInterrupt()
         // the PLIC allows each device to raise at most one
         // interrupt at a time; tell the PLIC the device is
         // now allowed to interrupt again.
-        printk("***\n");
         if (irq)
             interruptCompleted(irq);
         // printk("external interrupt");
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
-        closeTimeInt();
+        timerTick();
         // user timer interrupt
         return TIMER_INTERRUPT;
         break;
@@ -173,8 +172,6 @@ void kernelHandler()
 
     writeSepc(sepc);
     writeSstatus(sstatus);
-
-    printk("^\n");
 }
 
 extern Process *currentProcess[];
@@ -192,7 +189,7 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
+    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
@@ -248,8 +245,6 @@ void userTrapReturn()
 
     int hartId = getTp();
 
-    intr_off();
-    timerTick();
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 

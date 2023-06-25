@@ -352,7 +352,7 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
     }
     p->trapframe.sp = sp;
     LIST_INSERT_TAIL(&scheduleList[0], p, scheduleLink);
-    printk("created a process: %x\n", p->processId);
+    printk("created a process: %x, epc: %lx\n", p->processId, p->trapframe.epc);
 }
 
 /**
@@ -454,13 +454,14 @@ void yield()
         // memmove(&process->trapframe, getHartTrapFrame(), sizeof(Trapframe));
         process->state = RUNNABLE;
     }
+
+    // 关闭时钟中断
+    writeSie(readSie() & (~SIE_STIE));
     // 防止死锁，假如只有一个进程而这个进程被 sleep 了，在这里应该接受外部中断
     intr_on();
-    // 如果在这里触发了时钟中断怎么办？
 
     while ((count == 0) || !process || (process->state != RUNNABLE) || (process->awakeTime > r_time()))
     {
-        printk("?");
         if (process)
             LIST_INSERT_TAIL(&scheduleList[point ^ 1], process, scheduleLink);
         if (LIST_EMPTY(&scheduleList[point]))
@@ -478,11 +479,13 @@ void yield()
     // 在这里关掉中断，不然 sleep 到一半的时候被打断
     intr_off();
 
+    writeSie(readSie() | SIE_STIE);
+
     CNX_DEBUG("currentKernelSp: %lx \n", process->currentKernelSp);
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    CNX_DEBUG("hartID %d yield process %lx\n", hartId, process->processId);
+    CNX_DEBUG("hartID %d yield process %lx, %lx\n", hartId, process->processId, process->trapframe.epc);
 
     // syscall_watetime 的范围值设置为 0
     if (process->awakeTime > 0)

@@ -80,6 +80,7 @@ void main(u64 hartId)
     // PROCESS_CREATE_PRIORITY(processC, 1);
     PROCESS_CREATE_PRIORITY(syscall_test, 10);
 
+    setNextTimeout();
     yield();
     while (1)
         ;

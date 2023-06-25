@@ -307,6 +307,5 @@ void virtioDiskIntrupt()
         wakeup(b);
         disk.usedIndex += 1;
     }
-    printk("1233");
     releaseLock(&disk.vdiskLock);
 }
