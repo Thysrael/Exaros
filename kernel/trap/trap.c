@@ -113,8 +113,8 @@ int handleInterrupt()
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
-        // user timer interrupt
         timerTick();
+        // user timer interrupt
         return TIMER_INTERRUPT;
         break;
     default:
@@ -189,7 +189,7 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
+    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
@@ -244,7 +244,7 @@ void userTrapReturn()
     extern char trampoline[];
 
     int hartId = getTp();
-    intr_off();
+
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
