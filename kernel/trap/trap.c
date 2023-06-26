@@ -9,6 +9,7 @@
 #include <types.h>
 #include <virtio.h>
 #include <syscall.h>
+#include <thread.h>
 
 Trapframe *getHartTrapFrame()
 {
@@ -174,7 +175,6 @@ void kernelHandler()
     writeSstatus(sstatus);
 }
 
-extern Process *currentProcess[];
 /**
  * @brief 用户态的异常处理函数，处理用户态的异常和中断
  * 处理了中断，系统调用，缺页异常
@@ -185,7 +185,6 @@ void userHandler()
     u64 scause = readScause();
     u64 stval = readStval();
     Trapframe *tf = getHartTrapFrame();
-    u64 hartId = getTp();
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
@@ -211,14 +210,14 @@ void userHandler()
             break;
         case EXCEPTION_LOAD_FAULT:
         case EXCEPTION_STORE_FAULT:;
-            Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
+            Page *page = pageLookup(myProcess()->pgdir, stval, &pte);
             if (page == NULL)
             {
-                passiveAlloc(currentProcess[hartId]->pgdir, stval);
+                passiveAlloc(myProcess()->pgdir, stval);
             }
             else if (*pte & PTE_COW_BIT)
             {
-                cowHandler(currentProcess[hartId]->pgdir, stval);
+                cowHandler(myProcess()->pgdir, stval);
             }
             else
             {
@@ -250,7 +249,7 @@ void userTrapReturn()
 
     Trapframe *trapframe = getHartTrapFrame();
 
-    trapframe->kernelSp = getProcessTopSp(myProcess());
+    trapframe->kernelSp = getThreadTopSp(myThread());
     trapframe->trapHandler = (u64)userHandler;
     trapframe->kernelHartId = hartId;
 

@@ -80,7 +80,9 @@ void main(u64 hartId)
     // PROCESS_CREATE_PRIORITY(processC, 1);
     PROCESS_CREATE_PRIORITY(syscall_test, 10);
 
-    setNextTimeout();
+    // 时钟中断的开关，在比赛中没有必要开启时钟中断
+    // setNextTimeout();
+
     yield();
     while (1)
         ;

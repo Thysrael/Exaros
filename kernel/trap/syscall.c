@@ -12,6 +12,7 @@
 #include <pipe.h>
 #include <fs.h>
 #include <mmap.h>
+#include <thread.h>
 #include <debug.h>
 
 void (*syscallVector[])(void) = {
@@ -755,20 +756,16 @@ void syscallUnlinkAt()
     tf->a0 = do_unlinkat(dirFd, path);
 }
 
-extern Process *currentProcess[];
-
 void syscallGetProcessId()
 {
-    u64 hartid = getTp();
     Trapframe *tf = getHartTrapFrame();
-    tf->a0 = currentProcess[hartid]->processId;
+    tf->a0 = myProcess()->processId;
 }
 
 void syscallGetParentProcessId()
 {
-    u64 hartid = getTp();
     Trapframe *tf = getHartTrapFrame();
-    tf->a0 = currentProcess[hartid]->parentId;
+    tf->a0 = myProcess()->parentId;
 }
 void syscallYield()
 {
@@ -796,19 +793,17 @@ void syscallProcessDestory()
 void syscallClone()
 {
     Trapframe *tf = getHartTrapFrame();
-    processFork(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4);
+    tf->a0 = clone(tf->a0, tf->a1, tf->a2, tf->a3, tf->a4);
 }
 
 void syscallPutString()
 {
     Trapframe *trapframe = getHartTrapFrame();
-    int hartId = getTp();
-    // printf("hart %d, env %lx printf string:\n", hartId, currentProcess[hartId]->id);
+    // printf("hart %d, env %lx printf string:\n", hartId, myProcess()->id);
     u64 va = trapframe->a0;
     int len = trapframe->a1;
-    extern Process *currentProcess[CORE_NUM];
     u64 *pte;
-    Page *page = pageLookup(currentProcess[hartId]->pgdir, va, &pte);
+    Page *page = pageLookup(myProcess()->pgdir, va, &pte);
     if (page == NULL)
     {
         panic("Syscall put string address error!\nThe virtual address is %x, the length is %x\n", va, len);
@@ -843,7 +838,7 @@ void syscallExit()
 
     // 为啥要 << 8?
     process->retValue = (ec << 8); // todo
-    processDestory(process);
+    threadDestroy(myThread());
     // will not reach here
     panic("sycall exit error");
 }
@@ -889,7 +884,7 @@ void syscallSleepTime()
     Trapframe *tf = getHartTrapFrame();
     TimeSpec ts;
     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
-    myProcess()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
+    myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
     kernelProcessCpuTimeEnd();
     yield();
 }
