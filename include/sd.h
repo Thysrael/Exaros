@@ -10,8 +10,6 @@
 
 #define MAX_TIMES 50000
 
-#define QEMU
-
 void sdInit();
 int sdRead(u8 *buf, u64 startBlock, u64 blockNumber);
 int sdWrite(u8 *buf, u64 startSector, u64 sectorNumber);

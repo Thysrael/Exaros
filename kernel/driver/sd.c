@@ -6,6 +6,7 @@
 #include "debug.h"
 #include "process.h"
 #include "file.h"
+#include "arch.h"
 
 int sdDevRead(int isUser, u64 dst, u64 startAddr, u64 n);
 int sdDevWrite(int isUser, u64 dst, u64 startAddr, u64 n);
