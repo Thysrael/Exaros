@@ -17,7 +17,29 @@
  *
  * @param c 待打印字符
  */
-inline void putchar(char c)
+void putchar(char c);
+// {
+//     register u64 a0 asm("a0") = (u64)c;
+//     register u64 a7 asm("a7") = (u64)SBI_CONSOLE_PUTCHAR;
+//     asm volatile("ecall"
+//                  : "+r"(a0)
+//                  : "r"(a7)
+//                  : "memory");
+// };
+
+/**
+ * @brief 从控制台获取字符
+ *
+ * @return int 获取到的字符
+ */
+int getchar();
+
+/**
+ * @brief 使用 OpenSBI 向控制台输出字符
+ *
+ * @param c
+ */
+inline void putcharSbi(char c)
 {
     register u64 a0 asm("a0") = (u64)c;
     register u64 a7 asm("a7") = (u64)SBI_CONSOLE_PUTCHAR;
@@ -28,11 +50,11 @@ inline void putchar(char c)
 };
 
 /**
- * @brief 从控制台获取字符
+ * @brief 使用 OpenSBI 从控制台获取字符
  *
- * @return int 获取到的字符
+ * @return int
  */
-inline int getchar()
+inline int getcharSbi()
 {
     register u64 a7 asm("a7") = (u64)SBI_CONSOLE_GETCHAR;
     register u64 a0 asm("a0");
@@ -41,7 +63,7 @@ inline int getchar()
                  : "r"(a7)
                  : "memory");
     return a0;
-}
+};
 
 void printk(const char *fmt, ...);
 void _panic_(const char *, int, const char *, const char *, ...) __attribute__((noreturn));
