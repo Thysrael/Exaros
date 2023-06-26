@@ -37,7 +37,7 @@ void sdInit()
     sdReset();
     printk("[SD card] SD card init finish!\n");
 
-    *(u32 *)SPI_REG_SCKDIV = 60;
+    *(volatile u32 *)SPI_REG_SCKDIV = 60;
     // asm volatile("fence.i");
 
     extern struct devsw devsw[];
@@ -299,16 +299,16 @@ int sdDevWrite(int isUser, u64 src, u64 startAddr, u64 n)
  */
 void spiRegSet()
 {
-    *(u32 *)SPI_REG_SCKDIV = 3000;           // 设置时钟 f_{csk}=pclk/(2*(1+sckdiv)）
-    *(u32 *)SPI_REG_CSID = 0;                // 设置片选 ID
-    *(u32 *)SPI_REG_CSDEF |= 1;              // 设置片选
-    *(u32 *)SPI_REG_CSMODE = SPI_CSMODE_OFF; // 关闭片选
-    *(u32 *)SPI_REG_FMT = 0x80000;           // 设置数据格式 每次传输 8 位
-    for (int i = 10; i > 0; i--)             // 等待十个周期
+    *(volatile u32 *)SPI_REG_SCKDIV = 3000;           // 设置时钟 f_{csk}=pclk/(2*(1+sckdiv)）
+    *(volatile u32 *)SPI_REG_CSID = 0;                // 设置片选 ID
+    *(volatile u32 *)SPI_REG_CSDEF |= 1;              // 设置片选
+    *(volatile u32 *)SPI_REG_CSMODE = SPI_CSMODE_OFF; // 关闭片选
+    *(volatile u32 *)SPI_REG_FMT = 0x80000;           // 设置数据格式 每次传输 8 位
+    for (int i = 10; i > 0; i--)                      // 等待十个周期
     {
         spiReceive();
     }
-    *(u32 *)SPI_REG_CSMODE = SPI_CSMODE_AUTO; // 片选设置为自动模式
+    *(volatile u32 *)SPI_REG_CSMODE = SPI_CSMODE_AUTO; // 片选设置为自动模式
 }
 
 /**
@@ -339,9 +339,9 @@ void sdReset()
 u8 spiTransfer(u8 data)
 {
     i32 r;
-    *(u32 *)SPI_REG_TXFIFO = data;
+    *(volatile u32 *)SPI_REG_TXFIFO = data;
     do {
-        r = *(u32 *)SPI_REG_RXFIFO;
+        r = *(volatile u32 *)SPI_REG_RXFIFO;
     } while (r < 0);
     return (r & 0xff);
 }
@@ -367,7 +367,7 @@ u8 spiReceive()
  */
 u8 sdCmd(u8 index, u32 arg, u8 crc)
 {
-    *(u32 *)SPI_REG_CSMODE = SPI_CSMODE_HOLD;
+    *(volatile u32 *)SPI_REG_CSMODE = SPI_CSMODE_HOLD;
     spiReceive();
     spiTransfer(index + 0x40); // start bit, transmission bit
     spiTransfer(arg >> 24);
@@ -394,7 +394,7 @@ u8 sdCmd(u8 index, u32 arg, u8 crc)
 void sdCmdEnd()
 {
     spiReceive();
-    *(u32 *)SPI_REG_CSMODE = SPI_CSMODE_AUTO;
+    *(volatile u32 *)SPI_REG_CSMODE = SPI_CSMODE_AUTO;
 }
 
 /**
@@ -499,7 +499,7 @@ int sdCmd58()
     response[0] = spiReceive();
     sdCmdEnd();
     int rc = response[4] != 0x00;       // 需要不在 idle 态
-    rc |= (response[3] & 0x80) ? 1 : 0; // 需要 card 上电完成 (BUSY)
+    rc |= (response[3] & 0x80) ? 0 : 1; // 需要 card 上电完成 (BUSY)
     return rc;
 }
 
