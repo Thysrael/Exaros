@@ -2,6 +2,59 @@
 #include <memory.h>
 #include <trap.h>
 #include <file.h>
+#include <mem_layout.h>
+#include <types.h>
+
+#define UART_REG_TXDATA_FULL(data) (data & 0x80000000)  // 1 << 31
+#define UART_REG_RXDATA_EMPTY(data) (data & 0x80000000) // 1 << 31
+
+#define __io_br() \
+    do {          \
+    } while (0)
+#define __io_ar() __asm__ __volatile__("fence i,r" \
+                                       :           \
+                                       :           \
+                                       : "memory");
+#define __io_bw() __asm__ __volatile__("fence w,o" \
+                                       :           \
+                                       :           \
+                                       : "memory");
+#define __io_aw() \
+    do {          \
+    } while (0)
+
+static inline u32 __raw_readl(volatile void *addr)
+{
+    u32 val;
+    asm volatile("lw %0, 0(%1)"
+                 : "=r"(val)
+                 : "r"(addr));
+    return val;
+}
+
+static inline void __raw_writel(u32 val, volatile void *addr)
+{
+    asm volatile("sw %0, 0(%1)"
+                 :
+                 : "r"(val), "r"(addr));
+}
+
+#define readl(c) ({ u32 __v; __io_br(); __v = __raw_readl(c); __io_ar(); __v; })
+#define writel(v, c) ({ __io_bw(); __raw_writel((v),(c)); __io_aw(); })
+
+inline void putchar(char ch)
+{
+    while (UART_REG_TXDATA_FULL(readl((volatile u32 *)UART_REG_TXDATA)))
+        ;
+    writel(ch, (volatile u32 *)UART_REG_TXDATA);
+}
+
+inline int getchar()
+{
+    u32 ret = readl((volatile u32 *)UART_REG_RXDATA);
+    if (UART_REG_RXDATA_EMPTY(ret)) { return -1; }
+    return ret & 0xFF; // 1 byte
+}
 
 int consoleWrite(int isUser, u64 src, u64 start, u64 n)
 {

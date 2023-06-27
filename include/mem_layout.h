@@ -107,7 +107,8 @@
 // Core Local Interruptor, 用于处理与处理器核心相关的定时器和中断
 #define CLINT (0x02000000ULL)
 #define PLIC (0x0c000000ULL)
-#define UART0 (0x10000000ULL)
+#define UART0 (0x10010000ULL)
+// #define UART1 (0x10011000ULL)
 #define SPI (0x10050000ULL)
 // virtio mmio interface
 #define VIRTIO (0x10001000ULL)
@@ -136,6 +137,12 @@
 #define PLIC_SPRIORITY(hart) (PLIC_V + 0x201000 + (hart)*0x2000)
 #define PLIC_MCLAIM(hart) (PLIC_V + 0x200004 + (hart)*0x2000)
 #define PLIC_SCLAIM(hart) (PLIC_V + 0x201004 + (hart)*0x2000)
+
+// UART
+#define UART_REG_TXDATA (UART0 + 0x00)
+#define UART_REG_RXDATA (UART0 + 0x04)
+#define UART_REG_TXCTRL (UART0 + 0x08)
+#define UART_REG_RXCTRL (UART0 + 0x0C)
 
 // SPI
 #define SPI_REG_SCKDIV (SPI + 0x00)
