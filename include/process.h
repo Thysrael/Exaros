@@ -25,6 +25,33 @@
 typedef LIST_HEAD(ProcessList, Process) ProcessList;
 #define PROCESS_OFFSET(processId) ((processId) & (PROCESS_TOTAL_NUMBER - 1))
 
+#define PROCESS_FORK 17
+#define CSIGNAL 0x000000ff
+#define CLONE_VM 0x00000100
+#define CLONE_FS 0x00000200
+#define CLONE_FILES 0x00000400
+#define CLONE_SIGHAND 0x00000800
+#define CLONE_PIDFD 0x00001000
+#define CLONE_PTRACE 0x00002000
+#define CLONE_VFORK 0x00004000
+#define CLONE_PARENT 0x00008000
+#define CLONE_THREAD 0x00010000
+#define CLONE_NEWNS 0x00020000
+#define CLONE_SYSVSEM 0x00040000
+#define CLONE_SETTLS 0x00080000
+#define CLONE_PARENT_SETTID 0x00100000
+#define CLONE_CHILD_CLEARTID 0x00200000
+#define CLONE_DETACHED 0x00400000
+#define CLONE_UNTRACED 0x00800000
+#define CLONE_CHILD_SETTID 0x01000000
+#define CLONE_NEWCGROUP 0x02000000
+#define CLONE_NEWUTS 0x04000000
+#define CLONE_NEWIPC 0x08000000
+#define CLONE_NEWUSER 0x10000000
+#define CLONE_NEWPID 0x20000000
+#define CLONE_NEWNET 0x40000000
+#define CLONE_IO 0x80000000
+
 /**
  * @brief 创建进程, x 是要创建的进程名字，y 是优先级
  *
@@ -141,12 +168,12 @@ typedef struct CpuTimes
 // 进程控制块
 typedef struct Process
 {
-    Trapframe trapframe; // 进程异常时保存寄存器的地方
+    // Trapframe trapframe; // 进程异常时保存寄存器的地方
     struct ProcessTime processTime;
     CpuTimes cpuTime;
     ProcessListEntry link;
-    ProcessListEntry scheduleLink;
-    u64 awakeTime; // 进程应该醒来的时间
+    // ProcessListEntry scheduleLink;
+    // u64 awakeTime; // 进程应该醒来的时间
     u64 *pgdir;    // 进程页表地址
     u32 processId; // 进程 id
     u32 parentId;  // 父进程 id
@@ -154,15 +181,17 @@ typedef struct Process
     u32 priority;            // 优先级
     enum ProcessState state; // 进程状态
     Spinlock lock;
-    DirMeta *cwd;        // 进程所在的路径
-    File *ofile[NOFILE]; // 进程打开的文件
-    u64 channel;         // 等待队列
-    u64 currentKernelSp;
-    int reason;
+    DirMeta *cwd;            // 进程所在的路径
+    File *ofile[NOFILE];     // 进程打开的文件
+    // u64 channel;             // 等待队列
+    // u64 currentKernelSp;
+    // int reason;
     u32 retValue; // 进程返回值
     u64 brkHeapTop;
     u64 mmapHeapTop;
     DirMeta *execFile;
+    int threadCount;
+
     // SignalSet blocked;
     // SignalSet pending;
     // u64 setChildTid;
@@ -185,12 +214,12 @@ int setupProcess(Process *p);
 int processAlloc(Process **new, u64 parentId);
 void processCreatePriority(u8 *binary, u32 size, u32 priority);
 u64 getHartKernelTopSp();
-void processRun(Process *p);
 void yield();
-u64 getProcessTopSp(Process *p);
 void sleep(void *channel, Spinlock *lk);
 void wakeup(void *channel);
-void processFork(u64 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
+int processFork(u32 flags, u64 stack, u64 ptid, u64 tls, u64 ctid);
+int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid);
+int clone(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid);
 int wait(int targetProcessId, u64 addr);
 u64 exec(char *path, char **argv);
 void kernelProcessCpuTimeEnd();

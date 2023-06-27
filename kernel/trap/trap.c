@@ -9,6 +9,7 @@
 #include <types.h>
 #include <virtio.h>
 #include <syscall.h>
+#include <thread.h>
 
 Trapframe *getHartTrapFrame()
 {
@@ -113,8 +114,8 @@ int handleInterrupt()
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
-        // user timer interrupt
         timerTick();
+        // user timer interrupt
         return TIMER_INTERRUPT;
         break;
     default:
@@ -174,7 +175,6 @@ void kernelHandler()
     writeSstatus(sstatus);
 }
 
-extern Process *currentProcess[];
 /**
  * @brief 用户态的异常处理函数，处理用户态的异常和中断
  * 处理了中断，系统调用，缺页异常
@@ -185,11 +185,10 @@ void userHandler()
     u64 scause = readScause();
     u64 stval = readStval();
     Trapframe *tf = getHartTrapFrame();
-    u64 hartId = getTp();
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
+    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
@@ -211,14 +210,14 @@ void userHandler()
             break;
         case EXCEPTION_LOAD_FAULT:
         case EXCEPTION_STORE_FAULT:;
-            Page *page = pageLookup(currentProcess[hartId]->pgdir, stval, &pte);
+            Page *page = pageLookup(myProcess()->pgdir, stval, &pte);
             if (page == NULL)
             {
-                passiveAlloc(currentProcess[hartId]->pgdir, stval);
+                passiveAlloc(myProcess()->pgdir, stval);
             }
             else if (*pte & PTE_COW_BIT)
             {
-                cowHandler(currentProcess[hartId]->pgdir, stval);
+                cowHandler(myProcess()->pgdir, stval);
             }
             else
             {
@@ -244,13 +243,13 @@ void userTrapReturn()
     extern char trampoline[];
 
     int hartId = getTp();
-    intr_off();
+
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
     Trapframe *trapframe = getHartTrapFrame();
 
-    trapframe->kernelSp = getProcessTopSp(myProcess());
+    trapframe->kernelSp = getThreadTopSp(myThread());
     trapframe->trapHandler = (u64)userHandler;
     trapframe->kernelHartId = hartId;
 
