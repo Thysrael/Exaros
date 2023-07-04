@@ -33,10 +33,11 @@ fat: $(user_dir)
 	if [ ! -f "$(fs_img)" ]; then \
 		echo "making fs image..."; \
 		dd if=/dev/zero of=$(fs_img) bs=8M count=8; fi
-	mkfs.vfat -F 32 $(fs_img); 
+	mkfs.vfat -F 32 $(fs_img)
 	@sudo mount $(fs_img) $(mnt_path)
 	@sudo cp -r user/target/* $(mnt_path)/
-	@sudo cp -r testcase/** $(mnt_path)/
+	@sudo cp -r testcase/* $(mnt_path)/
+	@sudo cp -r test/target/* $(mnt_path)/
 	@sudo umount $(mnt_path)
 
 umount:
@@ -76,4 +77,5 @@ debug: all
 gdb: 
 	$(GDB) $(exaros_elf)
 
-
+serial:
+	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -chardev stdio,id=char0,mux=on,logfile=serial.log,signal=off -serial chardev:char0 -mon chardev=char0

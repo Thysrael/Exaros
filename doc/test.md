@@ -2,6 +2,23 @@
 
 为了提高操作系统内核的软件质量，除了区域赛官方提供的样例外，我们还在软件开发过程中进行了模块测试。
 
+## 增加测试用例
+
+以 `print_test.c` 为例：
+
+* 在 `./test/testcases` 文件夹中增加测试用例 `print_test.c` 和 `print_test.out`，并在 `main_test.c` 中 `char*test[]` 增加 `print`
+* 在 `./test` 文件夹下 `make`，`./test/target` 将会生成对应二进制文件
+* 在主目录下使用 `make fat` 更新 sd 卡
+* 使用 `make` 编译内核
+* 使用 `make serial` 将 stdout 同时输出到 `serial.log`，
+* 在 `sh` 中调用 `main_test`
+  * 也可使用 `print_test` 进行单例测试
+* 在 `./test` 文件夹下使用 `python test.py` 进行输出评判
+  * 也可使用 `python test.py print_test ...` 指定评判
+  * `test.py` 将根据测试文件是否有对应 `.py` 来决定评测方式
+    * 有 `.py`，使用 `.py` SPJ 评测
+    * 无 `.py`，使用 `difflib` 评测
+
 ## 模块测试
 
 ### 驱动测试
@@ -34,7 +51,7 @@ for (int i = 0; i < 1024; i++) {
 QS_DEBUG("[FAT32 init] bytsPerSec: %d\n", fs->superBlock.BPB.bytsPerSec);
 QS_DEBUG("[FAT32 init] secPerClus: %d\n", fs->superBlock.BPB.secPerClus);
 QS_DEBUG("[FAT32 init] rsvdSecCnt: %d\n", fs->superBlock.BPB.rsvdSecCnt);
-QS_DEBUG("[FAT32 init] numFATs: %d\n", fs->superBlock.BPB.numFATs);
+QS_DEBUG("[FAT32 init] numFATs: %d\n", fs->superBlock.BPB.numFATs); 
 QS_DEBUG("[FAT32 init] totSec: %d\n", fs->superBlock.BPB.totSec);
 QS_DEBUG("[FAT32 init] FATsz: %d\n", fs->superBlock.BPB.FATsz);
 QS_DEBUG("[FAT32 init] rootClus: %d\n", fs->superBlock.BPB.rootClus);
@@ -307,4 +324,3 @@ void syscallShutdown()
     return;
 }
 ```
-
