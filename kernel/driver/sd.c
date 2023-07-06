@@ -58,7 +58,7 @@ void sdInit()
 int sdRead(u8 *buf, u64 startBlock, u64 blockNumber)
 {
     int readTimes = 0;
-begin:
+begin:;
     // command & response
     u8 *p = (void *)buf;
 #ifdef QEMU
@@ -114,7 +114,7 @@ retry:
 int sdWrite(u8 *buf, u64 startBlock, u64 blockNumber)
 {
     int writeTimes = 0;
-begin:
+begin:;
     u8 *p = (void *)buf;
     u64 block = blockNumber;
     do {
