@@ -827,18 +827,18 @@ void syscallWait()
 void syscallExit()
 {
     Trapframe *trapframe = getHartTrapFrame();
-    Process *process;
+    Thread *th;
     int ret, ec = trapframe->a0;
 
-    if ((ret = pid2Process(0, &process, 1)) < 0)
+    if ((ret = tid2Thread(0, &th, 1)) < 0)
     {
         panic("Process exit error\n");
         return;
     }
 
     // 为啥要 << 8?
-    process->retValue = (ec << 8); // todo
-    threadDestroy(myThread());
+    th->retValue = (ec << 8); // todo
+    threadDestroy(th);
     // will not reach here
     panic("sycall exit error");
 }
