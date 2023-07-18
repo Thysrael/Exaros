@@ -70,10 +70,10 @@ int waitpid(int pid, int *code, int options)
     return syscall(SYS_wait4, pid, code, options, 0);
 }
 
-int exec(char *name)
+int exec(char *name, char *const argv[])
 {
     char empty[] = {0};
-    return syscall(SYS_execve, name, empty, empty);
+    return syscall(SYS_execve, name, argv, empty);
 }
 
 int execve(const char *name, char *const argv[], char *const argp[])

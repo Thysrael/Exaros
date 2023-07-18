@@ -40,7 +40,8 @@
 		"stdlib.h": "c",
 		"debug.h": "c",
 		"spi.h": "c",
-		"sd.h": "c"
+		"sd.h": "c",
+		"syscall_ids.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",
@@ -67,7 +68,6 @@
 			]
 		}
 	],
-	"C_Cpp.errorSquiggles": "enabled",
 	"C_Cpp.default.compilerPath": "/opt/riscv/bin/riscv64-unknown-elf-gcc",
 	"C_Cpp.formatting": "clangFormat"
 }

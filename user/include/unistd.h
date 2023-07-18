@@ -20,6 +20,7 @@ int sched_yield(void);
 void exit(int);
 pid_t fork(void);
 pid_t clone(int (*fn)(void *arg), void *arg, void *stack, size_t stack_size, unsigned long flags);
+int exec(char *name, char *const argv[]);
 int execve(const char *, char *const[], char *const[]);
 int waitpid(int, int *, int);
 int64 get_time();

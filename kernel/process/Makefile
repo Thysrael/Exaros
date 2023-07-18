@@ -1,6 +1,6 @@
 INCLUDES := -I../../include
 
-target = spinlock.o interrupt.o
+target = $(shell ls *.c | awk '{gsub(/\.c/, ".o"); print $0}') sleep.o signal_trampoline.o
 
 .PHONY: build clean
 

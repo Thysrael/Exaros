@@ -1203,7 +1203,10 @@ bad:
     return;
 }
 
-/// @brief 打印系统信息
+/**
+ * @brief 打印系统信息
+ *
+ */
 void syscallUname()
 {
     struct utsname
