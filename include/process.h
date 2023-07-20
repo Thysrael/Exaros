@@ -17,6 +17,7 @@
 #include <dirmeta.h>
 #include <file.h>
 #include <lock.h>
+#include <segment.h>
 
 #define NOFILE 1024 // Number of fds that a process can open
 #define LOG_PROCESS_NUM 10
@@ -181,8 +182,8 @@ typedef struct Process
     u32 priority;            // 优先级
     enum ProcessState state; // 进程状态
     Spinlock lock;
-    DirMeta *cwd;            // 进程所在的路径
-    File *ofile[NOFILE];     // 进程打开的文件
+    DirMeta *cwd;        // 进程所在的路径
+    File *ofile[NOFILE]; // 进程打开的文件
     // u64 channel;             // 等待队列
     // u64 currentKernelSp;
     // int reason;
@@ -198,7 +199,7 @@ typedef struct Process
     // u64 clearChildTid;
     // int threadCount;
     // struct ResourceLimit fileDescription;
-    // ProcessSegmentMap *segmentMapHead;
+    SegmentMap *segmentMapHead; // 记录着这个进程的所有 segment 映射信息
 } Process;
 
 // functions

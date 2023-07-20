@@ -92,4 +92,5 @@ int filestat(File *f, u64 addr);
 int fileread(File *f, bool isUser, u64 addr, int n);
 int filewrite(File *f, bool isUser, u64 addr, int n);
 int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen);
+u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off);
 #endif

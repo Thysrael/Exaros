@@ -4,6 +4,7 @@
 #include <linux_struct.h>
 #include <fat.h>
 #include <string.h>
+#include <mmap.h>
 
 struct devsw devsw[NDEV];
 struct
@@ -217,4 +218,89 @@ int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen)
         d = d->parent;
     }
     return either_copyout(isUser, buf, (void *)s, strlen(s) + 1);
+}
+
+/**
+ * @brief 将文件中的一部分映射到内存中，文件是广义的
+ *
+ * @param fd 文件
+ * @param start 内存起始地址
+ * @param len 内存长度
+ * @param perm 权限
+ * @param flags 这个函数的一些控制符，似乎是用控制 mmap 的行为的
+ * @param off 从文件的 off 开始读
+ * @return u64 起始地址
+ */
+u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
+{
+    bool alloc = (start == 0);
+    assert(PAGE_OFFSET(start, PAGE_SIZE) == 0);
+    Process *p = myProcess();
+    if (alloc)
+    {
+        p->mmapHeapTop = ALIGN_UP(p->mmapHeapTop, PAGE_SIZE);
+        start = p->mmapHeapTop;
+        p->mmapHeapTop = ALIGN_UP(p->mmapHeapTop + len, PAGE_SIZE);
+        assert(p->mmapHeapTop < USER_STACK_BOTTOM);
+    }
+
+    u64 addr = start, end = start + len;
+    if (flags & MAP_FIXED_BIT)
+    {
+        assert(start <= p->brkHeapTop);
+        p->brkHeapTop = MAX(ALIGN_UP(end, PAGE_SIZE), p->brkHeapTop);
+    }
+
+    // 为 [start, start + len] 分配多个物理页
+    while (start < end)
+    {
+        // 先查询页表项
+        u64 *pte;
+        u64 pa = page2PA(pageLookup(p->pgdir, start, &pte));
+        // 需要写时复制
+        if (pa > 0 && (*pte & PTE_COW_BIT))
+        {
+            cowHandler(p->pgdir, start);
+            pa = page2PA(pageLookup(p->pgdir, start, &pte));
+        }
+
+        // 如果没有查到，那么就分配一页
+        if (pa == 0)
+        {
+            Page *page;
+            if (pageAlloc(&page) < 0)
+            {
+                return -1;
+            }
+            pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT);
+        }
+        else
+        {
+            bzero((void *)pa, MIN(PAGE_SIZE, end - start));
+            *pte = PA2PTE(pa) | perm | PTE_USER_BIT | PTE_VALID_BIT;
+        }
+        start += PAGE_SIZE;
+    }
+
+    if (flags & MAP_ANONYMOUS_BIT)
+    {
+        return addr;
+    }
+    /* if fd == NULL, we think this is a anonymous map */
+    if (fd != NULL)
+    {
+        fd->off = off;
+        if (fileread(fd, true, addr, len) >= 0)
+        {
+            return addr;
+        }
+        else
+        {
+            return -1;
+        }
+    }
+    else
+    {
+        return addr;
+    }
 }

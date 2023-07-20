@@ -32,10 +32,10 @@ int argfd(int n, int *pfd, File **pf)
 }
 
 /**
- * @brief 从特定地址取出一个 u64 来
+ * @brief 从用户态特定地址取出一个 u64 来到内核态
  *
  * @param addr 地址
- * @param ip
+ * @param ip int pointer,是 u64 的地址
  * @return int
  */
 int fetchaddr(u64 addr, u64 *ip)

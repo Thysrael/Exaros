@@ -117,9 +117,12 @@
 #define CLINT_V (CLINT + VIRT_OFFSET)
 #define VIRTIO_V (VIRTIO + VIRT_OFFSET)
 
+// trampoline, signal trampoline, stack
+// TODO: memory init 那里可能会有问题
 #define TRAMPOLINE (VA_MAX - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
-#define USER_STACK_TOP TRAPFRAME
+#define SIGNAL_TRAMPOLINE (TRAMPOLINE - (PAGE_SIZE << 1))
+#define USER_STACK_TOP SIGNAL_TRAMPOLINE
 #define USER_STACK_BOTTOM (USER_STACK_TOP - (1UL << 32))
 
 // 用户进程的堆

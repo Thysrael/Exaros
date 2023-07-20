@@ -5,6 +5,7 @@
 #include <error.h>
 #include <riscv.h>
 #include <string.h>
+#include <segment.h>
 
 extern char kernelEnd[];
 Page pages[PAGE_NUM];
@@ -479,20 +480,54 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow)
 }
 
 /**
- * @brief 用户进程为 va 申请物理页
+ * @brief 用户进程为 badAddr 申请物理页
  * 权限默认为 RW+U
  *
  * @param pgdir 一级页表指针
- * @param va 用户空间虚拟地址
+ * @param badAddr 发生缺失的
  */
-u64 passiveAlloc(u64 *pgdir, u64 va)
+u64 passiveAlloc(u64 *pgdir, u64 badAddr)
 {
     Page *pp = NULL;
-    // 需要增加 alloc wrong va 判断
-    panic_on(pageAlloc(&pp));
-    panic_on(pageInsert(pgdir, va, pp, PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT));
-
-    return page2PA(pp) + (va & 0xFFF);
+    // 缺页发生在用户栈，那么直接分配即可
+    if (badAddr >= USER_STACK_BOTTOM && badAddr < USER_STACK_TOP)
+    {
+        panic_on(pageAlloc(&pp));
+        panic_on(pageInsert(pgdir, badAddr, pp, PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT));
+    }
+    // 发生在其他地方，即需要懒加载
+    else
+    {
+        u64 pageStart = ALIGN_DOWN(badAddr, PAGE_SIZE);
+        u64 pageEnd = pageStart + PAGE_SIZE;
+        u64 perm = 0;
+        Process *p = myProcess();
+        // 找到缺失页发生的段（一个或者多个），将这些段进行加载（有的时候只加载段的一部分）
+        for (SegmentMap *curSeg = p->segmentMapHead; curSeg; curSeg = curSeg->next)
+        {
+            // [start, finish] 是页和段的交集
+            u64 start = MAX(curSeg->loadAddr, pageStart);
+            u64 end = MIN(curSeg->loadAddr + curSeg->len, pageEnd);
+            if (start < end)
+            {
+                if (pp == NULL)
+                {
+                    pageAlloc(&pp);
+                }
+                if (!(curSeg->flag & MAP_ZERO))
+                {
+                    metaRead(curSeg->src, false, page2PA(pp) + PAGE_OFFSET(start, PAGE_SIZE), curSeg->srcOffset + start - curSeg->loadAddr, end - start);
+                }
+                perm |= (curSeg->flag & ~MAP_ZERO);
+            }
+        }
+        if (pp == NULL)
+        {
+            panic("can't find the lazy segment");
+        }
+        pageInsert(pgdir, badAddr, pp, PTE_USER_BIT | perm);
+    }
+    return page2PA(pp) + (badAddr & 0xFFF);
 }
 
 /**
@@ -610,4 +645,32 @@ void paDecreaseRef(u64 pa)
     {
         LIST_INSERT_HEAD(&freePageList, page, link);
     }
+}
+
+/**
+ * @brief 似乎是为了和 linux 设置的，用于分配一个内存后，返回这个页面的物理地址，
+ * 当需要的局部变量的长度较大，以至于无法使用局部变量时，通常采用这种方法
+ *
+ * @param size 大小，其实没有用，只要 size <= PAGE_SIZE 即可
+ * @return void* 物理首地址
+ */
+void *kmalloc(int size)
+{
+    if (size > PAGE_SIZE)
+    {
+        panic("Do not support kmalloc a mem which size > PAGE_SIZE");
+    }
+    Page *p;
+    pageAlloc(&p);
+    return (void *)page2PA(p);
+}
+
+/**
+ * @brief 释放 kmalloc 分配的空间
+ *
+ * @param startAddress 释放空间的起始地址
+ */
+void kfree(char *startAddress)
+{
+    pageFree(pa2Page((u64)startAddress));
 }

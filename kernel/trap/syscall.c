@@ -1147,29 +1147,29 @@ void syscallExec()
 {
     Trapframe *tf = getHartTrapFrame();
     char path[MAX_PATH_LEN], *argv[MAX_ARG];
-    u64 uargv, uarg;
-
-    if (argstr(0, path, MAX_PATH_LEN) < 0 || argaddr(1, &uargv))
+    u64 u_argvs_addr, u_argv_addr;
+    // 将参数取出
+    if (argstr(0, path, MAX_PATH_LEN) < 0 || argaddr(1, &u_argvs_addr))
     {
         tf->a0 = -1;
         return;
     }
-    // 全部指令是因为给进程传递参数是用零作为指针数组的结尾
+    // 清空 argv
     memset(argv, 0, sizeof(argv));
+    // 填写 argv
     for (int i = 0;; i++)
     {
-        // 这也太浪费了吧，一个参数开一页？
         if (i >= NELEM(argv))
         {
             goto bad;
         }
-        if (fetchaddr(uargv + (sizeof(u64) * i), (u64 *)&uarg) < 0)
+        if (fetchaddr(u_argvs_addr + (sizeof(u64) * i), (u64 *)&u_argv_addr) < 0)
         {
             goto bad;
         }
-        if (uarg == 0)
+        // 参数结束
+        if (u_argv_addr == 0)
         {
-            // 参数结束
             argv[i] = 0;
             break;
         }
@@ -1181,11 +1181,13 @@ void syscallExec()
         argv[i] = (char *)page2PA(page);
         if (argv[i] == 0)
             goto bad;
-        if (fetchstr(uarg, argv[i], PAGE_SIZE) < 0)
+        if (fetchstr(u_argv_addr, argv[i], PAGE_SIZE) < 0)
             goto bad;
     }
-    // printk("syscalle xec2");
+
+    // 真正的执行
     int ret = exec(path, argv);
+
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {

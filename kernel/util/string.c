@@ -70,15 +70,23 @@ int strncmp(const char *p, const char *q, u32 n)
     return (uchar)*p - (uchar)*q;
 }
 
-char *strncpy(char *s, const char *t, int n)
+/**
+ * @brief 进行字符串拷贝
+ *
+ * @param dst 目的字符串
+ * @param src 源字符串
+ * @param n 拷贝长度
+ * @return char* 目的字符串首地址
+ */
+char *strncpy(char *dst, const char *src, int n)
 {
     char *os;
 
-    os = s;
-    while (n-- > 0 && (*s++ = *t++) != 0)
+    os = dst;
+    while (n-- > 0 && (*dst++ = *src++) != 0)
         ;
     while (n-- > 0)
-        *s++ = 0;
+        *dst++ = 0;
     return os;
 }
 

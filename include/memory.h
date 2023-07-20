@@ -38,6 +38,7 @@
 #define PA2PTE(pa) (PA2PPN(pa) << PTE_PERM_WIDTH)
 #define PTE2PPN(pte) GETLOW((((u64)pte >> PTE_PERM_WIDTH)), 44)
 #define PTE2PA(pte) PPN2PA(PTE2PPN(pte))
+#define PAGE_OFFSET(x, y) ((x) & ((y)-1))
 // 取出权限
 #define PTE2PERM(pte) (((u64)(pte)) & ~((1ull << 54) - (1ull << 10)))
 
@@ -166,5 +167,7 @@ int either_memset(bool user, u64 dst, u8 value, u64 len);
 int copyout(u64 *pgdir, u64 va, char *src, u64 len);
 int memsetOut(u64 *pgdir, u64 dst, u8 value, u64 len);
 void paDecreaseRef(u64 pa);
+void *kmalloc(int size);
+void kfree(char *startAddress);
 
 #endif /* _MEMORY_H_ */

@@ -35,7 +35,7 @@ typedef struct Thread
     // SignalSet pending;
     // SignalSet processing;
     // u64 setChildTid;
-    // u64 clearChildTid;
+    u64 clearChildTid;
     Process *process;
     // u64 robustHeadPointer;
     // bool killed;
