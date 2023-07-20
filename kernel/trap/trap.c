@@ -225,7 +225,8 @@ void userHandler()
             }
             break;
         default:
-            panic("unknown interrupt\n");
+            passiveAlloc(myProcess()->pgdir, stval);
+            // panic("unknown interrupt\n");
         }
     }
     userTrapReturn();

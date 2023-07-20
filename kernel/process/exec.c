@@ -309,9 +309,11 @@ static int loadScript(DirMeta *srcMeta, char *path, char **argv)
 static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset, u64 *phdrAddr, DirMeta **interpMeta)
 {
     LOAD_DEBUG("segment traverse begin.\n");
+    LOAD_DEBUG("interOffset is 0x%x\n", interpOffset);
     // 遍历的 program header table，对于不同的 ph 进行不同的处理
     Phdr ph;
     Process *p = myProcess();
+    LOAD_DEBUG("phnum is %d, phoff is 0x%x\n", elfHeader->phnum, elfHeader->phoff);
     for (int i = 0, off = elfHeader->phoff; i < elfHeader->phnum; i++, off += sizeof(Phdr))
     {
         metaRead(srcMeta, false, (u64)&ph, off, sizeof(Phdr));
@@ -326,6 +328,7 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
                 seg->src = srcMeta;
                 seg->srcOffset = ph.offset;
                 seg->loadAddr = ph.vaddr + interpOffset;
+                LOAD_DEBUG("load address start at 0x%lx\n", seg->loadAddr);
                 seg->len = ph.filesz;
                 seg->flag = PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT;
                 segmentMapAppend(p, seg);
@@ -337,16 +340,18 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
                 seg->src = NULL;
                 seg->srcOffset = 0;
                 seg->loadAddr = ph.vaddr + ph.filesz + interpOffset;
+                LOAD_DEBUG("load bss address start at 0x%lx\n", seg->loadAddr);
                 seg->len = ph.memsz - ph.filesz;
                 seg->flag = PTE_READ_BIT | PTE_WRITE_BIT | MAP_ZERO;
                 segmentMapAppend(p, seg);
             }
-        }
-        // 这个段里包括 program header table，之后压栈需要用
-        else if (ph.type == PT_PHDR)
-        {
-            *phdrAddr = elfHeader->phoff - ph.offset + ph.vaddr + interpOffset;
-            LOAD_DEBUG("traverse the ph table, find the program header table, at %x\n", *phdrAddr);
+
+            // [ph.offset, ph.offset + ph.filesz]，program header table 在这个区间内，这一段就是 PHDR
+            if (ph.offset <= elfHeader->phoff && elfHeader->phoff < ph.offset + ph.filesz)
+            {
+                *phdrAddr = elfHeader->phoff - ph.offset + ph.vaddr + interpOffset;
+                LOAD_DEBUG("traverse the ph table, find the program header table, at %x\n", *phdrAddr);
+            }
         }
         // 需要加载解释器
         else if (ph.type == PT_INTERP)
@@ -570,7 +575,7 @@ static u64 *execAllocPgdir()
     "vb=b"
 */
 
-static int initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpLoadAddr, u64 interpOffset)
+static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpLoadAddr, u64 interpOffset)
 {
     LOAD_DEBUG("init user stack begin.\n");
     Process *p = myProcess();
@@ -763,6 +768,7 @@ u64 exec(char *path, char **argv)
     getHartTrapFrame()->epc = elfEntry;
     LOAD_DEBUG("elf entry is 0x%x\n", elfEntry);
     getHartTrapFrame()->sp = sp; // initial stack pointer
+    LOAD_DEBUG("stack pointer is 0x%lx\n", sp);
     Process *p = myProcess();
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;

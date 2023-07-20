@@ -6,6 +6,7 @@
 #include <riscv.h>
 #include <string.h>
 #include <segment.h>
+#include <debug.h>
 
 extern char kernelEnd[];
 Page pages[PAGE_NUM];
@@ -500,6 +501,7 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
     {
         u64 pageStart = ALIGN_DOWN(badAddr, PAGE_SIZE);
         u64 pageEnd = pageStart + PAGE_SIZE;
+        // LOAD_DEBUG("page range: [0x%x, 0x%x]\n", pageStart, pageEnd);
         u64 perm = 0;
         Process *p = myProcess();
         // 找到缺失页发生的段（一个或者多个），将这些段进行加载（有的时候只加载段的一部分）
@@ -508,8 +510,10 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
             // [start, finish] 是页和段的交集
             u64 start = MAX(curSeg->loadAddr, pageStart);
             u64 end = MIN(curSeg->loadAddr + curSeg->len, pageEnd);
+            // LOAD_DEBUG("lazy range [0x%x, 0x%x]\n", start, end);
             if (start < end)
             {
+                // LOAD_DEBUG("lazy range [0x%x, 0x%x]\n", start, end);
                 if (pp == NULL)
                 {
                     pageAlloc(&pp);
@@ -520,10 +524,11 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
                 }
                 perm |= (curSeg->flag & ~MAP_ZERO);
             }
+            // printk("pp == NULL %d\n", pp == NULL);
         }
         if (pp == NULL)
         {
-            panic("can't find the lazy segment");
+            panic("can't find the lazy segment, badAddr is 0x%lx\n", badAddr);
         }
         pageInsert(pgdir, badAddr, pp, PTE_USER_BIT | perm);
     }
