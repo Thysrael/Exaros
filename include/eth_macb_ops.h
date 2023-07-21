@@ -1,3 +1,11 @@
+/**
+ * @file eth_macb_ops.h
+ * @brief 以太网驱动
+ * @date 2023-07-21
+ *
+ * @copyright Copyright (c) 2023
+ */
+
 #ifndef _ETH_MACB_OPS_H
 #define _ETH_MACB_OPS_H
 
