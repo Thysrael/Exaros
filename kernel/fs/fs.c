@@ -51,8 +51,8 @@ void initRootFileSystem()
     // fatinit 用到了 dirmeta ，要先初始化 dirmeta
     fatInit(rootFileSystem);
     // test meta
-    void testMeta();
-    testMeta();
+    // void testMeta();
+    // testMeta();
 
     // 创建 dev 文件夹
     DirMeta *meta = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);

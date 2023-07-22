@@ -130,7 +130,7 @@ void processFree(Process *p)
             p->ofile[fd] = 0;
         }
     }
-
+    processSegmentMapFree(p);
     if (p->parentId > 0)
     {
         Process *parentProcess;

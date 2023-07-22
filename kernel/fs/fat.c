@@ -7,6 +7,7 @@
 #include <linux_struct.h>
 #include <debug.h>
 #include <driver.h>
+#include <thread.h>
 
 extern Inode inodes[];
 extern DirMeta dirMetas[];

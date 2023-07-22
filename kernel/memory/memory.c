@@ -489,6 +489,8 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow)
  */
 u64 passiveAlloc(u64 *pgdir, u64 badAddr)
 {
+    LOAD_DEBUG("happen passive alloc, badAddr is 0x%lx\n", badAddr);
+    // printk("current dir is %s\n", myProcess()->cwd->filename);
     Page *pp = NULL;
     // 缺页发生在用户栈，那么直接分配即可
     if (badAddr >= USER_STACK_BOTTOM && badAddr < USER_STACK_TOP)
@@ -524,6 +526,7 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
                 }
                 perm |= (curSeg->flag & ~MAP_ZERO);
             }
+
             printk("pp == %lx, start<end? %d start: %lx, end: %lx\n", (u64)pp, start < end, start, end);
         }
         if (pp == NULL)
