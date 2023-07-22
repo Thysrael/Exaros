@@ -231,7 +231,7 @@ static inline int isScriptFormat(u8 *binary)
  * @param argv 执行参数
  * @return int
  */
-static int loadScript(DirMeta *srcMeta, char *path, char **argv)
+static u64 loadScript(DirMeta *srcMeta, char *path, char **argv)
 {
     LOAD_DEBUG("shell script %s begin.\n", path);
     // 这里读取了脚本的前 128 字节，是 linux 的处理方式，这个 head 用于获得脚本的第一行
@@ -639,12 +639,12 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 #define from_kuid_munged(x, y) (0)
 #define from_kgid_munged(x, y) (0)
 
-    u64 secureexec = 0;                                                // the default value is 1, 但是我不清楚哪些情况会把它变成 0
-    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);                                  // CPU 的 extension 信息
-    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE);                         // PAGE_SIZE
-    NEW_AUX_ENT(AT_PHDR, phdrAddr);                                    // Phdr * phdr_addr; 指向用户态。
-    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));                               // 每个 Phdr 的大小
-    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);                           // phdr的数量
+    u64 secureexec = 0;                        // the default value is 1, 但是我不清楚哪些情况会把它变成 0
+    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);          // CPU 的 extension 信息
+    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE); // PAGE_SIZE
+    NEW_AUX_ENT(AT_PHDR, phdrAddr);            // Phdr * phdr_addr; 指向用户态。
+    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));       // 每个 Phdr 的大小
+    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);   // phdr的数量
     NEW_AUX_ENT(AT_BASE, interpLoadAddr);
     NEW_AUX_ENT(AT_ENTRY, elfHeader->entry + interpOffset);            // 源程序的入口
     NEW_AUX_ENT(AT_UID, from_kuid_munged(cred->user_ns, cred->uid));   // 0
@@ -768,9 +768,6 @@ u64 exec(char *path, char **argv)
 
     // 用户栈的构造
     u64 sp = initUserStack(argv, phAddr, &elfHeader, interpLoadAddr, interpOffset);
-
-    // 用户内存初始化 bug!
-    // initUserMemory();
 
     // 其他的收尾工作
     myThread()->clearChildTid = 0;
