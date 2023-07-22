@@ -545,6 +545,13 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     process = th->process;
     process->cwd = myprocess->cwd;
 
+    for (SegmentMap *psm = myprocess->segmentMapHead; psm; psm = psm->next)
+    {
+        SegmentMap *new = segmentMapAlloc();
+        *new = *psm;
+        segmentMapAppend(process, new);
+    }
+
     for (int i = 0; i < NOFILE; i++)
     {
         if (myprocess->ofile[i])
