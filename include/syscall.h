@@ -12,6 +12,7 @@
 #define SYSCALL_DEV 20
 #define SYSCALL_DUP 23
 #define SYSCALL_DUP3 24
+#define SYSCALL_fcntl 25
 #define SYSCALL_IOCONTROL 29
 
 #define SYSCALL_MKDIRAT 34
@@ -31,6 +32,7 @@
 #define SYSCALL_READ_VECTOR 65
 #define SYSCALL_WRITE_VECTOR 66
 
+#define SYSCALL_POLL 73
 #define SYSCALL_FSTATAT 79
 
 #define SYSCALL_FSTAT 80
@@ -56,8 +58,8 @@
 #define SYSCALL_GET_TIME_OF_DAY 169
 #define SYSCALL_GET_PID 172
 #define SYSCALL_GET_PARENT_PID 173
-
 #define SYSCALL_GET_USER_ID 174
+#define SYSCALL_GET_EFFECTIVE_USER_ID 175
 #define SYSCALL_GET_GROUP_ID 176
 #define SYSCALL_SHUTDOWN 210
 
@@ -116,6 +118,9 @@ void syscallIOControl();
 void syscallReadVector();
 void syscallWriteVector();
 void syscallGetClockTime();
+void syscallPoll();
+void syscall_fcntl(void);
+
 void doNothing();
 
 extern void (*syscallVector[])(void);
