@@ -593,9 +593,6 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
         copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1);
         ustack[argc + 1] = sp;
     }
-    printk("argc: %lx\n", argc);
-    printk("argc: %lx\n", ustack[1]);
-    printk("argc: %lx\n", ustack[2]);
     ustack[0] = argc;
     ustack[argc + 1] = 0;
     LOAD_DEBUG("finished push argv\n");
@@ -617,9 +614,6 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
     static u8 k_rand_bytes[] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     sp -= 32;
     sp -= sp % 16;
-
-    printk("sp1: %lx\n", sp);
-
     copyout(pagetable, sp, (char *)k_rand_bytes, sizeof(k_rand_bytes));
     u64 u_rand_bytes = sp;
     LOAD_DEBUG("finished push rand bytes\n");
@@ -664,7 +658,6 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
     u64 copy_size = (elf_info - ustack) * sizeof(u64);
     sp -= copy_size; /* now elf_info is the stack top */
     sp -= sp % 16;
-
     copyout(pagetable, sp, (char *)ustack, copy_size);
     LOAD_DEBUG("finished push auxv\n");
 
@@ -672,7 +665,6 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
     // argc is returned via the system call return
     // value, which goes in a0.
     getHartTrapFrame()->a1 = sp;
-    printk("sp: %lx\n", sp);
     LOAD_DEBUG("init user stack finished.\n");
     return sp;
 }
