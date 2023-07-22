@@ -5,6 +5,7 @@
 // char *argvLua[] = {"./busybox", "sh", "lua_testcode.sh", 0};
 // char *argvLmbanch[] = {"./busybox", "sh", "lmbench_testcode.sh", 0};
 char *shell[] = {"./busybox", "sh", 0};
+// char *shell[] = {"./time-test"};
 
 void main()
 {
@@ -17,6 +18,7 @@ void main()
     if (pid == 0)
     {
         exec("./busybox", shell);
+        // exec("./time-test", shell);
     }
     else
     {

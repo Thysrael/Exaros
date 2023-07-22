@@ -133,7 +133,7 @@ void kernelHandler()
     u64 sepc = readSepc();
     u64 sstatus = readSstatus();
 
-    CNX_DEBUG("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
+    printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
     // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
 
     // Trapframe *trapframe = getHartTrapFrame();
@@ -188,7 +188,7 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, %d\n", scause, stval, readSepc(), readSip(), (int)intr_get());
+    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
     // 判断中断或者异常，然后调用对应的处理函数
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
@@ -204,9 +204,16 @@ void userHandler()
         case EXCEPTION_ECALL:
             // printk("ecall\n");
             tf->epc += 4;
-            CNX_DEBUG("a7: %d\n", tf->a7);
-            // intr_on();
-            syscallVector[tf->a7]();
+            printk("ecall: %d\n", tf->a7);
+            if (syscallVector[tf->a7] == 0)
+            {
+                printk("ecall unrealized: %d\n", tf->a7);
+            }
+            else
+            {
+                // intr_on();
+                syscallVector[tf->a7]();
+            }
             break;
         case EXCEPTION_LOAD_FAULT:
         case EXCEPTION_STORE_FAULT:;
@@ -225,8 +232,11 @@ void userHandler()
             }
             break;
         default:
+            CNX_DEBUG("unknown interrupt: %lx\n", exceptionCode);
+
             passiveAlloc(myProcess()->pgdir, stval);
-            // panic("unknown interrupt\n");
+            break;
+            panic("unknown interrupt\n");
         }
     }
     userTrapReturn();

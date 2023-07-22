@@ -13,6 +13,7 @@
 #include <fs.h>
 #include <mmap.h>
 #include <thread.h>
+#include <iovec.h>
 #include <debug.h>
 
 void (*syscallVector[])(void) = {
@@ -23,6 +24,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_CLONE] syscallClone,
     [SYSCALL_PUT_STRING] syscallPutString,
     [SYSCALL_GET_PID] syscallGetProcessId,
+    [SYSCALL_SET_TID_ADDRESS] syscallSetTidAddress,
     [SYSCALL_GET_PARENT_PID] syscallGetParentProcessId,
     [SYSCALL_WAIT] syscallWait,
     [SYSCALL_DEV] syscallDevice,
@@ -34,7 +36,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_CLOSE] syscallClose,
     [SYSCALL_OPENAT] syscallOpenAt,
     [SYSCALL_GET_CPU_TIMES] syscallGetCpuTimes,
-    [SYSCALL_GET_TIME] syscallGetTime,
+    [SYSCALL_GET_TIME_OF_DAY] syscallGetTime,
     [SYSCALL_SLEEP_TIME] syscallSleepTime,
     [SYSCALL_DUP3] syscallDupAndSet,
     [SYSCALL_CHDIR] syscallChangeDir,
@@ -52,6 +54,16 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UNLINKAT] syscallUnlinkAt,
     [SYSCALL_UNAME] syscallUname,
     [SYSCALL_SHUTDOWN] syscallShutdown,
+    [SYSCALL_SIGNAL_PROCESS_MASK] syscallSignProccessMask,
+    [SYSCALL_SIGNAL_ACTION] syscallSignalAction,
+    [SYSCALL_GET_USER_ID] syscallGetUserId,
+    [SYSCALL_GET_GROUP_ID] syscallGetGroupId,
+    [SYSCALL_FSTATAT] syscallGetFileStateAt,
+    [SYSCALL_IOCONTROL] syscallIOControl,
+    [SYSCALL_WRITE_VECTOR] syscallWriteVector,
+    [SYSCALL_READ_VECTOR] syscallReadVector,
+    [SYSCALL_GET_TIME] syscallGetClockTime,
+    [SYSCALL_EXIT_GROUP] doNothing,
 };
 
 void syscallPutchar()
@@ -762,6 +774,16 @@ void syscallGetProcessId()
     tf->a0 = myProcess()->processId;
 }
 
+void syscallSetTidAddress()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // copyout(myProcess()->pgdir, tf->a0, (char*)(&myProcess()->id), sizeof(u64));
+    // printf("settid: %lx\n", tf->a0);
+    // todo
+    // myThread()->clearChildTid = tf->a0;
+    tf->a0 = myThread()->threadId;
+}
+
 void syscallGetParentProcessId()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -908,15 +930,15 @@ void syscallBrk()
     }
     Process *p = myProcess();
     // printk("addr: %lx\n", addr);
-    if (addr != 0)
-    {
-        addr &= ((1ul << 32) - 1);
-        addr |= (0x3cul << 32);
-    }
+    // if (addr != 0)
+    // {
+    //     addr &= ((1ul << 32) - 1);
+    //     addr |= (0x3cul << 32);
+    // }
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
-        // printk("brkHeapTop: %lx\n", p->brkHeapTop);
+        printk("brkHeapTop: %lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1047,7 +1069,7 @@ void syscallMapMemory()
         else
         {
             // 可以考虑 overwrite 或者返回 -1
-            panic("Syscall mmap remap at 0x%x\n", start);
+            panic("Syscall mmap remap at 0x%lx\n", start);
         }
         start += PAGE_SIZE;
     }
@@ -1238,4 +1260,180 @@ void syscallShutdown()
 #endif
     SBI_CALL_0(SBI_SHUTDOWN);
     return;
+}
+
+void syscallGetUserId()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallGetGroupId()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallGetFileStateAt(void)
+{
+    Trapframe *tf = getHartTrapFrame();
+    int dirfd = tf->a0 /*, flags = tf->a2*/;
+    u64 uva = tf->a2;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    // printf("path: %s\n", path);
+    DirMeta *entryPoint = metaName(dirfd, path, true);
+    if (entryPoint == NULL)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    struct kstat st;
+    // elock(entryPoint);
+    metaStat(entryPoint, &st);
+    // eunlock(entryPoint);
+    if (copyout(myProcess()->pgdir, uva, (char *)&st, sizeof(struct kstat)) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    tf->a0 = 0;
+}
+
+void syscallSignalAction()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // tf->a0 = doSignalAction(tf->a0, tf->a1, tf->a2);
+    tf->a0 = 0;
+}
+
+void syscallSignProccessMask()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // u64 how = tf->a0;
+    // SignalSet set;
+    // Process *p = myProcess();
+    // copyin(p->pgdir, (char *)&set, tf->a1, tf->a3);
+    // if (tf->a2 != 0)
+    // {
+    //     copyout(p->pgdir, tf->a2, (char *)(&myThread()->blocked), tf->a3);
+    // }
+    // tf->a0 = signProccessMask(how, &set);
+    tf->a0 = 0;
+}
+
+#define TIOCGWINSZ 0x5413
+
+struct WinSize
+{
+    unsigned short ws_row;
+    unsigned short ws_col;
+    unsigned short ws_xpixel;
+    unsigned short ws_ypixel;
+} winSize = {24, 80, 0, 0};
+
+void syscallIOControl()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // printf("fd: %d, cmd: %d, argc: %lx\n", tf->a0, tf->a1, tf->a2);
+    if (tf->a1 == TIOCGWINSZ)
+        copyout(myProcess()->pgdir, tf->a2, (char *)&winSize, sizeof(winSize));
+    tf->a0 = 0;
+}
+
+void syscallWriteVector()
+{
+    Trapframe *tf = getHartTrapFrame();
+    struct File *f;
+    int fd = tf->a0;
+
+    if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    {
+        goto bad;
+    }
+
+    int cnt = tf->a2;
+    if (cnt < 0 || cnt >= IOVMAX)
+    {
+        goto bad;
+    }
+
+    struct Iovec vec[IOVMAX];
+    struct Process *p = myProcess();
+
+    if (copyin(p->pgdir, (char *)vec, tf->a1, cnt * sizeof(struct Iovec)) != 0)
+    {
+        goto bad;
+    }
+
+    u64 len = 0;
+    for (int i = 0; i < cnt; i++)
+    {
+        len += filewrite(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
+    }
+    tf->a0 = len;
+    return;
+
+bad:
+    tf->a0 = -1;
+}
+
+void syscallReadVector()
+{
+    //     Trapframe *tf = getHartTrapFrame();
+    //     struct File *f;
+    //     int fd = tf->a0;
+
+    //     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    //     {
+    //         goto bad;
+    //     }
+
+    //     int cnt = tf->a2;
+    //     if (cnt < 0 || cnt >= IOVMAX)
+    //     {
+    //         goto bad;
+    //     }
+
+    //     struct Iovec vec[IOVMAX];
+    //     struct Process *p = myProcess();
+
+    //     if (copyin(p->pgdir, (char *)vec, tf->a1, cnt * sizeof(struct Iovec)) != 0)
+    //     {
+    //         goto bad;
+    //     }
+
+    //     u64 len = 0;
+    //     for (int i = 0; i < cnt; i++)
+    //     {
+    //         len += fileread(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
+    //     }
+    //     tf->a0 = len;
+    //     return;
+
+    // bad:
+    //     tf->a0 = -1;
+}
+
+void syscallGetClockTime()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 time = r_time();
+    TimeSpec ts;
+    ts.second = time / 1000000;
+    ts.microSecond = time % 1000000 * 1000; // todo
+    // printf("kernel time: %ld second: %ld ms: %ld\n", time, ts.second, ts.nanoSecond);
+    copyout(myProcess()->pgdir, tf->a1, (char *)&ts, sizeof(TimeSpec));
+    tf->a0 = 0;
+}
+
+void doNothing()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
 }

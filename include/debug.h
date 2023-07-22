@@ -8,6 +8,7 @@
 // #define QS_DEBUG_
 // #define CHL_DEBUG_
 #define LOAD_DEBUG_
+#define SYSCALL_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \
@@ -16,6 +17,15 @@
     } while (0)
 #else
 #define CNX_DEBUG(...)
+#endif
+
+#ifdef SYSCALL_DEBUG_
+#define SYSCALL_DEBUG(...)   \
+    do {                     \
+        printk(__VA_ARGS__); \
+    } while (0)
+#else
+#define SYSCALL_DEBUG_(...)
 #endif
 
 #ifdef QS_DEBUG_
