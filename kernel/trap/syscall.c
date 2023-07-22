@@ -15,6 +15,7 @@
 #include <thread.h>
 #include <iovec.h>
 #include <debug.h>
+#include <fcntl.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -64,6 +65,9 @@ void (*syscallVector[])(void) = {
     [SYSCALL_READ_VECTOR] syscallReadVector,
     [SYSCALL_GET_TIME] syscallGetClockTime,
     [SYSCALL_EXIT_GROUP] doNothing,
+    [SYSCALL_POLL] syscallPoll,
+    [SYSCALL_fcntl] syscall_fcntl,
+    [SYSCALL_GET_EFFECTIVE_USER_ID] doNothing,
 };
 
 void syscallPutchar()
@@ -938,7 +942,6 @@ void syscallBrk()
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
-        printk("brkHeapTop: %lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1436,4 +1439,71 @@ void doNothing()
 {
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
+}
+
+void syscallPoll()
+{
+    Trapframe *tf = getHartTrapFrame();
+    struct pollfd
+    {
+        int fd;
+        short events;
+        short revents;
+    };
+    struct pollfd p;
+    u64 startva = tf->a0;
+    int n = tf->a1;
+    int cnt = 0;
+    for (int i = 0; i < n; i++)
+    {
+        copyin(myProcess()->pgdir, (char *)&p, startva, sizeof(struct pollfd));
+        p.revents = 0;
+        copyout(myProcess()->pgdir, startva, (char *)&p, sizeof(struct pollfd));
+        startva += sizeof(struct pollfd);
+        cnt += p.revents != 0;
+    }
+    // tf->a0 = cnt;
+    tf->a0 = 1;
+}
+
+void syscall_fcntl(void)
+{
+    Trapframe *tf = getHartTrapFrame();
+    struct File *f;
+    int fd = tf->a0 /*, cmd = tf->a1, flag = tf->a2*/;
+
+    if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    switch (tf->a1)
+    {
+    case FCNTL_GETFD:
+        tf->a0 = 1;
+        return;
+    case FCNTL_SETFD:
+        tf->a0 = 0;
+        return;
+    case FCNTL_GET_FILE_STATUS:
+        tf->a0 = 04000;
+        return;
+    case FCNTL_DUPFD_CLOEXEC:
+        fd = fdalloc(f);
+        filedup(f);
+        tf->a0 = fd;
+        return;
+    case FCNTL_SETFL:
+        // printf("set file flag, bug not impl. flag :%x\n", tf->a2);
+        tf->a0 = 0;
+        return;
+    default:
+        panic("%d\n", tf->a1);
+        break;
+    }
+
+    // printf("syscall_fcntl fd:%x cmd:%x flag:%x\n", fd, cmd, flag);
+    tf->a0 = 0;
+    return;
 }
