@@ -204,7 +204,6 @@ void userHandler()
         case EXCEPTION_ECALL:
             // printk("ecall\n");
             tf->epc += 4;
-            printk("ecall: %d\n", tf->a7);
             if (syscallVector[tf->a7] == 0)
             {
                 printk("ecall unrealized: %d\n", tf->a7);
