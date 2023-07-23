@@ -264,6 +264,8 @@ void userTrapReturn()
     trapframe->trapHandler = (u64)userHandler;
     trapframe->kernelHartId = hartId;
 
+    handleSignal(myThread());
+
     u64 sstatus = readSstatus();
 
     // spp 位置零，spie 位置 1 （spp 表示进入异常的前一个状态的特权级别，0:u, 1:s

@@ -20,6 +20,7 @@
 #include <bio.h>
 #include <virtio.h>
 #include <sd.h>
+#include <signal.h>
 
 /**
  * @brief boot banner, `train` style character drawing.
@@ -79,13 +80,14 @@ void main(u64 hartId)
     trapInit();
     plicinit();
     plicinithart();
+    signalInit();
 
-    // PROCESS_CREATE_PRIORITY(sh, 10);
+    PROCESS_CREATE_PRIORITY(sh, 10);
     // PROCESS_CREATE_PRIORITY(processA, 1); // 凑数的进程，什么都不干
     // PROCESS_CREATE_PRIORITY(processB, 1);
     // PROCESS_CREATE_PRIORITY(processC, 1);
     // PROCESS_CREATE_PRIORITY(syscall_test, 10);
-    PROCESS_CREATE_PRIORITY(busybox_test, 10);
+    // PROCESS_CREATE_PRIORITY(busybox_test, 10);
 
     // 时钟中断的开关，在比赛中没有必要开启时钟中断
     // setNextTimeout();

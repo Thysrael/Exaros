@@ -241,3 +241,23 @@ int shutdown()
 {
     return syscall(SYS_shutdown);
 }
+
+int kill(int pid, int sig)
+{
+    return syscall(SYS_kill, pid, sig);
+}
+
+int tgkill(int tgid, int tid, int sig)
+{
+    return syscall(SYS_tgkill, tgid, tid, sig);
+}
+
+int tkill(int tid, int sig)
+{
+    return syscall(SYS_tkill, tid, sig);
+}
+
+int rt_sigreturn()
+{
+    return syscall(SYS_rt_sigreturn);
+}

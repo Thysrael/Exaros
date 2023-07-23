@@ -15,6 +15,7 @@
 #include <thread.h>
 #include <iovec.h>
 #include <debug.h>
+#include <signal.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -54,6 +55,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UNLINKAT] syscallUnlinkAt,
     [SYSCALL_UNAME] syscallUname,
     [SYSCALL_SHUTDOWN] syscallShutdown,
+<<<<<<< HEAD
     [SYSCALL_SIGNAL_PROCESS_MASK] syscallSignProccessMask,
     [SYSCALL_SIGNAL_ACTION] syscallSignalAction,
     [SYSCALL_GET_USER_ID] syscallGetUserId,
@@ -64,6 +66,12 @@ void (*syscallVector[])(void) = {
     [SYSCALL_READ_VECTOR] syscallReadVector,
     [SYSCALL_GET_TIME] syscallGetClockTime,
     [SYSCALL_EXIT_GROUP] doNothing,
+=======
+    [SYSCALL_KILL] syscallKill,
+    [SYSCALL_TKILL] syscallTkill,
+    [SYSCALL_TGKILL] syscallTgkill,
+    [SYSCALL_SIGRETURN] syscallSigreturn,
+>>>>>>> bb1a89c (feat: 初步完成 signal（from cjy），但仍然有改进空间)
 };
 
 void syscallPutchar()
@@ -1436,4 +1444,36 @@ void doNothing()
 {
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
-}
+    void syscallKill()
+    {
+        Trapframe *tf = getHartTrapFrame();
+        int pid = tf->a0;
+        int sig = tf->a1;
+        tf->a0 = kill(pid, sig);
+        return;
+    }
+
+    void syscallTkill()
+    {
+        Trapframe *tf = getHartTrapFrame();
+        int tid = tf->a0;
+        int sig = tf->a1;
+        tf->a0 = tkill(tid, sig);
+        return;
+    }
+
+    void syscallTgkill()
+    {
+        Trapframe *tf = getHartTrapFrame();
+        int tgid = tf->a0;
+        int tid = tf->a1;
+        int sig = tf->a2;
+        tf->a0 = tgkill(tgid, tid, sig);
+        return;
+    }
+
+    void syscallSigreturn()
+    {
+        sigreturn();
+        return;
+    }
