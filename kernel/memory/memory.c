@@ -526,8 +526,7 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
                 }
                 perm |= (curSeg->flag & ~MAP_ZERO);
             }
-
-            printk("pp == %lx, start<end? %d start: %lx, end: %lx\n", (u64)pp, start < end, start, end);
+            LOAD_DEBUG("pp == %lx, start<end? %d start: %lx, end: %lx, badAddr: %lx\n", (u64)pp, start < end, start, end, badAddr);
         }
         if (pp == NULL)
         {

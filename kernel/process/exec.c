@@ -328,7 +328,7 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
                 seg->src = srcMeta;
                 seg->srcOffset = ph.offset;
                 seg->loadAddr = ph.vaddr + interpOffset;
-                LOAD_DEBUG("load address start at 0x%lx\n", seg->loadAddr);
+                LOAD_DEBUG("load address start at 0x%lx, %lx\n", seg->loadAddr, ph.vaddr);
                 seg->len = ph.filesz;
                 seg->flag = PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT;
                 segmentMapAppend(p, seg);
@@ -340,7 +340,7 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
                 seg->src = NULL;
                 seg->srcOffset = 0;
                 seg->loadAddr = ph.vaddr + ph.filesz + interpOffset;
-                LOAD_DEBUG("load bss address start at 0x%lx\n", seg->loadAddr);
+                LOAD_DEBUG("load  bss address start at 0x%lx, %lx\n", seg->loadAddr, ph.vaddr);
                 seg->len = ph.memsz - ph.filesz;
                 seg->flag = PTE_READ_BIT | PTE_WRITE_BIT | MAP_ZERO;
                 segmentMapAppend(p, seg);
@@ -633,12 +633,12 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 #define from_kuid_munged(x, y) (0)
 #define from_kgid_munged(x, y) (0)
 
-    u64 secureexec = 0;                        // the default value is 1, 但是我不清楚哪些情况会把它变成 0
-    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);          // CPU 的 extension 信息
-    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE); // PAGE_SIZE
-    NEW_AUX_ENT(AT_PHDR, phdrAddr);            // Phdr * phdr_addr; 指向用户态。
-    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));       // 每个 Phdr 的大小
-    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);   // phdr的数量
+    u64 secureexec = 0;                                                // the default value is 1, 但是我不清楚哪些情况会把它变成 0
+    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);                                  // CPU 的 extension 信息
+    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE);                         // PAGE_SIZE
+    NEW_AUX_ENT(AT_PHDR, phdrAddr);                                    // Phdr * phdr_addr; 指向用户态。
+    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));                               // 每个 Phdr 的大小
+    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);                           // phdr的数量
     NEW_AUX_ENT(AT_BASE, interpLoadAddr);
     NEW_AUX_ENT(AT_ENTRY, elfHeader->entry + interpOffset);            // 源程序的入口
     NEW_AUX_ENT(AT_UID, from_kuid_munged(cred->user_ns, cred->uid));   // 0
@@ -702,6 +702,8 @@ u64 exec(char *path, char **argv)
     initUserMemory();
     // 根据 path 查询文件系统 meta
     DirMeta *srcMeta;
+    processSegmentMapFree(myProcess());
+
     if ((srcMeta = metaName(AT_FDCWD, path, true)) == 0)
     {
         printk("find file error, path: %s\n", path);

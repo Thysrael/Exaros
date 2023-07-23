@@ -1211,7 +1211,14 @@ void syscallExec()
     }
 
     // 真正的执行
+    // 输出
+    printk("\npath: %s\n", path);
     int ret = exec(path, argv);
+    for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        if (argv[i] > 0)
+            printk("%d : %s\n", i, argv[i]);
+    }
 
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1219,7 +1226,8 @@ void syscallExec()
         pageFree(pa2Page((u64)argv[i]));
     }
     tf->a0 = ret;
-    // printk("sucessfully exec\n");
+    // ("sucessfully exec %s, th: %lx, epc: %lx\n", path, myThread()->threadId, tf->epc);
+    // printTrapframe(tf);
     return;
 bad:
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)

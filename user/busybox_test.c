@@ -5,7 +5,7 @@ char *argvBusybox[] = {"./busybox", "sh", "busybox_testcode.sh", 0};
 // char *argvLua[] = {"./busybox", "sh", "lua_testcode.sh", 0};
 // char *argvLmbanch[] = {"./busybox", "sh", "lmbench_testcode.sh", 0};
 char *shell[] = {"./busybox", "sh", 0};
-// char *shell[] = {"./busybox", "ls", 0};
+char *timet[] = {"./time-test"};
 
 void main()
 {
@@ -18,11 +18,12 @@ void main()
     if (pid == 0)
     {
         exec("./busybox", shell);
-        // exec("./time-test", shell);
+        // exec("./time-test", timet);
     }
     else
     {
         wait(0);
+        // exec("./time-test", timet);
     }
 
     exit(0);

@@ -204,7 +204,9 @@ void userHandler()
         case EXCEPTION_ECALL:
             // printk("ecall\n");
             tf->epc += 4;
-            // printk("ecall: %d\n", tf->a7);
+            if (tf->a7 != 63)
+                SYSCALL_DEBUG("ecall: %d, epc: %lx, %lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
+
             if (syscallVector[tf->a7] == 0)
             {
                 printk("ecall unrealized: %d\n", tf->a7);
@@ -259,6 +261,8 @@ void userTrapReturn()
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
 
     Trapframe *trapframe = getHartTrapFrame();
+
+    // printk("epc: %lx\n", trapframe->epc);
 
     trapframe->kernelSp = getThreadTopSp(myThread());
     trapframe->trapHandler = (u64)userHandler;
