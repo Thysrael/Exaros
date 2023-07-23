@@ -148,6 +148,8 @@ void handleSignal(Thread *thread);
 int kill(int pid, int sig);
 int tgkill(int tgid, int tid, int sig);
 int tkill(int tid, int sig);
+int rt_sigaction(int sig, u64 act, u64 oldAction);
+int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize);
 void sigreturn();
 
 int signalEmptySet(SignalSet *set);

@@ -234,7 +234,7 @@ void handleSignal(Thread *thread)
     }
 }
 
-int doSignalAction(int sig, u64 act, u64 oldAction)
+int rt_sigaction(int sig, u64 act, u64 oldAction)
 {
     Thread *th = myThread();
     if (sig < 1 || sig > SIGNAL_COUNT)
@@ -251,6 +251,27 @@ int doSignalAction(int sig, u64 act, u64 oldAction)
         copyin(myProcess()->pgdir, (char *)k, act, sizeof(SignalAction));
     }
     return 0;
+}
+
+int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize)
+{
+    Thread *th = myThread();
+    // sigsetsize 为 sizeof(SignalSet) = 8
+    oldset->signal = th->blocked.signal;
+    switch (how)
+    {
+    case SIG_BLOCK:
+        th->blocked.signal |= set->signal;
+        return 0;
+    case SIG_UNBLOCK:
+        th->blocked.signal &= ~(set->signal);
+        return 0;
+    case SIG_SETMASK:
+        th->blocked.signal = set->signal;
+        return 0;
+    default:
+        return -1;
+    }
 }
 
 // void handleSignal(Thread *thread)

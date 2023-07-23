@@ -1313,23 +1313,23 @@ void syscallGetFileStateAt(void)
 void syscallSignalAction()
 {
     Trapframe *tf = getHartTrapFrame();
-    // tf->a0 = doSignalAction(tf->a0, tf->a1, tf->a2);
-    tf->a0 = 0;
+    tf->a0 = rt_sigaction(tf->a0, tf->a1, tf->a2);
+    return;
 }
 
 void syscallSignProccessMask()
 {
     Trapframe *tf = getHartTrapFrame();
-    // u64 how = tf->a0;
-    // SignalSet set;
-    // Process *p = myProcess();
-    // copyin(p->pgdir, (char *)&set, tf->a1, tf->a3);
-    // if (tf->a2 != 0)
-    // {
-    //     copyout(p->pgdir, tf->a2, (char *)(&myThread()->blocked), tf->a3);
-    // }
-    // tf->a0 = signProccessMask(how, &set);
-    tf->a0 = 0;
+    u64 how = tf->a0;
+    u64 setAddr = tf->a1;
+    u64 oldSetAddr = tf->a2;
+    u64 setSize = tf->a3;
+    Process *p = myProcess();
+    SignalSet set, oldSet;
+    copyin(p->pgdir, (char *)&set, setAddr, setSize);
+    tf->a0 = rt_sigprocmask(how, &set, &oldSet, setSize);
+    if (oldSetAddr != 0)
+        copyout(p->pgdir, oldSetAddr, (char *)&oldSet, setSize);
 }
 
 #define TIOCGWINSZ 0x5413
