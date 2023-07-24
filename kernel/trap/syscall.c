@@ -66,7 +66,6 @@ void (*syscallVector[])(void) = {
     [SYSCALL_READ_VECTOR] syscallReadVector,
     [SYSCALL_GET_TIME] syscallGetClockTime,
     [SYSCALL_EXIT_GROUP] doNothing,
-<<<<<<< HEAD
     [SYSCALL_POLL] syscallPoll,
     [SYSCALL_fcntl] syscall_fcntl,
     [SYSCALL_GET_EFFECTIVE_USER_ID] doNothing,
@@ -74,12 +73,10 @@ void (*syscallVector[])(void) = {
     [SYSCALL_GET_EFFECTIVE_GROUP_ID] doNothing,
     [SYSCALL_SET_TIMER] syscallSetTimer,
     [SYSCALL_SET_TIME] syscallSetTime,
-=======
     [SYSCALL_KILL] syscallKill,
     [SYSCALL_TKILL] syscallTkill,
     [SYSCALL_TGKILL] syscallTgkill,
     [SYSCALL_SIGRETURN] syscallSigreturn,
->>>>>>> main
 };
 
 void syscallPutchar()
