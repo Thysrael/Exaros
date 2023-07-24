@@ -41,7 +41,8 @@
 		"debug.h": "c",
 		"spi.h": "c",
 		"sd.h": "c",
-		"syscall_ids.h": "c"
+		"syscall_ids.h": "c",
+		"macb.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <segment.h>
 #include <debug.h>
+#include <macb.h>
 
 extern char kernelEnd[];
 Page pages[PAGE_NUM];
@@ -93,7 +94,16 @@ void kernelPageInit()
     kernelPageMap(kernelPageDirectory, UART0, UART0,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
-    kernelPageMap(kernelPageDirectory, VIRTIO_V, VIRTIO,
+    // kernelPageMap(kernelPageDirectory, VIRTIO_V, VIRTIO,
+    //               PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+
+    kernelPageMap(kernelPageDirectory, PRCI_BASE, PRCI_BASE,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+
+    kernelPageMap(kernelPageDirectory, MACB_IOBASE, MACB_IOBASE,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+
+    kernelPageMap(kernelPageDirectory, GEMGXL_BASE, GEMGXL_BASE,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
     kernelPageMap(kernelPageDirectory, SPI, SPI,

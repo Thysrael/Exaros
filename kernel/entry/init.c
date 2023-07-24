@@ -20,6 +20,7 @@
 #include <bio.h>
 #include <virtio.h>
 #include <sd.h>
+#include <macb.h>
 
 /**
  * @brief boot banner, `train` style character drawing.
@@ -76,6 +77,7 @@ void main(u64 hartId)
 #endif
     fileinit();
 
+    macb_init();
     trapInit();
     plicinit();
     plicinithart();

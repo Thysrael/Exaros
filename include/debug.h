@@ -9,6 +9,7 @@
 // #define CHL_DEBUG_
 #define LOAD_DEBUG_
 #define SYSCALL_DEBUG_
+#define NET_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \
@@ -56,6 +57,16 @@
     } while (0)
 #else
 #define LOAD_DEBUG(...)
+#endif
+
+#ifdef NET_DEBUG_
+#define NET_DEBUG(...)                                                     \
+    do {                                                                   \
+        printk("[NET] at %s: %d in %s(): ", __FILE__, __LINE__, __func__); \
+        printk(__VA_ARGS__);                                               \
+    } while (0)
+#else
+#define NET_DEBUG(...)
 #endif
 
 #endif
