@@ -868,10 +868,10 @@ typedef struct MacbDevice
     MacbConfig *config; // macb 的配置
 
     u64 rx_tail;
-    u64 tx_head;
+    u64 tx_head; // 指向空闲 buffer
     u64 tx_tail;
     u64 next_rx_tail;
-    bool wrapped;
+    bool wrapped; // 说明 RX 队列已满
 
     u32 *recv_buffers; // TODO?
     u32 *send_buffers;
@@ -895,5 +895,7 @@ typedef struct MacbDevice
 void macbInit();
 u16 macb_mdio_read(u32 phy_adr, u32 reg);
 void macb_mdio_write(u32 phy_adr, u32 reg, u16 value);
+i32 macbSend(u8 *packet, u32 length);
+i32 macbRecv(u8 *packet);
 
 #endif

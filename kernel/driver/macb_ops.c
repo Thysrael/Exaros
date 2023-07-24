@@ -17,6 +17,11 @@
 
 #define MACB_AUTONEG_TIMEOUT 5000000
 
+#define RXBUF_FRMLEN_MASK 0x00000fff
+#define TXBUF_FRMLEN_MASK 0x000007ff
+
+#define MACB_TX_TIMEOUT 1000
+
 /**
  * @brief 设置 PRCI 时钟默认频率 12512500
  *
@@ -308,12 +313,12 @@ static u32 GEM_RBQP(u32 hw_q)
 
 static inline u32 readv(u32 *src)
 {
-    return *src;
+    return *(volatile u32 *)src;
 }
 
 static inline void writev(u32 *dst, u32 value)
 {
-    *dst = value;
+    *(volatile u32 *)dst = value;
 }
 
 static void gmac_init_multi_queues()
@@ -588,6 +593,7 @@ static i32 macb_phy_init(char *name)
     NET_DEBUG("macb phy init begin.\n");
     // Auto-detect phy_addr
     i32 ret = macb_phy_find(macb);
+    NET_DEBUG("macb phy find end.\n");
     if (ret != 0) return ret;
 
     // Check if the PHY is up to snuff...
@@ -643,7 +649,7 @@ static i32 macb_phy_init(char *name)
             char duplex_str[5];
             if (duplex == 1) { mystrncpy(duplex_str, "full", 5); }
             else { mystrncpy(duplex_str, "half", 4); }
-            NET_DEBUG("{%s} GiB capable, link up, 1000Mbps {%S}-duplex (lpa: {%d)\n",
+            NET_DEBUG("%s GiB capable, link up, 1000Mbps %s-duplex (lpa: %u)\n",
                       name, duplex_str, lpa);
 
             ncfgr = readv((u32 *)(MACB_IOBASE + MACB_NCFGR));
@@ -893,7 +899,7 @@ static void macb_start()
     u32 nsr = *MACB_REG(MACB_NSR);
     u32 tsr = *MACB_REG(MACB_TSR);
 
-    NET_DEBUG("MACB_NSR: {:#x}, MACB_TSR: {:#x}", nsr, tsr);
+    NET_DEBUG("MACB_NSR: 0x%x, MACB_TSR: 0x%x\n", nsr, tsr);
     msdelay(90);
 }
 
@@ -906,5 +912,202 @@ void macbInit()
 
     macb_eth_probe();
     macb_start();
-    panic("");
+    NET_DEBUG("macb init end.\n");
+}
+
+/**
+ * @brief 发送一个 mac 包
+ *
+ * @param packet 包的首地址
+ * @param length 包的长度
+ * @return i32 0 为成功
+ */
+i32 macbSend(u8 *packet, u32 length)
+{
+    u64 tx_head = macb.tx_head;
+    // let paddr: u64 = flush_dcache_range(packet, length); // DMA_TO_DEVICE
+    // let paddr: u64 = packet.as_ptr() as u64;
+
+    u32 ctrl = length & TXBUF_FRMLEN_MASK;
+
+    // Last buffer, when set this bit indicates that the last buffer in the current frame has been reached.
+    ctrl |= (1 << MACB_TX_LAST_OFFSET);
+    // Clear Used bit
+    ctrl &= ~(1 << MACB_TX_USED_OFFSET);
+
+    // 确定一个空闲的 buffer
+    // ring 的最后一个成员 TX_WRAP
+    if (tx_head == (MACB_TX_RING_SIZE - 1))
+    {
+        // Wrap - marks last descriptor in transmit buffer descriptor list.
+        // This can be set for any buffer within the frame.
+        ctrl |= (1 << MACB_TX_WRAP_OFFSET);
+        macb.tx_head = 0; // 预先把下一个 head 归为0
+    }
+    else
+    {
+        macb.tx_head += 1;
+    }
+
+    // 将 packet 的内容拷贝到这个包里
+    u8 *txbuf = (u8 *)(macb.send_buffers + tx_head);
+    for (int i = 0; i < length; ++i)
+    {
+        txbuf[i] = packet[i];
+    }
+
+    macb.tx_ring[tx_head].ctrl = ctrl;
+    // 初始化时已经填过 tx paddr
+    // macb.tx_ring[tx_head].addr = lower_32_bits(paddr);
+
+    fence();
+
+    // TX ring dma desc
+    NET_DEBUG("Send packet: buffer_id: %d len: %d, addr: %d, DmaDesc: %d\n",
+              tx_head, length, macb.send_buffers[tx_head], macb.tx_ring[tx_head]);
+
+    writev((u32 *)(MACB_IOBASE + MACB_NCR),
+           (1 << MACB_TE_OFFSET) | (1 << MACB_RE_OFFSET) | (1 << MACB_TSTART_OFFSET));
+
+    u32 tsr = readv((u32 *)(MACB_IOBASE + MACB_TSR));
+    NET_DEBUG("Tx MACB_TSR = 0x%x\n", tsr);
+
+    /*
+     * I guess this is necessary because the networking core may
+     * re-use the transmit buffer as soon as we return...
+     */
+    for (int i = 0; i < MACB_TX_TIMEOUT; ++i)
+    {
+        fence();
+        // barrier();
+        ctrl = macb.tx_ring[tx_head].ctrl;
+        if ((ctrl & (1 << MACB_TX_USED_OFFSET)) != 0)
+        {
+            if ((ctrl & (1 << MACB_TX_UNDERRUN_OFFSET)) != 0)
+            {
+                NET_DEBUG("TX underrun\n");
+            }
+            if ((ctrl & (1 << MACB_TX_BUF_EXHAUSTED_OFFSET)) != 0)
+            {
+                NET_DEBUG("TX buffers exhausted in mid frame\n");
+            }
+            NET_DEBUG("Tx %d desc.ctrl = 0x%x\n", tx_head, ctrl);
+            break;
+        }
+        usdelay(1);
+
+        if (i == MACB_TX_TIMEOUT) { NET_DEBUG("TX timeout\n"); }
+    }
+    // dma_unmap_single(paddr, length, DMA_TO_DEVICE);
+    return 0;
+}
+
+/**
+ * @brief 回收 rx_buffer，直到遇到 new_tail
+ *
+ * @param new_tail 真正的 tail
+ */
+static void reclaim_rx_buffers(u64 new_tail)
+{
+    u32 count = 0;
+    u64 i = macb.rx_tail;
+    NET_DEBUG("reclaim_rx_buffers, macb.rx_tail: %d, new_tail: %d\n",
+              i, new_tail);
+
+    while (i > new_tail)
+    {
+        count = i;
+        macb.rx_ring[count].addr &= ~(1 << MACB_RX_USED_OFFSET);
+        i += 1;
+        if (i >= MACB_RX_RING_SIZE)
+            i = 0;
+    }
+    while (i < new_tail)
+    {
+        count = i;
+        macb.rx_ring[count].addr &= ~(1 << MACB_RX_USED_OFFSET);
+        i += 1;
+    }
+    fence();
+    macb.rx_tail = new_tail;
+}
+
+/**
+ * @brief 接收一个包
+ *
+ * @param packet 目的地址
+ * @return i32 负值为错误，正值为长度
+ */
+i32 macbRecv(u8 *packet)
+{
+    u32 status = 0;
+    u32 length = 0;
+    u32 count = 0;
+
+    u64 next_rx_tail = macb.next_rx_tail;
+    macb.wrapped = false;
+    while (1)
+    {
+        count += 1; // TODO: count 到一定次数后，就走出循环
+        // 检验 next 是否被占用
+        if ((macb.rx_ring[next_rx_tail].addr & (1 << MACB_RX_USED_OFFSET)) == 0)
+        {
+            return -11; // EAGAIN
+        }
+        u64 indesc = next_rx_tail;
+        status = macb.rx_ring[next_rx_tail].ctrl;
+        if ((status & (1 << MACB_RX_SOF_OFFSET)) != 0)
+        {
+            if (next_rx_tail != macb.rx_tail)
+            {
+                reclaim_rx_buffers(next_rx_tail);
+            }
+            macb.wrapped = false;
+        }
+
+        if ((status & (1 << MACB_RX_EOF_OFFSET)) != 0)
+        {
+            // buffer = macb.rx_buffer + macb.rx_buffer_size * macb.rx_tail;
+            u64 buffer = macb.rx_buffer_dma + macb.buffer_size * macb.rx_tail;
+            length = status & RXBUF_FRMLEN_MASK;
+            //
+            if (macb.wrapped)
+            {
+                NET_DEBUG("recv wrapped net_rx_packets is not implemented\n");
+            }
+            else
+            {
+                // *packet = buffer;
+                // 把 DMA buffer中的网络包拷贝出来
+                u8 *rx_packets = (u8 *)buffer;
+                for (int i = 0; i < length; ++i)
+                {
+                    packet[i] = rx_packets[i];
+                }
+            }
+            NET_DEBUG("Recv packet: buffer_id: %d, count: %d, length: %d, addr: %d",
+                      indesc, count, length, macb.rx_ring[indesc]);
+
+            next_rx_tail += 1;
+            if (next_rx_tail >= MACB_RX_RING_SIZE)
+            {
+                next_rx_tail = 0;
+            }
+            macb.next_rx_tail = next_rx_tail;
+
+            return length;
+        }
+        else
+        {
+            next_rx_tail += 1;
+            if (next_rx_tail >= MACB_RX_RING_SIZE)
+            {
+                macb.wrapped = true;
+                next_rx_tail = 0;
+            }
+        }
+        fence();
+    } // loop
+
+    return -1;
 }

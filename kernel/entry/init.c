@@ -78,6 +78,23 @@ void main(u64 hartId)
     fileinit();
 
     macbInit();
+    char packet[] = {};
+    int len = sizeof(packet);
+    char *ans = kmalloc(100);
+    // macbSend(packet, len);
+    while ((len = macbRecv((u8 *)ans)) == -11)
+        ;
+
+    printk("len is %d\n", len);
+    for (int i = 0; i < len; i += 16)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            printk("%0x ", ans[i * 16 + j]);
+        }
+        printk("\n");
+    }
+    panic("AC\n");
     trapInit();
     plicinit();
     plicinithart();
