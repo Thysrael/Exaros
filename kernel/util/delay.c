@@ -12,3 +12,8 @@ void usdelay(u64 interval)
         cur = readRealTime();
     }
 }
+
+void msdelay(u64 interval)
+{
+    usdelay(interval * 1000);
+}

@@ -11,5 +11,6 @@
 #include "types.h"
 
 void usdelay(u64 interval);
+void msdelay(u64 interval);
 
 #endif

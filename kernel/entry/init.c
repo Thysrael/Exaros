@@ -77,7 +77,7 @@ void main(u64 hartId)
 #endif
     fileinit();
 
-    macb_init();
+    macbInit();
     trapInit();
     plicinit();
     plicinithart();
