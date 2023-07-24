@@ -545,6 +545,8 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     process = th->process;
     process->cwd = myprocess->cwd;
 
+    printk("*1\n");
+
     for (SegmentMap *psm = myprocess->segmentMapHead; psm; psm = psm->next)
     {
         SegmentMap *new = segmentMapAlloc();
@@ -560,6 +562,8 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
             process->ofile[i] = myprocess->ofile[i];
         }
     }
+
+    printk("*2\n");
     process->priority = myprocess->priority;
     process->brkHeapTop = myprocess->brkHeapTop;
     process->mmapHeapTop = myprocess->mmapHeapTop;
@@ -568,19 +572,21 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     th->trapframe.a0 = 0;
     th->trapframe.kernelSp = getThreadTopSp(th);
 
-    if (stackVa != 0)
-    {
-        th->trapframe.sp = stackVa;
-    }
-    if (ptid != NULL)
-    {
-        copyout(myprocess->pgdir, ptid, (char *)&myprocess->processId, sizeof(u32));
-    }
-    if (ctid != NULL)
-    {
-        copyout(myprocess->pgdir, ctid, (char *)&process->processId, sizeof(u32));
-    }
+    // if (stackVa != 0)
+    // {
+    //     th->trapframe.sp = stackVa;
+    // }
+    // if (ptid != NULL)
+    // {
+    //     copyout(myprocess->pgdir, ptid, (char *)&myprocess->processId, sizeof(u32));
+    // }
 
+    // if (ctid != NULL)
+    // {
+    //     copyout(myprocess->pgdir, ctid, (char *)&process->processId, sizeof(u32));
+    // }
+
+    printk("*3\n");
     u64 i,
         j, k;
     for (i = 0; i < 512; i++)
@@ -613,11 +619,15 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
                     pa2[k] |= PTE_COW_BIT;
                     pa2[k] &= ~PTE_WRITE_BIT;
                 }
+                printk("<");
                 pageMap(process->pgdir, va, PTE2PA(pa2[k]), PTE2PERM(pa2[k]));
+
+                printk(">");
             }
         }
     }
 
+    printk("*4\n");
     LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
 
     return process->processId;
@@ -660,7 +670,7 @@ int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
  */
 int clone(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
 {
-    // printf("clone flags: %lx\n", flags);
+    printk("clone flags: %lx\n", flags);
     if (flags & CLONE_VM)
     {
         return threadFork(stackVa, ptid, tls, ctid);

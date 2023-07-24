@@ -25,7 +25,7 @@
         printk(__VA_ARGS__); \
     } while (0)
 #else
-#define SYSCALL_DEBUG_(...)
+#define SYSCALL_DEBUG(...)
 #endif
 
 #ifdef QS_DEBUG_
