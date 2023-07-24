@@ -4,6 +4,7 @@
 #include <file.h>
 #include <mem_layout.h>
 #include <types.h>
+#include <io.h>
 
 #define UART_REG_TXDATA_FULL(data) (data & 0x80000000)  // 1 << 31
 #define UART_REG_RXDATA_EMPTY(data) (data & 0x80000000) // 1 << 31
@@ -111,4 +112,10 @@ void consoleInit()
     extern struct devsw devsw[];
     devsw[DEV_CONSOLE].read = consoleRead;
     devsw[DEV_CONSOLE].write = consoleWrite;
+}
+
+struct AsynInput asynInputBuffer;
+bool hasChar()
+{
+    return asynInputBuffer.head != asynInputBuffer.tail;
 }

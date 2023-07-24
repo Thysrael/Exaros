@@ -17,6 +17,7 @@
 #include <debug.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <io.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -77,6 +78,9 @@ void (*syscallVector[])(void) = {
     [SYSCALL_TKILL] syscallTkill,
     [SYSCALL_TGKILL] syscallTgkill,
     [SYSCALL_SIGRETURN] syscallSigreturn,
+    [SYSCALL_SEND_FILE] syscallSendFile,
+    [SYSCALL_PREAD] syscallPRead,
+    [SYSCALL_SELECT] syscallSelect,
 };
 
 void syscallPutchar()
@@ -1230,14 +1234,14 @@ void syscallExec()
     }
 
     // 真正的执行
-    // 输出
-    printk("\npath: %s\n", path);
+    // // 输出
+    // printk("\npath: %s\n", path);
     int ret = exec(path, argv);
-    for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    {
-        if (argv[i] > 0)
-            printk("%d : %s\n", i, argv[i]);
-    }
+    // for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    // {
+    //     if (argv[i] > 0)
+    //         printk("%d : %s\n", i, argv[i]);
+    // }
 
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1547,7 +1551,7 @@ void syscallSetTime()
 void syscallSetTimer()
 {
     Trapframe *tf = getHartTrapFrame();
-    // printf("set Timer: %lx %lx %lx\n", tf->a0, tf->a1, tf->a2);
+    printk("set Timer: %lx %lx %lx\n", tf->a0, tf->a1, tf->a2);
     IntervalTimer time = getTimer();
     if (tf->a2)
     {
@@ -1591,5 +1595,207 @@ void syscallTgkill()
 void syscallSigreturn()
 {
     sigreturn();
+    return;
+}
+
+typedef struct
+{
+    u64 bits[2];
+} FdSet;
+
+void syscallSelect()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // printf("thread %lx get in select, epc: %lx\n", myThread()->id, tf->epc);
+    int nfd = tf->a0;
+    // assert(nfd <= 128);
+    u64 read = tf->a1, write = tf->a2, except = tf->a3, timeout = tf->a4;
+    // assert(timeout != 0);
+    int cnt = 0;
+    struct File *file = NULL;
+    // printf("[%s] \n", __func__);
+
+    FdSet readSet_ready;
+    if (read)
+    {
+        FdSet readSet;
+        copyin(myProcess()->pgdir, (char *)&readSet, read, sizeof(FdSet));
+        readSet_ready = readSet;
+        for (int i = 0; i < nfd; i++)
+        {
+            file = NULL;
+            u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
+            if (!cur)
+                continue;
+            // printf("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            file = myProcess()->ofile[i];
+            if (!file)
+                continue;
+
+            int ready_to_read = 1;
+            switch (file->type)
+            {
+            case FD_PIPE:
+                // printf("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
+                if (file->pipe->nread == file->pipe->nwrite)
+                {
+                    ready_to_read = 0;
+                }
+                else
+                {
+                    ready_to_read = 1;
+                }
+                break;
+            case FD_SOCKET:
+                // printf("socketid %d head %d tail %d\n", file->socket-sockets, file->socket->head, file->socket->tail);
+                if (file->socket->used != 0 && file->socket->head == file->socket->tail && (!file->socket->listening || (file->socket->listening && file->socket->pending_h == file->socket->pending_t)))
+                {
+                    ready_to_read = 0;
+                }
+                else
+                {
+                    ready_to_read = 1;
+                }
+                break;
+            case FD_DEVICE:
+                if (hasChar())
+                {
+                    ready_to_read = 1;
+                }
+                else
+                {
+                    ready_to_read = 0;
+                }
+                break;
+            default:
+                ready_to_read = 1;
+                break;
+            }
+
+            if (ready_to_read)
+            {
+                ++cnt;
+            }
+            else
+            {
+                if (i < 64)
+                    readSet_ready.bits[0] &= ~cur;
+                else
+                    readSet_ready.bits[1] &= ~cur;
+            }
+        }
+    }
+    if (write)
+    {
+        FdSet writeSet;
+        copyin(myProcess()->pgdir, (char *)&writeSet, write, sizeof(FdSet));
+        for (int i = 0; i < nfd; i++)
+        {
+            if (i >= 64)
+            {
+                cnt += !!((1UL << (i - 64)) & writeSet.bits[1]);
+            }
+            else
+            {
+                cnt += !!((1UL << (i)) & writeSet.bits[0]);
+            }
+        }
+        copyout(myProcess()->pgdir, write, (char *)&write,
+                sizeof(FdSet));
+    }
+    if (except)
+    {
+        // FdSet set;
+        // copyin(myProcess()->pgdir, (char*)&set, except, sizeof(FdSet));
+        u8 zero = 0;
+        memsetOut(myProcess()->pgdir, except, zero, nfd);
+        // memset(&set, 0, sizeof(FdSet));
+        // copyout(myProcess()->pgdir, except, (char*)&set, sizeof(FdSet));
+    }
+    if (cnt == 0)
+    {
+        if (timeout)
+        {
+            struct TimeSpec ts;
+            copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+            if (ts.microSecond == 0 && ts.second == 0)
+            {
+                goto selectFinish;
+            }
+        }
+        tf->epc -= 4;
+        yield();
+    }
+selectFinish:
+    copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+
+    // printf("select end cnt %d\n",cnt);
+    tf->a0 = cnt;
+}
+
+void syscallPRead()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd = tf->a0;
+    File *file = myProcess()->ofile[fd];
+    if (file == 0)
+    {
+        goto bad;
+    }
+    u32 off = file->off;
+    tf->a0 = metaRead(file->meta, true, tf->a1, tf->a3, tf->a2);
+    file->off = off;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+void syscallSendFile()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int outFd = tf->a0, inFd = tf->a1;
+    if (outFd < 0 || outFd >= NOFILE)
+    {
+        goto bad;
+    }
+    if (inFd < 0 || inFd >= NOFILE)
+    {
+        goto bad;
+    }
+    File *outFile = myProcess()->ofile[outFd];
+    File *inFile = myProcess()->ofile[inFd];
+    if (outFile == NULL || inFile == NULL)
+    {
+        goto bad;
+    }
+    u32 offset;
+    if (tf->a2)
+    {
+        copyin(myProcess()->pgdir, (char *)&offset, tf->a2, sizeof(u32));
+        inFile->off = offset;
+    }
+    u8 buf[512];
+    u32 count = tf->a3, size = 0;
+    while (count > 0)
+    {
+        int len = MIN(count, 512);
+        int r = fileread(inFile, false, (u64)buf, len);
+        if (r > 0)
+            r = filewrite(outFile, false, (u64)buf, r);
+        size += r;
+        if (r != len)
+        {
+            break;
+        }
+        count -= len;
+    }
+    if (tf->a2)
+    {
+        copyout(myProcess()->pgdir, tf->a2, (char *)&inFile->off, sizeof(u32));
+    }
+    tf->a0 = size;
+    return;
+bad:
+    tf->a0 = -1;
     return;
 }
