@@ -48,13 +48,14 @@
 #define SYSCALL_GET_TIME 113
 
 #define SYSCALL_SCHED_YIELD 124
-
+#define SYSCALL_KILL 129
+#define SYSCALL_TKILL 130
+#define SYSCALL_TGKILL 131
 #define SYSCALL_SIGNAL_ACTION 134
 #define SYSCALL_SIGNAL_PROCESS_MASK 135
-
+#define SYSCALL_SIGRETURN 139
 #define SYS_setgid 144
 #define SYS_setuid 146
-
 #define SYSCALL_GET_CPU_TIMES 153
 #define SYSCALL_UNAME 160
 #define SYSCALL_GET_TIME_OF_DAY 169
@@ -112,6 +113,10 @@ void syscallUmount(void);
 void syscallUnlinkAt(void);
 void syscallLinkAt(void);
 void syscallShutdown(void);
+void syscallKill();
+void syscallTkill();
+void syscallTgkill();
+void syscallSigreturn();
 
 void syscallGetUserId();
 void syscallGetGroupId();

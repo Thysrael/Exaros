@@ -16,6 +16,7 @@
 #include <iovec.h>
 #include <debug.h>
 #include <fcntl.h>
+#include <signal.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -65,6 +66,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_READ_VECTOR] syscallReadVector,
     [SYSCALL_GET_TIME] syscallGetClockTime,
     [SYSCALL_EXIT_GROUP] doNothing,
+<<<<<<< HEAD
     [SYSCALL_POLL] syscallPoll,
     [SYSCALL_fcntl] syscall_fcntl,
     [SYSCALL_GET_EFFECTIVE_USER_ID] doNothing,
@@ -72,6 +74,12 @@ void (*syscallVector[])(void) = {
     [SYSCALL_GET_EFFECTIVE_GROUP_ID] doNothing,
     [SYSCALL_SET_TIMER] syscallSetTimer,
     [SYSCALL_SET_TIME] syscallSetTime,
+=======
+    [SYSCALL_KILL] syscallKill,
+    [SYSCALL_TKILL] syscallTkill,
+    [SYSCALL_TGKILL] syscallTgkill,
+    [SYSCALL_SIGRETURN] syscallSigreturn,
+>>>>>>> main
 };
 
 void syscallPutchar()
@@ -1333,23 +1341,23 @@ void syscallGetFileStateAt(void)
 void syscallSignalAction()
 {
     Trapframe *tf = getHartTrapFrame();
-    // tf->a0 = doSignalAction(tf->a0, tf->a1, tf->a2);
-    tf->a0 = 0;
+    tf->a0 = rt_sigaction(tf->a0, tf->a1, tf->a2);
+    return;
 }
 
 void syscallSignProccessMask()
 {
     Trapframe *tf = getHartTrapFrame();
-    // u64 how = tf->a0;
-    // SignalSet set;
-    // Process *p = myProcess();
-    // copyin(p->pgdir, (char *)&set, tf->a1, tf->a3);
-    // if (tf->a2 != 0)
-    // {
-    //     copyout(p->pgdir, tf->a2, (char *)(&myThread()->blocked), tf->a3);
-    // }
-    // tf->a0 = signProccessMask(how, &set);
-    tf->a0 = 0;
+    u64 how = tf->a0;
+    u64 setAddr = tf->a1;
+    u64 oldSetAddr = tf->a2;
+    u64 setSize = tf->a3;
+    Process *p = myProcess();
+    SignalSet set, oldSet;
+    copyin(p->pgdir, (char *)&set, setAddr, setSize);
+    tf->a0 = rt_sigprocmask(how, &set, &oldSet, setSize);
+    if (oldSetAddr != 0)
+        copyout(p->pgdir, oldSetAddr, (char *)&oldSet, setSize);
 }
 
 #define TIOCGWINSZ 0x5413
@@ -1554,4 +1562,37 @@ void syscallSetTimer()
         setTimer(time);
     }
     tf->a0 = 0;
+}
+void syscallKill()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    int sig = tf->a1;
+    tf->a0 = kill(pid, sig);
+    return;
+}
+
+void syscallTkill()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int tid = tf->a0;
+    int sig = tf->a1;
+    tf->a0 = tkill(tid, sig);
+    return;
+}
+
+void syscallTgkill()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int tgid = tf->a0;
+    int tid = tf->a1;
+    int sig = tf->a2;
+    tf->a0 = tgkill(tgid, tid, sig);
+    return;
+}
+
+void syscallSigreturn()
+{
+    sigreturn();
+    return;
 }

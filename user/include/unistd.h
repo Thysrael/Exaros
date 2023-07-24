@@ -54,4 +54,8 @@ int dup2(int, int);
 
 int dev(int fd, int mode);
 int shutdown();
+int kill(int pid, int sig);
+int tgkill(int tgid, int tid, int sig);
+int tkill(int tid, int sig);
+void sigreturn();
 #endif // __UNISTD_H__

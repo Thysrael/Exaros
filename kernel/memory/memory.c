@@ -320,17 +320,17 @@ i32 pageAlloc(Page **ppage)
     return 0;
 }
 
-// void bcopy(void *src, void *dst, u32 len)
-// {
-//     void *finish = src + len;
+void bcopy(void *src, void *dst, u32 len)
+{
+    void *finish = src + len;
 
-//     while (src < finish)
-//     {
-//         *(u8 *)dst = *(u8 *)src;
-//         src++;
-//         dst++;
-//     }
-// }
+    while (src < finish)
+    {
+        *(u8 *)dst = *(u8 *)src;
+        src++;
+        dst++;
+    }
+}
 
 // 记得切换为 memset
 void bzero(void *start, u32 len)

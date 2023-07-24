@@ -278,13 +278,22 @@ int setupProcess(Process *p)
     // pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
     //         PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
+    if (pageAlloc(&page) < 0)
+    {
+        return -1;
+    }
+    pageInsert(kernelPageDirectory, KERNEL_PROCESS_SIGNAL_BASE + (u64)(p - processes) * PAGE_SIZE, page,
+               PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+
     extern char trampoline[];
     extern char trapframe[];
+    extern char signalTrampoline[];
     // 尝试更严格的权限管理
     // pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
     // pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
     pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(p->pgdir, SINGNAL_TRAMPOLINE, ((u64)signalTrampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     return 0;
 }
 
