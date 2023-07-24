@@ -61,6 +61,8 @@
 #define SYSCALL_GET_USER_ID 174
 #define SYSCALL_GET_EFFECTIVE_USER_ID 175
 #define SYSCALL_GET_GROUP_ID 176
+#define SYSCALL_GET_EFFECTIVE_GROUP_ID 177
+#define SYSCALL_GET_THREAD_ID 178
 #define SYSCALL_SHUTDOWN 210
 
 #define SYSCALL_BRK 214
@@ -120,6 +122,7 @@ void syscallWriteVector();
 void syscallGetClockTime();
 void syscallPoll();
 void syscall_fcntl(void);
+void syscallGetTheardId(void);
 
 void doNothing();
 

@@ -148,8 +148,8 @@ int copyInstr(u64 *pagetable, char *dst, u64 srcva, u64 max)
         pa0 = va2PA(pagetable, va0, &cow);
         if (pa0 == 0)
         {
-            printk("pa0=0!");
-            return -1;
+            pa0 = passiveAlloc(pagetable, va0);
+            // todo 这里很奇怪。换成 pa0 = passiveAlloc(pagetable, srcva); 就不行，这两句明明是等价的/
         }
         n = PAGE_SIZE - (srcva - va0);
         if (n > max)

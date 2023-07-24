@@ -68,6 +68,8 @@ void (*syscallVector[])(void) = {
     [SYSCALL_POLL] syscallPoll,
     [SYSCALL_fcntl] syscall_fcntl,
     [SYSCALL_GET_EFFECTIVE_USER_ID] doNothing,
+    [SYSCALL_GET_THREAD_ID] syscallGetTheardId,
+    [SYSCALL_GET_EFFECTIVE_GROUP_ID] doNothing,
 };
 
 void syscallPutchar()
@@ -259,6 +261,7 @@ void syscallGetDirent()
     static char buf[512];
     struct linux_dirent64 *dir64 = (struct linux_dirent64 *)buf;
 
+    printk("^2\n");
     if (dir->type == FD_ENTRY)
     {
         int nread = 0;
@@ -314,12 +317,22 @@ void syscallOpenAt(void)
     Trapframe *tf = getHartTrapFrame();
     int startFd = tf->a0, flags = tf->a2, mode = tf->a3;
     char path[FAT32_MAX_PATH];
+
+    // if (va2PA(myProcess()->pgdir, tf->a1, 0) == 0)
+    // {
+    //     passiveAlloc(myProcess()->pgdir, tf->a1);
+    // }
+    // printk("*1 %lx \n", va2PA(myProcess()->pgdir, tf->a1, 0));
+    // if (tf->a1 != 0)
+    //     printk("111 %c\n", *(char *)(va2PA(myProcess()->pgdir, tf->a1, 0)));
+
     if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
     {
         tf->a0 = -1;
         return;
     }
 
+    printk("*1\n");
     DirMeta *entryPoint;
     // 如果是创建一个文件，那么用 metaCreate
     if (flags & O_CREATE)
@@ -352,6 +365,7 @@ void syscallOpenAt(void)
         }
     }
 
+    printk("*2\n");
     // 分配出一个 file
     File *file;
     int fd;
@@ -364,6 +378,7 @@ void syscallOpenAt(void)
         tf->a0 = -24;
         goto bad;
     }
+    printk("*3\n");
     // 如果需要截断
     if (!(entryPoint->attribute & ATTR_DIRECTORY) && (flags & O_TRUNC))
     {
@@ -1514,4 +1529,10 @@ void syscall_fcntl(void)
     // printf("syscall_fcntl fd:%x cmd:%x flag:%x\n", fd, cmd, flag);
     tf->a0 = 0;
     return;
+}
+
+void syscallGetTheardId()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = myThread()->threadId;
 }
