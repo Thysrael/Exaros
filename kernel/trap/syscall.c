@@ -70,6 +70,8 @@ void (*syscallVector[])(void) = {
     [SYSCALL_GET_EFFECTIVE_USER_ID] doNothing,
     [SYSCALL_GET_THREAD_ID] syscallGetTheardId,
     [SYSCALL_GET_EFFECTIVE_GROUP_ID] doNothing,
+    [SYSCALL_SET_TIMER] syscallSetTimer,
+    [SYSCALL_SET_TIME] syscallSetTime,
 };
 
 void syscallPutchar()
@@ -261,7 +263,6 @@ void syscallGetDirent()
     static char buf[512];
     struct linux_dirent64 *dir64 = (struct linux_dirent64 *)buf;
 
-    printk("^2\n");
     if (dir->type == FD_ENTRY)
     {
         int nread = 0;
@@ -332,7 +333,6 @@ void syscallOpenAt(void)
         return;
     }
 
-    printk("*1\n");
     DirMeta *entryPoint;
     // 如果是创建一个文件，那么用 metaCreate
     if (flags & O_CREATE)
@@ -365,7 +365,6 @@ void syscallOpenAt(void)
         }
     }
 
-    printk("*2\n");
     // 分配出一个 file
     File *file;
     int fd;
@@ -378,7 +377,7 @@ void syscallOpenAt(void)
         tf->a0 = -24;
         goto bad;
     }
-    printk("*3\n");
+
     // 如果需要截断
     if (!(entryPoint->attribute & ATTR_DIRECTORY) && (flags & O_TRUNC))
     {
@@ -1535,4 +1534,24 @@ void syscallGetTheardId()
 {
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = myThread()->threadId;
+}
+
+void syscallSetTime()
+{
+}
+void syscallSetTimer()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // printf("set Timer: %lx %lx %lx\n", tf->a0, tf->a1, tf->a2);
+    IntervalTimer time = getTimer();
+    if (tf->a2)
+    {
+        copyout(myProcess()->pgdir, tf->a2, (char *)&time, sizeof(IntervalTimer));
+    }
+    if (tf->a1)
+    {
+        copyin(myProcess()->pgdir, (char *)&time, tf->a1, sizeof(IntervalTimer));
+        setTimer(time);
+    }
+    tf->a0 = 0;
 }

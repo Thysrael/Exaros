@@ -8,7 +8,7 @@
 // #define QS_DEBUG_
 // #define CHL_DEBUG_
 // #define LOAD_DEBUG_
-#define SYSCALL_DEBUG_
+// #define SYSCALL_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \

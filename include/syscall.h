@@ -43,6 +43,8 @@
 
 #define SYSCALL_SLEEP_TIME 101
 
+#define SYSCALL_SET_TIMER 103
+#define SYSCALL_SET_TIME 112
 #define SYSCALL_GET_TIME 113
 
 #define SYSCALL_SCHED_YIELD 124
@@ -122,6 +124,9 @@ void syscallWriteVector();
 void syscallGetClockTime();
 void syscallPoll();
 void syscall_fcntl(void);
+void syscallGetTheardId(void);
+void syscallSetTime(void);
+void syscallSetTimer(void);
 void syscallGetTheardId(void);
 
 void doNothing();
