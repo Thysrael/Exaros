@@ -897,5 +897,6 @@ u16 macb_mdio_read(u32 phy_adr, u32 reg);
 void macb_mdio_write(u32 phy_adr, u32 reg, u16 value);
 i32 macbSend(u8 *packet, u32 length);
 i32 macbRecv(u8 *packet);
+void macbTest();
 
 #endif

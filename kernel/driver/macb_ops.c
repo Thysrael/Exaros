@@ -905,14 +905,60 @@ static void macb_start()
 
 void macbInit()
 {
-    NET_DEBUG("macb init begin.\n");
+    printk("macb init begin.\n");
     sifive_prci_set_rate();
     sifive_prci_enable();
     sifive_prci_ethernet_release_reset();
 
     macb_eth_probe();
     macb_start();
-    NET_DEBUG("macb init end.\n");
+    printk("macb init end.\n");
+}
+
+void macbTest()
+{
+    u8 packet[] = {
+        // dst
+        0xff,
+        0xff,
+        0xff,
+        0xff,
+        0xff,
+        0xff,
+        // src
+        0x70,
+        0xb3,
+        0xd5,
+        0x92,
+        0xfa,
+        0xfc,
+
+        // content
+        0x11,
+        0x23,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0};
+    int len = sizeof(packet);
+    u8 *ans = kmalloc(100);
+    macbSend(packet, len);
+    printk("finished send.\n");
+    while ((len = macbRecv(ans)) == -11)
+        ;
+
+    printk("len is %d\n", len);
+    for (int i = 0; i < len; i += 16)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            printk("%0x ", ans[i * 16 + j]);
+        }
+        printk("\n");
+    }
 }
 
 /**
@@ -963,7 +1009,7 @@ i32 macbSend(u8 *packet, u32 length)
     fence();
 
     // TX ring dma desc
-    NET_DEBUG("Send packet: buffer_id: %d len: %d, addr: %d, DmaDesc: %d\n",
+    NET_DEBUG("Send packet: buffer_id: %d len: %d, addr: 0x%lx, DmaDesc: 0x%lx\n",
               tx_head, length, macb.send_buffers[tx_head], macb.tx_ring[tx_head]);
 
     writev((u32 *)(MACB_IOBASE + MACB_NCR),
