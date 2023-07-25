@@ -34,9 +34,9 @@ userTrap:
     # so that a0 is TRAPFRAME
     csrrw a0, sscratch, a0
 
-    ld t0, KERNEL_SATP(a0)
-    csrw satp, t0
-    sfence.vma
+    # ld t0, KERNEL_SATP(a0)
+    # csrw satp, t0
+    # sfence.vma
 
     # save the user registers in TRAPFRAME
     sd ra, REG_RA(a0)
@@ -86,6 +86,10 @@ userTrap:
     # restore kernel page table from p->trapframe->kernel_satp
     sd t1, EPC(a0)    
     # restore kernel page table from p->trapframe->kernel_satp
+    
+    ld t0, KERNEL_SATP(a0)
+    csrw satp, t0
+    sfence.vma
     ld t0, TRAP_HANDLER(a0)
     jr t0
 

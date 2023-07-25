@@ -912,6 +912,7 @@ void syscallGetCpuTimes()
     tf->a0 = (r_cycle() & 0x3FFFFFFF);
 }
 
+u64 timeOffset = 0;
 /**
  * @brief 获取当前时间
  *
@@ -919,7 +920,7 @@ void syscallGetCpuTimes()
 void syscallGetTime()
 {
     Trapframe *tf = getHartTrapFrame();
-    u64 time = r_time();
+    u64 time = r_time() + timeOffset;
     TimeSpec ts;
     ts.second = time / 1000000;
     ts.microSecond = time % 1000000;
@@ -959,7 +960,7 @@ void syscallBrk()
         return;
     }
     Process *p = myProcess();
-    // printk("addr: %lx\n", addr);
+    printk("brkaddr: %lx\n", addr);
     // if (addr != 0)
     // {
     //     addr &= ((1ul << 32) - 1);
@@ -1043,7 +1044,6 @@ void syscallMapMemory()
         tf->a0 = -1;
         return;
     }
-
     if (length == 0)
     {
         tf->a0 = -1;
@@ -1106,6 +1106,7 @@ void syscallMapMemory()
     if (MAP_ANONYMOUS(flags))
     {
         tf->a0 = addr;
+        printk("mmap: %lx\n", addr);
         return;
     }
     int fd;
@@ -1552,7 +1553,15 @@ void syscallGetTheardId()
 
 void syscallSetTime()
 {
+    Trapframe *tf = getHartTrapFrame();
+    TimeSpec ts;
+    printk("settimee\n");
+    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
+    printk("%d %d\n", ts.microSecond, ts.second);
+    timeOffset = (ts.second * 1000000 + ts.microSecond) - r_time();
+    tf->a0 = 0;
 }
+
 void syscallSetTimer()
 {
     Trapframe *tf = getHartTrapFrame();

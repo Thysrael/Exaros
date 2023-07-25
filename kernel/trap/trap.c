@@ -188,8 +188,18 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    CNX_DEBUG("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
+    // if (scause != 8)
+    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
     // 判断中断或者异常，然后调用对应的处理函数
+
+    // if (scause == 0xd)
+    // {
+    //     printk("ddd t0: %lx, a1: %lx\n", tf->t0, tf->a1);
+    //     if (tf->a1 == 0x152c30)
+    //     {
+    //         printTrapframe(tf);
+    //     }
+    // }
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
     if (scause & SCAUSE_INTERRUPT)
     {
