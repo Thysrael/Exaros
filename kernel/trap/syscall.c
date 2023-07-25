@@ -97,6 +97,8 @@ void (*syscallVector[])(void) = {
     [SYSCALL_ACCESS] syscallAccess,
     [SYSCALL_LSEEK] syscallLseek,
     [SYSCALL_UTIMENSAT] syscallUtimensat,
+    [SYSCALL_MEMORY_PROTECT] syscallMemoryProtect,
+    [MAX_SYSCALL] 0,
 };
 
 void syscallPutchar()
@@ -1257,12 +1259,12 @@ void syscallExec()
 
     int ret = exec(path, argv);
 
-    // printk("\npath: %s\n", path);
-    // for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    // {
-    //     if (argv[i] > 0)
-    //         printk("%d : %s\n", i, argv[i]);
-    // }
+    printk("\npath: %s\n", path);
+    for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        if (argv[i] > 0)
+            printk("%d : %s\n", i, argv[i]);
+    }
 
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -2132,6 +2134,45 @@ void syscallAccess()
     {
         tf->a0 = -ENOENT;
         return;
+    }
+    tf->a0 = 0;
+}
+
+void syscallMemoryProtect()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // printf("mprotect va: %lx, length: %lx prot:%lx\n", tf->a0, tf->a1, tf->a2);
+
+    u64 start = ALIGN_DOWN(tf->a0, PAGE_SIZE);
+    u64 end = ALIGN_UP(tf->a0 + tf->a1, PAGE_SIZE);
+
+    u64 perm = 0;
+    if (tf->a2 & PROT_EXEC_BIT)
+    {
+        perm |= PTE_EXECUTE_BIT | PTE_READ_BIT;
+    }
+    if (tf->a2 & PROT_READ_BIT)
+    {
+        perm |= PTE_READ_BIT;
+    }
+    if (tf->a2 & PROT_WRITE_BIT)
+    {
+        perm |= PTE_WRITE_BIT | PTE_READ_BIT;
+    }
+    while (start < end)
+    {
+        u64 *pte;
+        Page *page;
+        page = pageLookup(myProcess()->pgdir, start, &pte);
+        if (!page)
+        {
+            passiveAlloc(myProcess()->pgdir, start);
+        }
+        else
+        {
+            *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm;
+        }
+        start += PAGE_SIZE;
     }
     tf->a0 = 0;
 }

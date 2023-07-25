@@ -90,7 +90,11 @@
 #define SYSCALL_CLONE 220
 #define SYSCALL_EXEC 221
 #define SYSCALL_MAP_MEMORY 222
+#define SYSCALL_MEMORY_PROTECT 226
+
 #define SYSCALL_WAIT 260
+
+#define MAX_SYSCALL 350
 
 void syscallGetProcessId();
 void syscallSetTidAddress();
@@ -167,6 +171,7 @@ void syscallSysinfo();
 void syscallLseek();
 void syscallUtimensat();
 void syscallAccess();
+void syscallMemoryProtect();
 
 #define SYSCALL_LSEEK 62
 #define SYSCALL_UTIMENSAT 88
