@@ -3,7 +3,7 @@ INCLUDES := -I../../include
 target = memory.o
 
 .PHONY: build clean
-
+-include *.d
 %.o: %.S
 	$(GCC) $(CFLAGS) $(INCLUDES) -c $<
 
