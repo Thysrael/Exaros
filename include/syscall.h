@@ -44,6 +44,7 @@
 #define SYSCALL_EXIT 93
 #define SYSCALL_EXIT_GROUP 94 // TODO
 #define SYSCALL_SET_TID_ADDRESS 96
+#define SYS_futex 98
 
 #define SYSCALL_SLEEP_TIME 101
 
@@ -152,6 +153,7 @@ void syscallSetpgid();
 void syscallGetpgid();
 void syscallGetsid();
 void syscallSetsid();
+void syscallFutex();
 
 extern void (*syscallVector[])(void);
 

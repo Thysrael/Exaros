@@ -18,6 +18,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <io.h>
+#include <futex.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -87,6 +88,7 @@ void (*syscallVector[])(void) = {
     [SYS_getpgid] syscallGetpgid,
     [SYS_getsid] syscallGetsid,
     [SYS_setsid] syscallSetsid,
+    [SYS_futex] syscallFutex,
 };
 
 void syscallPutchar()
@@ -1859,7 +1861,7 @@ void syscallSetpgid()
 
     if (pgid < 0)
     {
-        tf->a0 = EINVAL;
+        tf->a0 = -EINVAL;
         return;
     }
     tf->a0 = 0;
@@ -1884,7 +1886,7 @@ void syscallGetpgid()
             return;
         }
     }
-    tf->a0 = ESRCH;
+    tf->a0 = -ESRCH;
     return;
 }
 
@@ -1905,11 +1907,11 @@ void syscallGetsid()
     {
         if (np->processId == pid)
         {
-            tf->a0 = pid == mpid ? pid : EPERM;
+            tf->a0 = pid == mpid ? pid : -EPERM;
             return;
         }
     }
-    tf->a0 = ESRCH;
+    tf->a0 = -ESRCH;
     return;
 }
 
@@ -1918,4 +1920,45 @@ void syscallSetsid()
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
     return;
+}
+
+void syscallFutex()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int op = tf->a1, val = tf->a2, userVal;
+    u64 time = tf->a3;
+    u64 uaddr = tf->a0, newAddr = tf->a4;
+    struct TimeSpec t;
+    op &= (FUTEX_PRIVATE_FLAG - 1);
+    switch (op)
+    {
+    case FUTEX_WAIT:
+        copyin(myProcess()->pgdir, (char *)&userVal, uaddr, sizeof(int));
+        if (time)
+        {
+            if (copyin(myProcess()->pgdir, (char *)&t, time, sizeof(struct TimeSpec)) < 0)
+            {
+                panic("copy time error!\n");
+            }
+        }
+        // printf("val: %d\n", userVal);
+        if (userVal != val)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        futexWait(uaddr, myThread(), time ? &t : 0);
+        break;
+    case FUTEX_WAKE:
+        // printf("val: %d\n", val);
+        futexWake(uaddr, val);
+        break;
+    case FUTEX_REQUEUE:
+        // printf("val: %d\n", val);
+        futexRequeue(uaddr, val, newAddr);
+        break;
+    default:
+        panic("Futex type not support!\n");
+    }
+    tf->a0 = 0;
 }
