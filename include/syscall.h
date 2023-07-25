@@ -44,12 +44,15 @@
 #define SYSCALL_EXIT 93
 #define SYSCALL_EXIT_GROUP 94 // TODO
 #define SYSCALL_SET_TID_ADDRESS 96
+#define SYS_futex 98
 
 #define SYSCALL_SLEEP_TIME 101
 
 #define SYSCALL_SET_TIMER 103
 #define SYSCALL_SET_TIME 112
 #define SYSCALL_GET_TIME 113
+
+#define SYS_syslog 116
 
 #define SYSCALL_SCHED_YIELD 124
 #define SYSCALL_KILL 129
@@ -58,10 +61,15 @@
 #define SYSCALL_SIGNAL_ACTION 134
 #define SYSCALL_SIGNAL_PROCESS_MASK 135
 #define SYSCALL_SIGRETURN 139
-#define SYS_setgid 144
-#define SYS_setuid 146
+#define SYS_getresuid 148
+#define SYS_getresgid 150
+#define SYS_setpgid 154
+#define SYS_getpgid 155
+#define SYS_getsid 156
+#define SYS_setsid 157
 #define SYSCALL_GET_CPU_TIMES 153
 #define SYSCALL_UNAME 160
+#define SYS_umask 166
 #define SYSCALL_GET_TIME_OF_DAY 169
 #define SYSCALL_GET_PID 172
 #define SYSCALL_GET_PARENT_PID 173
@@ -70,6 +78,7 @@
 #define SYSCALL_GET_GROUP_ID 176
 #define SYSCALL_GET_EFFECTIVE_GROUP_ID 177
 #define SYSCALL_GET_THREAD_ID 178
+#define SYS_sysinfo 179
 #define SYSCALL_SHUTDOWN 210
 
 #define SYSCALL_BRK 214
@@ -142,6 +151,16 @@ void syscallPRead(void);
 void syscallSendFile(void);
 
 void doNothing();
+void syscallGetresuid();
+void syscallGetresgid();
+void syscallSetpgid();
+void syscallGetpgid();
+void syscallGetsid();
+void syscallSetsid();
+void syscallFutex();
+void syscallSyslog();
+void syscallUmask();
+void syscallSysinfo();
 
 extern void (*syscallVector[])(void);
 

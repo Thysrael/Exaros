@@ -41,7 +41,10 @@
 		"debug.h": "c",
 		"spi.h": "c",
 		"sd.h": "c",
-		"syscall_ids.h": "c"
+		"syscall_ids.h": "c",
+		"io.h": "c",
+		"futex.h": "c",
+		"syslog.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

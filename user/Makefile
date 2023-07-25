@@ -6,7 +6,7 @@ BINTOC		:=	../utility/bintoc
 MOUNT_DIR	:=	./target
 
 .PHONY: build clean
-
+-include *.d
 build: $(BINTOC) $(USER_LIB) $(USER_TARGET) 
 
 %.x: %.b.c

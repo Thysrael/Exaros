@@ -18,6 +18,9 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <io.h>
+#include <futex.h>
+#include <syslog.h>
+#include <sysinfo.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -81,6 +84,16 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SEND_FILE] syscallSendFile,
     [SYSCALL_PREAD] syscallPRead,
     [SYSCALL_SELECT] syscallSelect,
+    [SYS_getresuid] syscallGetresuid,
+    [SYS_getresgid] syscallGetresgid,
+    [SYS_setpgid] syscallSetpgid,
+    [SYS_getpgid] syscallGetpgid,
+    [SYS_getsid] syscallGetsid,
+    [SYS_setsid] syscallSetsid,
+    [SYS_futex] syscallFutex,
+    [SYS_syslog] syscallSyslog,
+    [SYS_umask] syscallUmask,
+    [SYS_sysinfo] syscallSysinfo,
 };
 
 void syscallPutchar()
@@ -819,6 +832,7 @@ void syscallGetParentProcessId()
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = myProcess()->parentId;
 }
+
 void syscallYield()
 {
     yield();
@@ -1599,9 +1613,9 @@ void syscallTkill()
 void syscallTgkill()
 {
     Trapframe *tf = getHartTrapFrame();
-    int tgid = tf->a0;
-    int tid = tf->a1;
-    int sig = tf->a2;
+    u64 tgid = tf->a0;
+    u64 tid = tf->a1;
+    u64 sig = tf->a2;
     tf->a0 = tgkill(tgid, tid, sig);
     return;
 }
@@ -1812,4 +1826,201 @@ void syscallSendFile()
 bad:
     tf->a0 = -1;
     return;
+}
+
+void syscallGetresuid()
+{
+    // 虚假的用户 / 组管理系统
+    Trapframe *tf = getHartTrapFrame();
+    u64 ruid = tf->a0;
+    u64 euid = tf->a1;
+    u64 suid = tf->a2;
+    int id = 0;
+    copyout(myProcess()->pgdir, ruid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, euid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, suid, (char *)&id, sizeof(int));
+    tf->a0 = 0;
+    return;
+}
+
+void syscallGetresgid()
+{
+    // 虚假的用户 / 组管理系统
+    Trapframe *tf = getHartTrapFrame();
+    u64 rgid = tf->a0;
+    u64 egid = tf->a1;
+    u64 sgid = tf->a2;
+    int id = 0;
+    copyout(myProcess()->pgdir, rgid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, egid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, sgid, (char *)&id, sizeof(int));
+    tf->a0 = 0;
+    return;
+}
+
+void syscallSetpgid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    int pgid = tf->a1;
+
+    if (pid == 0)
+    {
+        pid = myProcess()->processId;
+    }
+    if (pgid == 0)
+    {
+        pgid = pid;
+    }
+
+    if (pgid < 0)
+    {
+        tf->a0 = -EINVAL;
+        return;
+    }
+    tf->a0 = 0;
+    return;
+}
+
+void syscallGetpgid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    if (pid == 0)
+    {
+        pid = myProcess()->processId;
+    }
+    extern ProcessList usedProcesses;
+    Process *np = NULL;
+    LIST_FOREACH(np, &usedProcesses, link)
+    {
+        if (np->processId == pid)
+        {
+            tf->a0 = np->pgid;
+            return;
+        }
+    }
+    tf->a0 = -ESRCH;
+    return;
+}
+
+void syscallGetsid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    int mpid = myProcess()->processId;
+    if (pid == 0)
+    {
+        tf->a0 = mpid;
+        return;
+    }
+
+    extern ProcessList usedProcesses;
+    Process *np = NULL;
+    LIST_FOREACH(np, &usedProcesses, link)
+    {
+        if (np->processId == pid)
+        {
+            tf->a0 = pid == mpid ? pid : -EPERM;
+            return;
+        }
+    }
+    tf->a0 = -ESRCH;
+    return;
+}
+
+void syscallSetsid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    return;
+}
+
+void syscallFutex()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int op = tf->a1, val = tf->a2, userVal;
+    u64 time = tf->a3;
+    u64 uaddr = tf->a0, newAddr = tf->a4;
+    struct TimeSpec t;
+    op &= (FUTEX_PRIVATE_FLAG - 1);
+    switch (op)
+    {
+    case FUTEX_WAIT:
+        copyin(myProcess()->pgdir, (char *)&userVal, uaddr, sizeof(int));
+        if (time)
+        {
+            if (copyin(myProcess()->pgdir, (char *)&t, time, sizeof(struct TimeSpec)) < 0)
+            {
+                panic("copy time error!\n");
+            }
+        }
+        // printf("val: %d\n", userVal);
+        if (userVal != val)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        futexWait(uaddr, myThread(), time ? &t : 0);
+        break;
+    case FUTEX_WAKE:
+        // printf("val: %d\n", val);
+        futexWake(uaddr, val);
+        break;
+    case FUTEX_REQUEUE:
+        // printf("val: %d\n", val);
+        futexRequeue(uaddr, val, newAddr);
+        break;
+    default:
+        panic("Futex type not support!\n");
+    }
+    tf->a0 = 0;
+}
+
+void syscallSyslog()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int type = tf->a0;
+    u64 bufp = tf->a1;
+    u32 len = tf->a2;
+    char tmp[] = "Syslog is not important QwQ.";
+    switch (type)
+    {
+    case SYSLOG_ACTION_READ_ALL:
+        copyout(myProcess()->pgdir, bufp, (char *)&tmp, MIN(sizeof(tmp), len));
+        tf->a0 = MIN(sizeof(tmp), len);
+        return;
+    case SYSLOG_ACTION_SIZE_BUFFER:
+        tf->a0 = sizeof(tmp);
+        return;
+    case SYSLOG_ACTION_CLOSE:
+    case SYSLOG_ACTION_OPEN:
+    case SYSLOG_ACTION_READ:
+    case SYSLOG_ACTION_READ_CLEAR:
+    case SYSLOG_ACTION_CLEAR:
+    case SYSLOG_ACTION_CONSOLE_OFF:
+    case SYSLOG_ACTION_CONSOLE_ON:
+    case SYSLOG_ACTION_CONSOLE_LEVEL:
+    case SYSLOG_ACTION_SIZE_UNREAD:
+    default:
+        panic("unknown syslog type: %d\n", type);
+        break;
+    }
+}
+
+void syscallUmask()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    return;
+}
+
+void syscallSysinfo()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 addr = tf->a0;
+    struct sysinfo info;
+    sysinfo(&info);
+    copyout(myProcess()->pgdir, addr, (char *)&info, sizeof(struct sysinfo));
+    tf->a0 = 0;
 }

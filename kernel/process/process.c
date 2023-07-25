@@ -325,6 +325,8 @@ int processAlloc(Process **new, u64 parentId)
     }
 
     p->processId = generateProcessId(p);
+    p->pgid = p->processId;
+    p->sid = p->processId;
     p->state = RUNNABLE;
     p->parentId = parentId;
 
