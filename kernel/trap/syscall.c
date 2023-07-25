@@ -145,19 +145,22 @@ void syscallDup(void)
 void syscallDupAndSet(void)
 {
     Trapframe *tf = getHartTrapFrame();
-    File *f;
+    File *f, *f2;
     int fd = tf->a0, fdnew = tf->a1;
-
     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
     {
         tf->a0 = -1;
         return;
     }
 
-    if (fdnew < 0 || fdnew >= NOFILE || myProcess()->ofile[fdnew] != NULL)
+    if (fdnew < 0 || fdnew >= NOFILE)
     {
         tf->a0 = -1;
         return;
+    }
+    if ((f2 = myProcess()->ofile[fdnew]) != NULL)
+    {
+        fileclose(f2);
     }
 
     myProcess()->ofile[fdnew] = f;
@@ -1235,8 +1238,10 @@ void syscallExec()
 
     // 真正的执行
     // // 输出
-    // printk("\npath: %s\n", path);
+
     int ret = exec(path, argv);
+
+    // printk("\npath: %s\n", path);
     // for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     // {
     //     if (argv[i] > 0)

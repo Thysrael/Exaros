@@ -17,7 +17,7 @@ void main()
 
     if (pid == 0)
     {
-        exec("./busybox", shell);
+        exec("./busybox", argvBusybox);
         // exec("./time-test", timet);
     }
     else
