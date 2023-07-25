@@ -58,8 +58,12 @@
 #define SYSCALL_SIGNAL_ACTION 134
 #define SYSCALL_SIGNAL_PROCESS_MASK 135
 #define SYSCALL_SIGRETURN 139
-#define SYS_setgid 144
-#define SYS_setuid 146
+#define SYS_getresuid 148
+#define SYS_getresgid 150
+#define SYS_setpgid 154
+#define SYS_getpgid 155
+#define SYS_getsid 156
+#define SYS_setsid 157
 #define SYSCALL_GET_CPU_TIMES 153
 #define SYSCALL_UNAME 160
 #define SYSCALL_GET_TIME_OF_DAY 169
@@ -142,6 +146,12 @@ void syscallPRead(void);
 void syscallSendFile(void);
 
 void doNothing();
+void syscallGetresuid();
+void syscallGetresgid();
+void syscallSetpgid();
+void syscallGetpgid();
+void syscallGetsid();
+void syscallSetsid();
 
 extern void (*syscallVector[])(void);
 
