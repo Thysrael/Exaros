@@ -66,25 +66,27 @@
                             |       TRAMPOLINE:R-X      |       BY2PG
     TRAMPOLINE ------------>+---------------------------+----0x3F_FFFF_F000
                             |       TRAPFRAME:RW-       |       BY2PG
-    TRAPFRAME, ------------>+---------------------------+----0x3F_FFFF_E000
+    TRAMPOLINE ------------>+---------------------------+----0x3F_FFFF_E000
+                            |       TRAPFRAME:RW-       |       BY2PG
+    SIGNAL_TRAMPOLINE------>+---------------------------+----0x3F_FFFF_D000
     USER_STACK_TOP          |                           |        ^
                             | User Stack(dynamic, down) |        |
                             |                           |     1 << 32
     Stack Pointer --------->+---------------------------+        |
                             |                           |        v
-    USER_STACK_BOTTOM, ---->+---------------------------+----0x3E_FFFF_E000
+    USER_STACK_BOTTOM, ---->+---------------------------+----0x3E_FFFF_D000
     USER_MMAP_HEAP_TOP      |                           |        ^
     mmapHeapPointer ------->+---------------------------+        |
                             |                           |     1 << 32
                             |User MMAP Heap(dynamic, up)|        |
                             |                           |        v
-    USER_MMAP_HEAP_BOTTOM ->+---------------------------+----0x3D_FFFF_E000
+    USER_MMAP_HEAP_BOTTOM ->+---------------------------+----0x3D_FFFF_D000
     USER_BRK_HEAP_TOP       |                           |        ^
     brkHeapPointer -------->+---------------------------+        |
                             |                           |     1 << 32
                             |User BRK Heap(dynamic, up) |        |
                             |                           |        v
-    USER_BRK_HEAP_BOTTOM -->+---------------------------+----0x3C_FFFF_E000
+    USER_BRK_HEAP_BOTTOM -->+---------------------------+----0x3C_FFFF_D000
                             |                           |
     ----------------------->+---------------------------+-----------------
                             |       .data               |
@@ -134,7 +136,7 @@
 #define USER_BRK_HEAP_BOTTOM (USER_BRK_HEAP_TOP - (1UL << 32))
 
 // 用户的信号返回地址
-#define SINGNAL_TRAMPOLINE (USER_BRK_HEAP_BOTTOM - PAGE_SIZE)
+// #define SIGNAL_TRAMPOLINE (USER_BRK_HEAP_BOTTOM - PAGE_SIZE)
 
 // qemu puts programmable interrupt controller here.
 #define PLIC_PRIORITY (PLIC_V + 0x0)

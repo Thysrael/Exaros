@@ -160,7 +160,7 @@ void initFrame(SignalContext *sc, Thread *thread)
     pageInsert(myProcess()->pgdir, sp - PAGE_SIZE, page, PTE_USER_BIT | PTE_READ_BIT | PTE_WRITE_BIT);
     u32 pageTop = PAGE_SIZE;
     tf->sp = pageTop + sp - PAGE_SIZE;
-    tf->ra = SINGNAL_TRAMPOLINE;
+    tf->ra = SIGNAL_TRAMPOLINE;
 }
 
 void signalFinish(Thread *thread, SignalContext *sc)

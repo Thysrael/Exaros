@@ -681,7 +681,7 @@ static void initUserMemory()
     extern char signalTrampoline[];
     pageMap(pagetable, TRAMPOLINE, (u64)trampoline, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     pageMap(pagetable, TRAPFRAME, (u64)trapframe, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
-    pageMap(pagetable, SIGNAL_TRAMPOLINE, (u64)signalTrampoline, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(pagetable, SIGNAL_TRAMPOLINE, (u64)signalTrampoline, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT);
     Page *page;
     int r = pageAlloc(&page);
     if (r < 0)
