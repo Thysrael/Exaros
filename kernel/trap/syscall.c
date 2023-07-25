@@ -20,6 +20,7 @@
 #include <io.h>
 #include <futex.h>
 #include <syslog.h>
+#include <sysinfo.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -90,7 +91,9 @@ void (*syscallVector[])(void) = {
     [SYS_getsid] syscallGetsid,
     [SYS_setsid] syscallSetsid,
     [SYS_futex] syscallFutex,
-    [SYS_log] syscallLog,
+    [SYS_syslog] syscallSyslog,
+    [SYS_umask] syscallUmask,
+    [SYS_sysinfo] syscallSysinfo,
 };
 
 void syscallPutchar()
@@ -1965,7 +1968,7 @@ void syscallFutex()
     tf->a0 = 0;
 }
 
-void syscallLog()
+void syscallSyslog()
 {
     Trapframe *tf = getHartTrapFrame();
     int type = tf->a0;
@@ -1994,4 +1997,21 @@ void syscallLog()
         panic("unknown syslog type: %d\n", type);
         break;
     }
+}
+
+void syscallUmask()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    return;
+}
+
+void syscallSysinfo()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 addr = tf->a0;
+    struct sysinfo info;
+    sysinfo(&info);
+    copyout(myProcess()->pgdir, addr, (char *)&info, sizeof(struct sysinfo));
+    tf->a0 = 0;
 }

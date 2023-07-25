@@ -52,7 +52,7 @@
 #define SYSCALL_SET_TIME 112
 #define SYSCALL_GET_TIME 113
 
-#define SYS_log 116
+#define SYS_syslog 116
 
 #define SYSCALL_SCHED_YIELD 124
 #define SYSCALL_KILL 129
@@ -69,6 +69,7 @@
 #define SYS_setsid 157
 #define SYSCALL_GET_CPU_TIMES 153
 #define SYSCALL_UNAME 160
+#define SYS_umask 166
 #define SYSCALL_GET_TIME_OF_DAY 169
 #define SYSCALL_GET_PID 172
 #define SYSCALL_GET_PARENT_PID 173
@@ -77,6 +78,7 @@
 #define SYSCALL_GET_GROUP_ID 176
 #define SYSCALL_GET_EFFECTIVE_GROUP_ID 177
 #define SYSCALL_GET_THREAD_ID 178
+#define SYS_sysinfo 179
 #define SYSCALL_SHUTDOWN 210
 
 #define SYSCALL_BRK 214
@@ -157,6 +159,8 @@ void syscallGetsid();
 void syscallSetsid();
 void syscallFutex();
 void syscallSyslog();
+void syscallUmask();
+void syscallSysinfo();
 
 extern void (*syscallVector[])(void);
 
