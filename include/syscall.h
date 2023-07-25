@@ -52,6 +52,8 @@
 #define SYSCALL_SET_TIME 112
 #define SYSCALL_GET_TIME 113
 
+#define SYS_log 116
+
 #define SYSCALL_SCHED_YIELD 124
 #define SYSCALL_KILL 129
 #define SYSCALL_TKILL 130
@@ -154,6 +156,7 @@ void syscallGetpgid();
 void syscallGetsid();
 void syscallSetsid();
 void syscallFutex();
+void syscallSyslog();
 
 extern void (*syscallVector[])(void);
 

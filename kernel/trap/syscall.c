@@ -19,6 +19,7 @@
 #include <signal.h>
 #include <io.h>
 #include <futex.h>
+#include <syslog.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -89,6 +90,7 @@ void (*syscallVector[])(void) = {
     [SYS_getsid] syscallGetsid,
     [SYS_setsid] syscallSetsid,
     [SYS_futex] syscallFutex,
+    [SYS_log] syscallLog,
 };
 
 void syscallPutchar()
@@ -1961,4 +1963,35 @@ void syscallFutex()
         panic("Futex type not support!\n");
     }
     tf->a0 = 0;
+}
+
+void syscallLog()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int type = tf->a0;
+    u64 bufp = tf->a1;
+    u32 len = tf->a2;
+    char tmp[] = "Syslog is not important QwQ.";
+    switch (type)
+    {
+    case SYSLOG_ACTION_READ_ALL:
+        copyout(myProcess()->pgdir, bufp, (char *)&tmp, MIN(sizeof(tmp), len));
+        tf->a0 = MIN(sizeof(tmp), len);
+        return;
+    case SYSLOG_ACTION_SIZE_BUFFER:
+        tf->a0 = sizeof(tmp);
+        return;
+    case SYSLOG_ACTION_CLOSE:
+    case SYSLOG_ACTION_OPEN:
+    case SYSLOG_ACTION_READ:
+    case SYSLOG_ACTION_READ_CLEAR:
+    case SYSLOG_ACTION_CLEAR:
+    case SYSLOG_ACTION_CONSOLE_OFF:
+    case SYSLOG_ACTION_CONSOLE_ON:
+    case SYSLOG_ACTION_CONSOLE_LEVEL:
+    case SYSLOG_ACTION_SIZE_UNREAD:
+    default:
+        panic("unknown syslog type: %d\n", type);
+        break;
+    }
 }
