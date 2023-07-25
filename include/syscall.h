@@ -180,4 +180,6 @@ void syscallAccess();
 
 extern void (*syscallVector[])(void);
 
+int do_linkat(int oldDirFd, char *oldPath, int newDirFd, char *newPath);
+
 #endif
