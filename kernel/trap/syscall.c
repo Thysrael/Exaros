@@ -94,6 +94,9 @@ void (*syscallVector[])(void) = {
     [SYS_syslog] syscallSyslog,
     [SYS_umask] syscallUmask,
     [SYS_sysinfo] syscallSysinfo,
+    [SYSCALL_ACCESS] syscallAccess,
+    [SYSCALL_LSEEK] syscallLseek,
+    [SYSCALL_UTIMENSAT] syscallUtimensat,
 };
 
 void syscallPutchar()
@@ -974,7 +977,6 @@ void syscallBrk()
         return;
     }
     Process *p = myProcess();
-    printk("brkaddr: %lx\n", addr);
     // if (addr != 0)
     // {
     //     addr &= ((1ul << 32) - 1);
@@ -1120,7 +1122,6 @@ void syscallMapMemory()
     if (MAP_ANONYMOUS(flags))
     {
         tf->a0 = addr;
-        printk("mmap: %lx\n", addr);
         return;
     }
     int fd;
@@ -2022,5 +2023,115 @@ void syscallSysinfo()
     struct sysinfo info;
     sysinfo(&info);
     copyout(myProcess()->pgdir, addr, (char *)&info, sizeof(struct sysinfo));
+    tf->a0 = 0;
+}
+
+void syscallLseek()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd = tf->a0, mode = tf->a2;
+    u64 offset = tf->a1;
+    if (fd < 0 || fd >= NOFILE)
+    {
+        goto bad;
+    }
+    File *file = myProcess()->ofile[fd];
+    if (file == 0)
+    {
+        goto bad;
+    }
+    u64 off = offset;
+    switch (mode)
+    {
+    case SEEK_SET:
+        break;
+    case SEEK_CUR:
+        off += file->off;
+        break;
+    case SEEK_END:
+        off += file->meta->fileSize;
+        break;
+    default:
+        goto bad;
+    }
+    // if (file->type == FD_ENTRY && off > file->ep->file_size) {
+    //     char zero = 0;
+    //     file->off = file->ep->file_size;
+    //     for (int i = file->ep->file_size; i < off; i++) {
+    //         filewrite(file, false, (u64)&zero, 1);
+    //     }
+    // }
+    file->off = off;
+    // if (file->type != FD_ENTRY) {
+    //     file->off = off;
+    // } else {
+    //     file->off = (off >= file->ep->file_size ? file->ep->file_size : off);
+    // }
+    tf->a0 = off;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+void syscallUtimensat()
+{
+    Trapframe *tf = getHartTrapFrame();
+    char path[FAT32_MAX_PATH];
+    int dirFd = tf->a0;
+    DirMeta *de;
+    if (tf->a1)
+    {
+        if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        if ((dirFd < 0 && dirFd != AT_FDCWD) || dirFd >= NOFILE)
+        {
+            tf->a0 = -EBADF;
+            return;
+        }
+        if ((de = metaName(dirFd, path, true)) == NULL)
+        {
+            tf->a0 = -ENOENT;
+            return;
+        }
+    }
+    else
+    {
+        File *f;
+        if (dirFd < 0 || dirFd >= NOFILE || (f = myProcess()->ofile[dirFd]) == NULL)
+        {
+            tf->a0 = -EBADF;
+            return;
+        }
+        de = f->meta;
+    }
+    if (tf->a2)
+    {
+        TimeSpec ts[2];
+        copyin(myProcess()->pgdir, (char *)ts, tf->a2, sizeof(ts));
+        // eSetTime(de, ts);
+        // todo
+    }
+    tf->a0 = 0;
+}
+
+void syscallAccess()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int dirfd = tf->a0;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    DirMeta *entryPoint = metaName(dirfd, path, true);
+    if (entryPoint == NULL)
+    {
+        tf->a0 = -ENOENT;
+        return;
+    }
     tf->a0 = 0;
 }

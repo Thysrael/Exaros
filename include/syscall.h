@@ -20,6 +20,7 @@
 #define SYSCALL_LINKAT 37
 #define SYSCALL_UMOUNT 39
 #define SYSCALL_MOUNT 40
+#define SYSCALL_ACCESS 48
 #define SYSCALL_CHDIR 49
 
 #define SYSCALL_OPEN 55
@@ -27,6 +28,7 @@
 #define SYSCALL_CLOSE 57
 #define SYSCALL_PIPE2 59
 #define SYSCALL_GET_DIRENT 61
+#define SYSCALL_LSEEK 62
 #define SYSCALL_READ 63
 #define SYSCALL_WRITE 64
 #define SYSCALL_READ_VECTOR 65
@@ -40,6 +42,7 @@
 #define SYSCALL_FSTATAT 79
 
 #define SYSCALL_FSTAT 80
+#define SYSCALL_UTIMENSAT 88
 
 #define SYSCALL_EXIT 93
 #define SYSCALL_EXIT_GROUP 94 // TODO
@@ -161,6 +164,19 @@ void syscallFutex();
 void syscallSyslog();
 void syscallUmask();
 void syscallSysinfo();
+void syscallLseek();
+void syscallUtimensat();
+void syscallAccess();
+
+#define SYSCALL_LSEEK 62
+#define SYSCALL_UTIMENSAT 88
+#define SYSCALL_ACCESS 48
+
+#define AT_FDCWD -100
+
+#define SEEK_SET 0
+#define SEEK_CUR 1
+#define SEEK_END 2
 
 extern void (*syscallVector[])(void);
 
