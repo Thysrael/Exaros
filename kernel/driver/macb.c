@@ -899,7 +899,7 @@ static void macb_start()
     u32 nsr = *MACB_REG(MACB_NSR);
     u32 tsr = *MACB_REG(MACB_TSR);
 
-    NET_DEBUG("MACB_NSR: 0x%x, MACB_TSR: 0x%x\n", nsr, tsr);
+    printk("MACB_NSR: 0x%x, MACB_TSR: 0x%x\n", nsr, tsr);
     msdelay(90);
 }
 
@@ -917,14 +917,14 @@ void macbInit()
 
 void macbTest()
 {
-    u8 packet[] = {
+    u8 packet[64] = {
         // dst
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
-        0xff,
+        0x70,
+        0xb3,
+        0xd5,
+        0x92,
+        0xfa,
+        0xfc,
         // src
         0x70,
         0xb3,
@@ -936,13 +936,7 @@ void macbTest()
         // content
         0x11,
         0x23,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0,
-        0};
+    };
     int len = sizeof(packet);
     u8 *ans = kmalloc(100);
     macbSend(packet, len);
@@ -959,6 +953,7 @@ void macbTest()
         }
         printk("\n");
     }
+    panic("AC");
 }
 
 /**
@@ -996,7 +991,9 @@ i32 macbSend(u8 *packet, u32 length)
     }
 
     // 将 packet 的内容拷贝到这个包里
-    u8 *txbuf = (u8 *)(macb.send_buffers + tx_head);
+    // u8 *txbuf = (u8 *)(macb.send_buffers[tx_head]);
+    u32 pa = macb.send_buffers[tx_head];
+    u8 *txbuf = (u8 *)((u64)pa);
     for (int i = 0; i < length; ++i)
     {
         txbuf[i] = packet[i];
@@ -1015,8 +1012,8 @@ i32 macbSend(u8 *packet, u32 length)
     writev((u32 *)(MACB_IOBASE + MACB_NCR),
            (1 << MACB_TE_OFFSET) | (1 << MACB_RE_OFFSET) | (1 << MACB_TSTART_OFFSET));
 
-    u32 tsr = readv((u32 *)(MACB_IOBASE + MACB_TSR));
-    NET_DEBUG("Tx MACB_TSR = 0x%x\n", tsr);
+    // u32 tsr = readv((u32 *)(MACB_IOBASE + MACB_TSR));
+    // NET_DEBUG("Tx MACB_TSR = 0x%x\n", tsr);
 
     /*
      * I guess this is necessary because the networking core may
@@ -1100,7 +1097,6 @@ i32 macbRecv(u8 *packet)
         {
             return -11; // EAGAIN
         }
-        u64 indesc = next_rx_tail;
         status = macb.rx_ring[next_rx_tail].ctrl;
         if ((status & (1 << MACB_RX_SOF_OFFSET)) != 0)
         {
@@ -1131,8 +1127,8 @@ i32 macbRecv(u8 *packet)
                     packet[i] = rx_packets[i];
                 }
             }
-            NET_DEBUG("Recv packet: buffer_id: %d, count: %d, length: %d, addr: %d",
-                      indesc, count, length, macb.rx_ring[indesc]);
+            NET_DEBUG("Recv packet: buffer_id: %d, count: %d, length: %d, addr: 0x%lx",
+                      next_rx_tail, count, length, macb.rx_ring[next_rx_tail]);
 
             next_rx_tail += 1;
             if (next_rx_tail >= MACB_RX_RING_SIZE)
