@@ -15,6 +15,7 @@
 #include <error.h>
 #include <fs.h>
 #include <signal.h>
+#include <futex.h>
 
 Thread threads[PROCESS_TOTAL_NUMBER];
 
@@ -39,21 +40,21 @@ void threadFree(Thread *th)
 {
     Process *p = th->process;
 
-    // while (!LIST_EMPTY(&th->waitingSignal))
-    // {
-    //     SignalContext *sc = LIST_FIRST(&th->waitingSignal);
-    //     LIST_REMOVE(sc, link);
-    //     signalContextFree(sc);
-    // }
+    while (!LIST_EMPTY(&th->waitingSignal))
+    {
+        SignalContext *sc = LIST_FIRST(&th->waitingSignal);
+        LIST_REMOVE(sc, link);
+        signalContextFree(sc);
+    }
     // releaseLock(&th->lock);
     // acquireLock(&p->lock);
 
-    // if (th->clearChildTid)
-    // {
-    //     int val = 0;
-    //     copyout(p->pgdir, th->clearChildTid, (char *)&val, sizeof(int));
-    //     futexWake(th->clearChildTid, 1);
-    // }
+    if (th->clearChildTid)
+    {
+        int val = 0;
+        copyout(p->pgdir, th->clearChildTid, (char *)&val, sizeof(int));
+        futexWake(th->clearChildTid, 1);
+    }
 
     p->threadCount--;
     if (!p->threadCount)

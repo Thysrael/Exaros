@@ -828,7 +828,7 @@ void syscallSetTidAddress()
     // copyout(myProcess()->pgdir, tf->a0, (char*)(&myProcess()->id), sizeof(u64));
     // printf("settid: %lx\n", tf->a0);
     // todo
-    // myThread()->clearChildTid = tf->a0;
+    myThread()->clearChildTid = tf->a0;
     tf->a0 = myThread()->threadId;
 }
 
@@ -1609,6 +1609,13 @@ void syscallTkill()
     Trapframe *tf = getHartTrapFrame();
     int tid = tf->a0;
     int sig = tf->a1;
+    // Thread *th;
+    // tid2Thread(tid, &th, 0);
+    // if (signalIsMember(&th->processing, sig))
+    // {
+    //     tf->a0 = -1;
+    //     return;
+    // }
     tf->a0 = tkill(tid, sig);
     return;
 }
@@ -1950,6 +1957,7 @@ void syscallFutex()
     switch (op)
     {
     case FUTEX_WAIT:
+        printk("FUTEX_WAIT\n");
         copyin(myProcess()->pgdir, (char *)&userVal, uaddr, sizeof(int));
         if (time)
         {
@@ -1958,7 +1966,7 @@ void syscallFutex()
                 panic("copy time error!\n");
             }
         }
-        // printf("val: %d\n", userVal);
+        printk("val: %d\n", userVal);
         if (userVal != val)
         {
             tf->a0 = -1;
@@ -1967,10 +1975,12 @@ void syscallFutex()
         futexWait(uaddr, myThread(), time ? &t : 0);
         break;
     case FUTEX_WAKE:
+        printk("FUTEX_WAKE\n");
         // printf("val: %d\n", val);
         futexWake(uaddr, val);
         break;
     case FUTEX_REQUEUE:
+        printk("FUTEX_REQUEUE\n");
         // printf("val: %d\n", val);
         futexRequeue(uaddr, val, newAddr);
         break;

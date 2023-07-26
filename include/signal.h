@@ -151,6 +151,7 @@ int tkill(int tid, int sig);
 int rt_sigaction(int sig, u64 act, u64 oldAction);
 int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize);
 void sigreturn();
+void signalContextFree(SignalContext *sc);
 
 int signalEmptySet(SignalSet *set);
 
@@ -162,4 +163,5 @@ int signalDelSet(SignalSet *set, int signal);
 
 bool signalIsMember(SignalSet *set, int signal);
 
+SignalContext *getFirstSignalContext(Thread *thread);
 #endif

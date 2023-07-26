@@ -270,11 +270,7 @@ void userTrapReturn()
 
     // stvec 是中断处理的入口地址
     writeStvec(TRAMPOLINE + ((u64)userTrap - (u64)trampoline));
-
     Trapframe *trapframe = getHartTrapFrame();
-
-    // printk("epc: %lx\n", trapframe->epc);
-
     trapframe->kernelSp = getThreadTopSp(myThread());
     trapframe->trapHandler = (u64)userHandler;
     trapframe->kernelHartId = hartId;
@@ -290,9 +286,7 @@ void userTrapReturn()
     writeSstatus(sstatus);
 
     u64 satp = MAKE_SATP(SV39, PA2PPN((myProcess()->pgdir)));
-
     u64 fn = TRAMPOLINE + ((u64)userReturn - (u64)trampoline);
-
     ((void (*)(u64, u64))fn)((u64)trapframe, satp);
 }
 

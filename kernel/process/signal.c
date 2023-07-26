@@ -108,13 +108,14 @@ SignalContext *getFirstSignalContext(Thread *thread)
     SignalContext *sc = NULL;
     LIST_FOREACH(sc, &thread->waitingSignal, link)
     {
+        printk("ssssss: %lx, %d, %d, %d\n", (u64)sc, sc->start, signalIsMember(&thread->blocked, sc->signal), signalIsMember(&thread->processing, sc->signal));
         if (!sc->start && (signalIsMember(&thread->blocked, sc->signal) || signalIsMember(&thread->processing, sc->signal)))
         {
             continue;
         }
-        break;
+        return sc;
     }
-    return sc;
+    return NULL;
 }
 
 SignalContext *getHandlingSignal(Thread *thread)
@@ -381,14 +382,8 @@ int tkill(int tid, int sig)
     extern struct ThreadList usedThreads;
     int ret = -ESRCH;
     Thread *thread = NULL;
-    LIST_FOREACH(thread, &usedThreads, link)
-    {
-        if (tid == thread->threadId)
-        {
-            ret = threadSignalSend(thread, sig);
-            break;
-        }
-    }
+    ret = tid2Thread(tid, &thread, 0);
+    ret = threadSignalSend(thread, sig);
     return ret;
 }
 

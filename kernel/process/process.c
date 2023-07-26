@@ -441,7 +441,7 @@ void yield()
             LIST_REMOVE(th, scheduleLink);
             count = th->process->priority;
         }
-        // printk("finding a process to yield... %d, %d, %d\n", count, process->state, (int)intr_get());
+        // printk("finding a process to yield... %d, %d, %d\n", point, th->state, (int)intr_get());
     }
 
     // 在这里关掉中断，不然 sleep 到一半的时候被打断
@@ -655,6 +655,8 @@ int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     {
         copyout(current->pgdir, ptid, (char *)&thread->threadId, sizeof(u32));
     }
+    thread->clearChildTid = ctid;
+
     // acquireLock(&scheduleListLock);
     LIST_INSERT_TAIL(&scheduleList[0], thread, scheduleLink);
     // releaseLock(&scheduleListLock);
