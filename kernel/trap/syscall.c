@@ -103,6 +103,11 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SEND_TO] syscallSendTo,
     [SYSCALL_RECEIVE_FROM] syscallReceiveFrom,
     [SYSCALL_SET_SOCKET_OPTION] syscallSetSocketOption,
+    [SYSCALL_ACCESS] syscallAccess,
+    [SYSCALL_LSEEK] syscallLseek,
+    [SYSCALL_UTIMENSAT] syscallUtimensat,
+    [SYSCALL_MEMORY_PROTECT] syscallMemoryProtect,
+    [MAX_SYSCALL] 0,
 };
 
 void syscallPutchar()
@@ -935,6 +940,7 @@ void syscallGetCpuTimes()
     tf->a0 = (r_cycle() & 0x3FFFFFFF);
 }
 
+u64 timeOffset = 0;
 /**
  * @brief 获取当前时间
  *
@@ -942,7 +948,7 @@ void syscallGetCpuTimes()
 void syscallGetTime()
 {
     Trapframe *tf = getHartTrapFrame();
-    u64 time = r_time();
+    u64 time = r_time() + timeOffset;
     TimeSpec ts;
     ts.second = time / 1000000;
     ts.microSecond = time % 1000000;
@@ -982,7 +988,6 @@ void syscallBrk()
         return;
     }
     Process *p = myProcess();
-    // printk("addr: %lx\n", addr);
     // if (addr != 0)
     // {
     //     addr &= ((1ul << 32) - 1);
@@ -1066,7 +1071,6 @@ void syscallMapMemory()
         tf->a0 = -1;
         return;
     }
-
     if (length == 0)
     {
         tf->a0 = -1;
@@ -1264,12 +1268,12 @@ void syscallExec()
 
     int ret = exec(path, argv);
 
-    // printk("\npath: %s\n", path);
-    // for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
-    // {
-    //     if (argv[i] > 0)
-    //         printk("%d : %s\n", i, argv[i]);
-    // }
+    printk("\npath: %s\n", path);
+    for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    {
+        if (argv[i] > 0)
+            printk("%d : %s\n", i, argv[i]);
+    }
 
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1575,7 +1579,15 @@ void syscallGetTheardId()
 
 void syscallSetTime()
 {
+    Trapframe *tf = getHartTrapFrame();
+    TimeSpec ts;
+    printk("settimee\n");
+    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
+    printk("%d %d\n", ts.microSecond, ts.second);
+    timeOffset = (ts.second * 1000000 + ts.microSecond) - r_time();
+    tf->a0 = 0;
 }
+
 void syscallSetTimer()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -2096,4 +2108,153 @@ void syscallAccept()
     SocketAddr sa;
     tf->a0 = accept(sockfd, &sa);
     copyout(myProcess()->pgdir, tf->a1, (char *)&sa, sizeof(sa));
+}
+
+void syscallLseek()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd = tf->a0, mode = tf->a2;
+    u64 offset = tf->a1;
+    if (fd < 0 || fd >= NOFILE)
+    {
+        goto bad;
+    }
+    File *file = myProcess()->ofile[fd];
+    if (file == 0)
+    {
+        goto bad;
+    }
+    u64 off = offset;
+    switch (mode)
+    {
+    case SEEK_SET:
+        break;
+    case SEEK_CUR:
+        off += file->off;
+        break;
+    case SEEK_END:
+        off += file->meta->fileSize;
+        break;
+    default:
+        goto bad;
+    }
+    // if (file->type == FD_ENTRY && off > file->ep->file_size) {
+    //     char zero = 0;
+    //     file->off = file->ep->file_size;
+    //     for (int i = file->ep->file_size; i < off; i++) {
+    //         filewrite(file, false, (u64)&zero, 1);
+    //     }
+    // }
+    file->off = off;
+    // if (file->type != FD_ENTRY) {
+    //     file->off = off;
+    // } else {
+    //     file->off = (off >= file->ep->file_size ? file->ep->file_size : off);
+    // }
+    tf->a0 = off;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+void syscallUtimensat()
+{
+    Trapframe *tf = getHartTrapFrame();
+    char path[FAT32_MAX_PATH];
+    int dirFd = tf->a0;
+    DirMeta *de;
+    if (tf->a1)
+    {
+        if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        if ((dirFd < 0 && dirFd != AT_FDCWD) || dirFd >= NOFILE)
+        {
+            tf->a0 = -EBADF;
+            return;
+        }
+        if ((de = metaName(dirFd, path, true)) == NULL)
+        {
+            tf->a0 = -ENOENT;
+            return;
+        }
+    }
+    else
+    {
+        File *f;
+        if (dirFd < 0 || dirFd >= NOFILE || (f = myProcess()->ofile[dirFd]) == NULL)
+        {
+            tf->a0 = -EBADF;
+            return;
+        }
+        de = f->meta;
+    }
+    if (tf->a2)
+    {
+        TimeSpec ts[2];
+        copyin(myProcess()->pgdir, (char *)ts, tf->a2, sizeof(ts));
+        // eSetTime(de, ts);
+        // todo
+    }
+    tf->a0 = 0;
+}
+
+void syscallAccess()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int dirfd = tf->a0;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    DirMeta *entryPoint = metaName(dirfd, path, true);
+    if (entryPoint == NULL)
+    {
+        tf->a0 = -ENOENT;
+        return;
+    }
+    tf->a0 = 0;
+}
+
+void syscallMemoryProtect()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // printf("mprotect va: %lx, length: %lx prot:%lx\n", tf->a0, tf->a1, tf->a2);
+
+    u64 start = ALIGN_DOWN(tf->a0, PAGE_SIZE);
+    u64 end = ALIGN_UP(tf->a0 + tf->a1, PAGE_SIZE);
+
+    u64 perm = 0;
+    if (tf->a2 & PROT_EXEC_BIT)
+    {
+        perm |= PTE_EXECUTE_BIT | PTE_READ_BIT;
+    }
+    if (tf->a2 & PROT_READ_BIT)
+    {
+        perm |= PTE_READ_BIT;
+    }
+    if (tf->a2 & PROT_WRITE_BIT)
+    {
+        perm |= PTE_WRITE_BIT | PTE_READ_BIT;
+    }
+    while (start < end)
+    {
+        u64 *pte;
+        Page *page;
+        page = pageLookup(myProcess()->pgdir, start, &pte);
+        if (!page)
+        {
+            passiveAlloc(myProcess()->pgdir, start);
+        }
+        else
+        {
+            *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm;
+        }
+        start += PAGE_SIZE;
+    }
+    tf->a0 = 0;
 }
