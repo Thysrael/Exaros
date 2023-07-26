@@ -12,6 +12,7 @@
 #include "types.h"
 #include "dirmeta.h"
 #include "pipe.h"
+#include "socket.h"
 
 #define NDEV 4
 #define DEV_SD 0
@@ -39,7 +40,8 @@ typedef struct File
         FD_NONE,
         FD_PIPE,
         FD_ENTRY,
-        FD_DEVICE
+        FD_DEVICE,
+        FD_SOCKET
     } type;
     int ref; // reference count
     char readable;
@@ -48,6 +50,7 @@ typedef struct File
     DirMeta *meta;     // FD_ENTRY, 用于存储文件的信息
     u32 off;           // FD_ENTRY
     short major;       // FD_DEVICE
+    Socket *socket;
     DirMeta *curChild; // current child for getDirmeta
 } File;
 

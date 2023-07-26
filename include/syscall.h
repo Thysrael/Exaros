@@ -12,6 +12,7 @@
 #define SYSCALL_DEV 20
 #define SYSCALL_DUP 23
 #define SYSCALL_DUP3 24
+#define SYSCALL_fcntl 25
 #define SYSCALL_IOCONTROL 29
 
 #define SYSCALL_MKDIRAT 34
@@ -30,7 +31,12 @@
 #define SYSCALL_WRITE 64
 #define SYSCALL_READ_VECTOR 65
 #define SYSCALL_WRITE_VECTOR 66
+#define SYSCALL_PREAD 67
+// #define SYSCALL_PWRITE 68
 
+#define SYSCALL_SEND_FILE 71
+#define SYSCALL_SELECT 72
+#define SYSCALL_POLL 73
 #define SYSCALL_FSTATAT 79
 
 #define SYSCALL_FSTAT 80
@@ -38,27 +44,41 @@
 #define SYSCALL_EXIT 93
 #define SYSCALL_EXIT_GROUP 94 // TODO
 #define SYSCALL_SET_TID_ADDRESS 96
+#define SYS_futex 98
 
 #define SYSCALL_SLEEP_TIME 101
 
+#define SYSCALL_SET_TIMER 103
+#define SYSCALL_SET_TIME 112
 #define SYSCALL_GET_TIME 113
 
-#define SYSCALL_SCHED_YIELD 124
+#define SYS_syslog 116
 
+#define SYSCALL_SCHED_YIELD 124
+#define SYSCALL_KILL 129
+#define SYSCALL_TKILL 130
+#define SYSCALL_TGKILL 131
 #define SYSCALL_SIGNAL_ACTION 134
 #define SYSCALL_SIGNAL_PROCESS_MASK 135
-
-#define SYS_setgid 144
-#define SYS_setuid 146
-
+#define SYSCALL_SIGRETURN 139
+#define SYS_getresuid 148
+#define SYS_getresgid 150
+#define SYS_setpgid 154
+#define SYS_getpgid 155
+#define SYS_getsid 156
+#define SYS_setsid 157
 #define SYSCALL_GET_CPU_TIMES 153
 #define SYSCALL_UNAME 160
+#define SYS_umask 166
 #define SYSCALL_GET_TIME_OF_DAY 169
 #define SYSCALL_GET_PID 172
 #define SYSCALL_GET_PARENT_PID 173
-
 #define SYSCALL_GET_USER_ID 174
+#define SYSCALL_GET_EFFECTIVE_USER_ID 175
 #define SYSCALL_GET_GROUP_ID 176
+#define SYSCALL_GET_EFFECTIVE_GROUP_ID 177
+#define SYSCALL_GET_THREAD_ID 178
+#define SYS_sysinfo 179
 #define SYSCALL_SHUTDOWN 210
 
 #define SYSCALL_BRK 214
@@ -106,6 +126,10 @@ void syscallUmount(void);
 void syscallUnlinkAt(void);
 void syscallLinkAt(void);
 void syscallShutdown(void);
+void syscallKill();
+void syscallTkill();
+void syscallTgkill();
+void syscallSigreturn();
 
 void syscallGetUserId();
 void syscallGetGroupId();
@@ -116,7 +140,27 @@ void syscallIOControl();
 void syscallReadVector();
 void syscallWriteVector();
 void syscallGetClockTime();
+void syscallPoll();
+void syscall_fcntl(void);
+void syscallGetTheardId(void);
+void syscallSetTime(void);
+void syscallSetTimer(void);
+void syscallGetTheardId(void);
+void syscallSelect(void);
+void syscallPRead(void);
+void syscallSendFile(void);
+
 void doNothing();
+void syscallGetresuid();
+void syscallGetresgid();
+void syscallSetpgid();
+void syscallGetpgid();
+void syscallGetsid();
+void syscallSetsid();
+void syscallFutex();
+void syscallSyslog();
+void syscallUmask();
+void syscallSysinfo();
 
 extern void (*syscallVector[])(void);
 

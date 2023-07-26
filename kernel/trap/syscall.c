@@ -15,6 +15,12 @@
 #include <thread.h>
 #include <iovec.h>
 #include <debug.h>
+#include <fcntl.h>
+#include <signal.h>
+#include <io.h>
+#include <futex.h>
+#include <syslog.h>
+#include <sysinfo.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -64,6 +70,30 @@ void (*syscallVector[])(void) = {
     [SYSCALL_READ_VECTOR] syscallReadVector,
     [SYSCALL_GET_TIME] syscallGetClockTime,
     [SYSCALL_EXIT_GROUP] doNothing,
+    [SYSCALL_POLL] syscallPoll,
+    [SYSCALL_fcntl] syscall_fcntl,
+    [SYSCALL_GET_EFFECTIVE_USER_ID] doNothing,
+    [SYSCALL_GET_THREAD_ID] syscallGetTheardId,
+    [SYSCALL_GET_EFFECTIVE_GROUP_ID] doNothing,
+    [SYSCALL_SET_TIMER] syscallSetTimer,
+    [SYSCALL_SET_TIME] syscallSetTime,
+    [SYSCALL_KILL] syscallKill,
+    [SYSCALL_TKILL] syscallTkill,
+    [SYSCALL_TGKILL] syscallTgkill,
+    [SYSCALL_SIGRETURN] syscallSigreturn,
+    [SYSCALL_SEND_FILE] syscallSendFile,
+    [SYSCALL_PREAD] syscallPRead,
+    [SYSCALL_SELECT] syscallSelect,
+    [SYS_getresuid] syscallGetresuid,
+    [SYS_getresgid] syscallGetresgid,
+    [SYS_setpgid] syscallSetpgid,
+    [SYS_getpgid] syscallGetpgid,
+    [SYS_getsid] syscallGetsid,
+    [SYS_setsid] syscallSetsid,
+    [SYS_futex] syscallFutex,
+    [SYS_syslog] syscallSyslog,
+    [SYS_umask] syscallUmask,
+    [SYS_sysinfo] syscallSysinfo,
 };
 
 void syscallPutchar()
@@ -128,19 +158,22 @@ void syscallDup(void)
 void syscallDupAndSet(void)
 {
     Trapframe *tf = getHartTrapFrame();
-    File *f;
+    File *f, *f2;
     int fd = tf->a0, fdnew = tf->a1;
-
     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
     {
         tf->a0 = -1;
         return;
     }
 
-    if (fdnew < 0 || fdnew >= NOFILE || myProcess()->ofile[fdnew] != NULL)
+    if (fdnew < 0 || fdnew >= NOFILE)
     {
         tf->a0 = -1;
         return;
+    }
+    if ((f2 = myProcess()->ofile[fdnew]) != NULL)
+    {
+        fileclose(f2);
     }
 
     myProcess()->ofile[fdnew] = f;
@@ -310,6 +343,15 @@ void syscallOpenAt(void)
     Trapframe *tf = getHartTrapFrame();
     int startFd = tf->a0, flags = tf->a2, mode = tf->a3;
     char path[FAT32_MAX_PATH];
+
+    // if (va2PA(myProcess()->pgdir, tf->a1, 0) == 0)
+    // {
+    //     passiveAlloc(myProcess()->pgdir, tf->a1);
+    // }
+    // printk("*1 %lx \n", va2PA(myProcess()->pgdir, tf->a1, 0));
+    // if (tf->a1 != 0)
+    //     printk("111 %c\n", *(char *)(va2PA(myProcess()->pgdir, tf->a1, 0)));
+
     if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
     {
         tf->a0 = -1;
@@ -360,6 +402,7 @@ void syscallOpenAt(void)
         tf->a0 = -24;
         goto bad;
     }
+
     // 如果需要截断
     if (!(entryPoint->attribute & ATTR_DIRECTORY) && (flags & O_TRUNC))
     {
@@ -789,6 +832,7 @@ void syscallGetParentProcessId()
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = myProcess()->parentId;
 }
+
 void syscallYield()
 {
     yield();
@@ -938,7 +982,6 @@ void syscallBrk()
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
-        printk("brkHeapTop: %lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1208,7 +1251,16 @@ void syscallExec()
     }
 
     // 真正的执行
+    // // 输出
+
     int ret = exec(path, argv);
+
+    // printk("\npath: %s\n", path);
+    // for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
+    // {
+    //     if (argv[i] > 0)
+    //         printk("%d : %s\n", i, argv[i]);
+    // }
 
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1216,7 +1268,8 @@ void syscallExec()
         pageFree(pa2Page((u64)argv[i]));
     }
     tf->a0 = ret;
-    // printk("sucessfully exec\n");
+    // ("sucessfully exec %s, th: %lx, epc: %lx\n", path, myThread()->threadId, tf->epc);
+    // printTrapframe(tf);
     return;
 bad:
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1308,23 +1361,23 @@ void syscallGetFileStateAt(void)
 void syscallSignalAction()
 {
     Trapframe *tf = getHartTrapFrame();
-    // tf->a0 = doSignalAction(tf->a0, tf->a1, tf->a2);
-    tf->a0 = 0;
+    tf->a0 = rt_sigaction(tf->a0, tf->a1, tf->a2);
+    return;
 }
 
 void syscallSignProccessMask()
 {
     Trapframe *tf = getHartTrapFrame();
-    // u64 how = tf->a0;
-    // SignalSet set;
-    // Process *p = myProcess();
-    // copyin(p->pgdir, (char *)&set, tf->a1, tf->a3);
-    // if (tf->a2 != 0)
-    // {
-    //     copyout(p->pgdir, tf->a2, (char *)(&myThread()->blocked), tf->a3);
-    // }
-    // tf->a0 = signProccessMask(how, &set);
-    tf->a0 = 0;
+    u64 how = tf->a0;
+    u64 setAddr = tf->a1;
+    u64 oldSetAddr = tf->a2;
+    u64 setSize = tf->a3;
+    Process *p = myProcess();
+    SignalSet set, oldSet;
+    copyin(p->pgdir, (char *)&set, setAddr, setSize);
+    tf->a0 = rt_sigprocmask(how, &set, &oldSet, setSize);
+    if (oldSetAddr != 0)
+        copyout(p->pgdir, oldSetAddr, (char *)&oldSet, setSize);
 }
 
 #define TIOCGWINSZ 0x5413
@@ -1435,5 +1488,530 @@ void syscallGetClockTime()
 void doNothing()
 {
     Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallPoll()
+{
+    Trapframe *tf = getHartTrapFrame();
+    struct pollfd
+    {
+        int fd;
+        short events;
+        short revents;
+    };
+    struct pollfd p;
+    u64 startva = tf->a0;
+    int n = tf->a1;
+    int cnt = 0;
+    for (int i = 0; i < n; i++)
+    {
+        copyin(myProcess()->pgdir, (char *)&p, startva, sizeof(struct pollfd));
+        p.revents = 0;
+        copyout(myProcess()->pgdir, startva, (char *)&p, sizeof(struct pollfd));
+        startva += sizeof(struct pollfd);
+        cnt += p.revents != 0;
+    }
+    // tf->a0 = cnt;
+    tf->a0 = 1;
+}
+
+void syscall_fcntl(void)
+{
+    Trapframe *tf = getHartTrapFrame();
+    struct File *f;
+    int fd = tf->a0 /*, cmd = tf->a1, flag = tf->a2*/;
+
+    if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    switch (tf->a1)
+    {
+    case FCNTL_GETFD:
+        tf->a0 = 1;
+        return;
+    case FCNTL_SETFD:
+        tf->a0 = 0;
+        return;
+    case FCNTL_GET_FILE_STATUS:
+        tf->a0 = 04000;
+        return;
+    case FCNTL_DUPFD_CLOEXEC:
+        fd = fdalloc(f);
+        filedup(f);
+        tf->a0 = fd;
+        return;
+    case FCNTL_SETFL:
+        // printf("set file flag, bug not impl. flag :%x\n", tf->a2);
+        tf->a0 = 0;
+        return;
+    default:
+        panic("%d\n", tf->a1);
+        break;
+    }
+
+    // printf("syscall_fcntl fd:%x cmd:%x flag:%x\n", fd, cmd, flag);
+    tf->a0 = 0;
+    return;
+}
+
+void syscallGetTheardId()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = myThread()->threadId;
+}
+
+void syscallSetTime()
+{
+}
+void syscallSetTimer()
+{
+    Trapframe *tf = getHartTrapFrame();
+    printk("set Timer: %lx %lx %lx\n", tf->a0, tf->a1, tf->a2);
+    IntervalTimer time = getTimer();
+    if (tf->a2)
+    {
+        copyout(myProcess()->pgdir, tf->a2, (char *)&time, sizeof(IntervalTimer));
+    }
+    if (tf->a1)
+    {
+        copyin(myProcess()->pgdir, (char *)&time, tf->a1, sizeof(IntervalTimer));
+        setTimer(time);
+    }
+    tf->a0 = 0;
+}
+void syscallKill()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    int sig = tf->a1;
+    tf->a0 = kill(pid, sig);
+    return;
+}
+
+void syscallTkill()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int tid = tf->a0;
+    int sig = tf->a1;
+    tf->a0 = tkill(tid, sig);
+    return;
+}
+
+void syscallTgkill()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 tgid = tf->a0;
+    u64 tid = tf->a1;
+    u64 sig = tf->a2;
+    tf->a0 = tgkill(tgid, tid, sig);
+    return;
+}
+
+void syscallSigreturn()
+{
+    sigreturn();
+    return;
+}
+
+typedef struct
+{
+    u64 bits[2];
+} FdSet;
+
+void syscallSelect()
+{
+    Trapframe *tf = getHartTrapFrame();
+    // printf("thread %lx get in select, epc: %lx\n", myThread()->id, tf->epc);
+    int nfd = tf->a0;
+    // assert(nfd <= 128);
+    u64 read = tf->a1, write = tf->a2, except = tf->a3, timeout = tf->a4;
+    // assert(timeout != 0);
+    int cnt = 0;
+    struct File *file = NULL;
+    // printf("[%s] \n", __func__);
+
+    FdSet readSet_ready;
+    if (read)
+    {
+        FdSet readSet;
+        copyin(myProcess()->pgdir, (char *)&readSet, read, sizeof(FdSet));
+        readSet_ready = readSet;
+        for (int i = 0; i < nfd; i++)
+        {
+            file = NULL;
+            u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
+            if (!cur)
+                continue;
+            // printf("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            file = myProcess()->ofile[i];
+            if (!file)
+                continue;
+
+            int ready_to_read = 1;
+            switch (file->type)
+            {
+            case FD_PIPE:
+                // printf("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
+                if (file->pipe->nread == file->pipe->nwrite)
+                {
+                    ready_to_read = 0;
+                }
+                else
+                {
+                    ready_to_read = 1;
+                }
+                break;
+            case FD_SOCKET:
+                // printf("socketid %d head %d tail %d\n", file->socket-sockets, file->socket->head, file->socket->tail);
+                if (file->socket->used != 0 && file->socket->head == file->socket->tail && (!file->socket->listening || (file->socket->listening && file->socket->pending_h == file->socket->pending_t)))
+                {
+                    ready_to_read = 0;
+                }
+                else
+                {
+                    ready_to_read = 1;
+                }
+                break;
+            case FD_DEVICE:
+                if (hasChar())
+                {
+                    ready_to_read = 1;
+                }
+                else
+                {
+                    ready_to_read = 0;
+                }
+                break;
+            default:
+                ready_to_read = 1;
+                break;
+            }
+
+            if (ready_to_read)
+            {
+                ++cnt;
+            }
+            else
+            {
+                if (i < 64)
+                    readSet_ready.bits[0] &= ~cur;
+                else
+                    readSet_ready.bits[1] &= ~cur;
+            }
+        }
+    }
+    if (write)
+    {
+        FdSet writeSet;
+        copyin(myProcess()->pgdir, (char *)&writeSet, write, sizeof(FdSet));
+        for (int i = 0; i < nfd; i++)
+        {
+            if (i >= 64)
+            {
+                cnt += !!((1UL << (i - 64)) & writeSet.bits[1]);
+            }
+            else
+            {
+                cnt += !!((1UL << (i)) & writeSet.bits[0]);
+            }
+        }
+        copyout(myProcess()->pgdir, write, (char *)&write,
+                sizeof(FdSet));
+    }
+    if (except)
+    {
+        // FdSet set;
+        // copyin(myProcess()->pgdir, (char*)&set, except, sizeof(FdSet));
+        u8 zero = 0;
+        memsetOut(myProcess()->pgdir, except, zero, nfd);
+        // memset(&set, 0, sizeof(FdSet));
+        // copyout(myProcess()->pgdir, except, (char*)&set, sizeof(FdSet));
+    }
+    if (cnt == 0)
+    {
+        if (timeout)
+        {
+            struct TimeSpec ts;
+            copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+            if (ts.microSecond == 0 && ts.second == 0)
+            {
+                goto selectFinish;
+            }
+        }
+        tf->epc -= 4;
+        yield();
+    }
+selectFinish:
+    copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+
+    // printf("select end cnt %d\n",cnt);
+    tf->a0 = cnt;
+}
+
+void syscallPRead()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd = tf->a0;
+    File *file = myProcess()->ofile[fd];
+    if (file == 0)
+    {
+        goto bad;
+    }
+    u32 off = file->off;
+    tf->a0 = metaRead(file->meta, true, tf->a1, tf->a3, tf->a2);
+    file->off = off;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+void syscallSendFile()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int outFd = tf->a0, inFd = tf->a1;
+    if (outFd < 0 || outFd >= NOFILE)
+    {
+        goto bad;
+    }
+    if (inFd < 0 || inFd >= NOFILE)
+    {
+        goto bad;
+    }
+    File *outFile = myProcess()->ofile[outFd];
+    File *inFile = myProcess()->ofile[inFd];
+    if (outFile == NULL || inFile == NULL)
+    {
+        goto bad;
+    }
+    u32 offset;
+    if (tf->a2)
+    {
+        copyin(myProcess()->pgdir, (char *)&offset, tf->a2, sizeof(u32));
+        inFile->off = offset;
+    }
+    u8 buf[512];
+    u32 count = tf->a3, size = 0;
+    while (count > 0)
+    {
+        int len = MIN(count, 512);
+        int r = fileread(inFile, false, (u64)buf, len);
+        if (r > 0)
+            r = filewrite(outFile, false, (u64)buf, r);
+        size += r;
+        if (r != len)
+        {
+            break;
+        }
+        count -= len;
+    }
+    if (tf->a2)
+    {
+        copyout(myProcess()->pgdir, tf->a2, (char *)&inFile->off, sizeof(u32));
+    }
+    tf->a0 = size;
+    return;
+bad:
+    tf->a0 = -1;
+    return;
+}
+
+void syscallGetresuid()
+{
+    // 虚假的用户 / 组管理系统
+    Trapframe *tf = getHartTrapFrame();
+    u64 ruid = tf->a0;
+    u64 euid = tf->a1;
+    u64 suid = tf->a2;
+    int id = 0;
+    copyout(myProcess()->pgdir, ruid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, euid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, suid, (char *)&id, sizeof(int));
+    tf->a0 = 0;
+    return;
+}
+
+void syscallGetresgid()
+{
+    // 虚假的用户 / 组管理系统
+    Trapframe *tf = getHartTrapFrame();
+    u64 rgid = tf->a0;
+    u64 egid = tf->a1;
+    u64 sgid = tf->a2;
+    int id = 0;
+    copyout(myProcess()->pgdir, rgid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, egid, (char *)&id, sizeof(int));
+    copyout(myProcess()->pgdir, sgid, (char *)&id, sizeof(int));
+    tf->a0 = 0;
+    return;
+}
+
+void syscallSetpgid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    int pgid = tf->a1;
+
+    if (pid == 0)
+    {
+        pid = myProcess()->processId;
+    }
+    if (pgid == 0)
+    {
+        pgid = pid;
+    }
+
+    if (pgid < 0)
+    {
+        tf->a0 = -EINVAL;
+        return;
+    }
+    tf->a0 = 0;
+    return;
+}
+
+void syscallGetpgid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    if (pid == 0)
+    {
+        pid = myProcess()->processId;
+    }
+    extern ProcessList usedProcesses;
+    Process *np = NULL;
+    LIST_FOREACH(np, &usedProcesses, link)
+    {
+        if (np->processId == pid)
+        {
+            tf->a0 = np->pgid;
+            return;
+        }
+    }
+    tf->a0 = -ESRCH;
+    return;
+}
+
+void syscallGetsid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int pid = tf->a0;
+    int mpid = myProcess()->processId;
+    if (pid == 0)
+    {
+        tf->a0 = mpid;
+        return;
+    }
+
+    extern ProcessList usedProcesses;
+    Process *np = NULL;
+    LIST_FOREACH(np, &usedProcesses, link)
+    {
+        if (np->processId == pid)
+        {
+            tf->a0 = pid == mpid ? pid : -EPERM;
+            return;
+        }
+    }
+    tf->a0 = -ESRCH;
+    return;
+}
+
+void syscallSetsid()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    return;
+}
+
+void syscallFutex()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int op = tf->a1, val = tf->a2, userVal;
+    u64 time = tf->a3;
+    u64 uaddr = tf->a0, newAddr = tf->a4;
+    struct TimeSpec t;
+    op &= (FUTEX_PRIVATE_FLAG - 1);
+    switch (op)
+    {
+    case FUTEX_WAIT:
+        copyin(myProcess()->pgdir, (char *)&userVal, uaddr, sizeof(int));
+        if (time)
+        {
+            if (copyin(myProcess()->pgdir, (char *)&t, time, sizeof(struct TimeSpec)) < 0)
+            {
+                panic("copy time error!\n");
+            }
+        }
+        // printf("val: %d\n", userVal);
+        if (userVal != val)
+        {
+            tf->a0 = -1;
+            return;
+        }
+        futexWait(uaddr, myThread(), time ? &t : 0);
+        break;
+    case FUTEX_WAKE:
+        // printf("val: %d\n", val);
+        futexWake(uaddr, val);
+        break;
+    case FUTEX_REQUEUE:
+        // printf("val: %d\n", val);
+        futexRequeue(uaddr, val, newAddr);
+        break;
+    default:
+        panic("Futex type not support!\n");
+    }
+    tf->a0 = 0;
+}
+
+void syscallSyslog()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int type = tf->a0;
+    u64 bufp = tf->a1;
+    u32 len = tf->a2;
+    char tmp[] = "Syslog is not important QwQ.";
+    switch (type)
+    {
+    case SYSLOG_ACTION_READ_ALL:
+        copyout(myProcess()->pgdir, bufp, (char *)&tmp, MIN(sizeof(tmp), len));
+        tf->a0 = MIN(sizeof(tmp), len);
+        return;
+    case SYSLOG_ACTION_SIZE_BUFFER:
+        tf->a0 = sizeof(tmp);
+        return;
+    case SYSLOG_ACTION_CLOSE:
+    case SYSLOG_ACTION_OPEN:
+    case SYSLOG_ACTION_READ:
+    case SYSLOG_ACTION_READ_CLEAR:
+    case SYSLOG_ACTION_CLEAR:
+    case SYSLOG_ACTION_CONSOLE_OFF:
+    case SYSLOG_ACTION_CONSOLE_ON:
+    case SYSLOG_ACTION_CONSOLE_LEVEL:
+    case SYSLOG_ACTION_SIZE_UNREAD:
+    default:
+        panic("unknown syslog type: %d\n", type);
+        break;
+    }
+}
+
+void syscallUmask()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    return;
+}
+
+void syscallSysinfo()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 addr = tf->a0;
+    struct sysinfo info;
+    sysinfo(&info);
+    copyout(myProcess()->pgdir, addr, (char *)&info, sizeof(struct sysinfo));
     tf->a0 = 0;
 }

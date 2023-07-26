@@ -10,7 +10,8 @@ GDB		:= $(CROSS_COMPILE)gdb
 QEMU	:= qemu-system-riscv64
 
 # gcc options
-CFLAGS 	:= 	-Wall -Werror -O 
+# `-MMD` 配合 `-include *.d` 可以达到最终头文件的目的
+CFLAGS 	:= 	-Wall -Werror -O -MMD
 CFLAGS 	+=	-fno-omit-frame-pointer -ffreestanding -fno-common -nostdlib -mno-relax
 CFLAGS 	+= 	$(shell $(GCC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
 CFLAGS 	+= 	-MD -ggdb -g

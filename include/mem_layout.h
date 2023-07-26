@@ -28,9 +28,11 @@
                             |    用户进程的内核栈        |
     KERNEL_PROCESS_SP_BOT ->+---------------------------+----------------- 0x0F_FD80_0000
                             |            ...            |
-    FILE_SYSTEM_CLUSTER_BITMAP_BASE --------------------+----------------- 0x0F_C800_0000
+    ------------------------+---------------------------+----------------- 0x0F_C800_0000
                             |          BIT_MAP          |
-    ------------------------+---------------------------+----------------- 0x0F_C000_0000 (KERNEL_PROCESS_SP_TOP - 1<<30)
+    FILE_SYSTEM_CLUSTER_BITMAP_BASE --------------------+----------------- 0x0F_C000_0000 (KERNEL_PROCESS_SP_TOP - 1<<30)
+                            |       signalAction        |
+    KERNEL_PROCESS_SIGNAL_BASE -------------------------+----------------- 0x0F_B000_0000 (FILE_SYSTEM_CLUSTER_BITMAP_BASE - 1<<30)
                             |                           |
                             |            ...            |
     PHYSICAL_MEMORY_END --->+---------------------------+----------------- 0x8800_0000
@@ -131,6 +133,9 @@
 #define USER_BRK_HEAP_TOP USER_MMAP_HEAP_BOTTOM
 #define USER_BRK_HEAP_BOTTOM (USER_BRK_HEAP_TOP - (1UL << 32))
 
+// 用户的信号返回地址
+#define SINGNAL_TRAMPOLINE (USER_BRK_HEAP_BOTTOM - PAGE_SIZE)
+
 // qemu puts programmable interrupt controller here.
 #define PLIC_PRIORITY (PLIC_V + 0x0)
 #define PLIC_PENDING (PLIC_V + 0x1000)
@@ -167,6 +172,7 @@
 #define PAGE_NUM (PHYSICAL_MEMORY_SIZE >> PAGE_SHIFT)
 
 #define FILE_SYSTEM_CLUSTER_BITMAP_BASE (KERNEL_PROCESS_SP_TOP - (1UL << 30))
+#define KERNEL_PROCESS_SIGNAL_BASE (FILE_SYSTEM_CLUSTER_BITMAP_BASE - (1UL << 30))
 
 // #define USER_HEAP_TOP
 // #define USER_HEAP_BOTTOM

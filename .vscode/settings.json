@@ -43,7 +43,10 @@
 		"sd.h": "c",
 		"syscall_ids.h": "c",
 		"macb.h": "c",
-		"delay.h": "c"
+		"delay.h": "c",
+		"io.h": "c",
+		"futex.h": "c",
+		"syslog.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

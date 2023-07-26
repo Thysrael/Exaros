@@ -3,7 +3,7 @@ INCLUDES := -I../../include
 target = console.o print.o sd.o virtio.o macb.o phy_mscc.o
 
 .PHONY: build clean
-
+-include *.d
 %.o: %.S
 	$(GCC) $(CFLAGS) $(INCLUDES) -c $<
 

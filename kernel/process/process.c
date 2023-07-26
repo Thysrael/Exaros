@@ -130,7 +130,7 @@ void processFree(Process *p)
             p->ofile[fd] = 0;
         }
     }
-
+    processSegmentMapFree(p);
     if (p->parentId > 0)
     {
         Process *parentProcess;
@@ -278,13 +278,22 @@ int setupProcess(Process *p)
     // pageMap(kernelPageDirectory, getProcessTopSp(p) - PAGE_SIZE, page2PA(page),
     //         PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
 
+    if (pageAlloc(&page) < 0)
+    {
+        return -1;
+    }
+    pageInsert(kernelPageDirectory, KERNEL_PROCESS_SIGNAL_BASE + (u64)(p - processes) * PAGE_SIZE, page,
+               PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+
     extern char trampoline[];
     extern char trapframe[];
+    extern char signalTrampoline[];
     // 尝试更严格的权限管理
     // pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_EXECUTE_BIT);
     // pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT);
     pageMap(p->pgdir, TRAMPOLINE, ((u64)trampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     pageMap(p->pgdir, TRAPFRAME, ((u64)trapframe), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+    pageMap(p->pgdir, SINGNAL_TRAMPOLINE, ((u64)signalTrampoline), PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
     return 0;
 }
 
@@ -316,6 +325,8 @@ int processAlloc(Process **new, u64 parentId)
     }
 
     p->processId = generateProcessId(p);
+    p->pgid = p->processId;
+    p->sid = p->processId;
     p->state = RUNNABLE;
     p->parentId = parentId;
 
@@ -545,6 +556,13 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     process = th->process;
     process->cwd = myprocess->cwd;
 
+    for (SegmentMap *psm = myprocess->segmentMapHead; psm; psm = psm->next)
+    {
+        SegmentMap *new = segmentMapAlloc();
+        *new = *psm;
+        segmentMapAppend(process, new);
+    }
+
     for (int i = 0; i < NOFILE; i++)
     {
         if (myprocess->ofile[i])
@@ -553,6 +571,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
             process->ofile[i] = myprocess->ofile[i];
         }
     }
+
     process->priority = myprocess->priority;
     process->brkHeapTop = myprocess->brkHeapTop;
     process->mmapHeapTop = myprocess->mmapHeapTop;
@@ -561,18 +580,19 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     th->trapframe.a0 = 0;
     th->trapframe.kernelSp = getThreadTopSp(th);
 
-    if (stackVa != 0)
-    {
-        th->trapframe.sp = stackVa;
-    }
-    if (ptid != NULL)
-    {
-        copyout(myprocess->pgdir, ptid, (char *)&myprocess->processId, sizeof(u32));
-    }
-    if (ctid != NULL)
-    {
-        copyout(myprocess->pgdir, ctid, (char *)&process->processId, sizeof(u32));
-    }
+    // if (stackVa != 0)
+    // {
+    //     th->trapframe.sp = stackVa;
+    // }
+    // if (ptid != NULL)
+    // {
+    //     copyout(myprocess->pgdir, ptid, (char *)&myprocess->processId, sizeof(u32));
+    // }
+
+    // if (ctid != NULL)
+    // {
+    //     copyout(myprocess->pgdir, ctid, (char *)&process->processId, sizeof(u32));
+    // }
 
     u64 i,
         j, k;
@@ -653,7 +673,6 @@ int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
  */
 int clone(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
 {
-    // printf("clone flags: %lx\n", flags);
     if (flags & CLONE_VM)
     {
         return threadFork(stackVa, ptid, tls, ctid);

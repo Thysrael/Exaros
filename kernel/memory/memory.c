@@ -330,17 +330,17 @@ i32 pageAlloc(Page **ppage)
     return 0;
 }
 
-// void bcopy(void *src, void *dst, u32 len)
-// {
-//     void *finish = src + len;
+void bcopy(void *src, void *dst, u32 len)
+{
+    void *finish = src + len;
 
-//     while (src < finish)
-//     {
-//         *(u8 *)dst = *(u8 *)src;
-//         src++;
-//         dst++;
-//     }
-// }
+    while (src < finish)
+    {
+        *(u8 *)dst = *(u8 *)src;
+        src++;
+        dst++;
+    }
+}
 
 // 记得切换为 memset
 void bzero(void *start, u32 len)
@@ -499,6 +499,8 @@ u64 va2PA(u64 *pgdir, u64 va, int *cow)
  */
 u64 passiveAlloc(u64 *pgdir, u64 badAddr)
 {
+    LOAD_DEBUG("happen passive alloc, badAddr is 0x%lx\n", badAddr);
+    // printk("current dir is %s\n", myProcess()->cwd->filename);
     Page *pp = NULL;
     // 缺页发生在用户栈，那么直接分配即可
     if (badAddr >= USER_STACK_BOTTOM && badAddr < USER_STACK_TOP)
@@ -534,7 +536,7 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
                 }
                 perm |= (curSeg->flag & ~MAP_ZERO);
             }
-            // printk("pp == NULL %d\n", pp == NULL);
+            LOAD_DEBUG("pp == %lx, start<end? %d start: %lx, end: %lx, badAddr: %lx\n", (u64)pp, start < end, start, end, badAddr);
         }
         if (pp == NULL)
         {

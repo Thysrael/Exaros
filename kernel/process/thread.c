@@ -14,6 +14,7 @@
 #include <lock.h>
 #include <error.h>
 #include <fs.h>
+#include <signal.h>
 
 Thread threads[PROCESS_TOTAL_NUMBER];
 
@@ -295,9 +296,12 @@ void threadSetup(Thread *th)
     th->state = UNUSED;
     th->reason = 0;
     th->awakeTime = 0;
-    // th->robustHeadPointer = 0;
-    // th->killed = false;
-    // LIST_INIT(&th->waitingSignal);
+    th->killed = false;
+
+    signalEmptySet(&th->blocked);
+    signalEmptySet(&th->pending);
+    signalEmptySet(&th->processing);
+    LIST_INIT(&th->waitingSignal);
 
     Page *page;
 
@@ -341,6 +345,8 @@ void sleep(void *channel, Spinlock *lk)
     th->reason = 1;
     releaseLock(&(th->lock));
 
+    if (th->killed) { threadDestroy(th); }
+
     asm volatile("sd sp, 0(%0)"
                  :
                  : "r"(&th->currentKernelSp));
@@ -351,6 +357,9 @@ void sleep(void *channel, Spinlock *lk)
     acquireLock(&th->lock);
     th->channel = 0;
     releaseLock(&th->lock);
+
+    if (th->killed) { threadDestroy(th); }
+
     acquireLock(lk);
 }
 

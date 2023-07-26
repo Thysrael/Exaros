@@ -31,7 +31,7 @@
 
 #define GETLOW(x, bits) ((u64)x & (((u64)1 << bits) - 1))
 
-#define ALIGN_DOWN(x, size) (((u64)x) & ~((u64)size - 1))
+#define ALIGN_DOWN(x, size) (((u64)(x)) & ~((u64)(size)-1))
 #define ALIGN_UP(x, y) ((ALIGN_DOWN((x)-1, (y))) + (y))
 
 #define PA2PPN(pa) ((u64)pa >> PAGE_SHIFT)
