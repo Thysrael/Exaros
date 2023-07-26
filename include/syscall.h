@@ -81,6 +81,16 @@
 #define SYS_sysinfo 179
 #define SYSCALL_SHUTDOWN 210
 
+#define SYSCALL_SOCKET 198
+#define SYSCALL_BIND 200
+#define SYSCALL_LISTEN 201
+#define SYSCALL_ACCEPT 202
+#define SYSCALL_CONNECT 203
+#define SYSCALL_GET_SOCKET_NAME 204
+#define SYSCALL_SEND_TO 206
+#define SYSCALL_RECEIVE_FROM 207
+#define SYSCALL_SET_SOCKET_OPTION 208
+
 #define SYSCALL_BRK 214
 
 #define SYSCALL_UNMAP_MEMORY 215
@@ -161,6 +171,16 @@ void syscallFutex();
 void syscallSyslog();
 void syscallUmask();
 void syscallSysinfo();
+
+void syscallSocket();
+void syscallBind();
+void syscallGetSocketName();
+void syscallSetSocketOption();
+void syscallSendTo();
+void syscallReceiveFrom();
+void syscallListen();
+void syscallConnect();
+void syscallAccept();
 
 extern void (*syscallVector[])(void);
 

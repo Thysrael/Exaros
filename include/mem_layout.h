@@ -33,6 +33,8 @@
     FILE_SYSTEM_CLUSTER_BITMAP_BASE --------------------+----------------- 0x0F_C000_0000 (KERNEL_PROCESS_SP_TOP - 1<<30)
                             |       signalAction        |
     KERNEL_PROCESS_SIGNAL_BASE -------------------------+----------------- 0x0F_B000_0000 (FILE_SYSTEM_CLUSTER_BITMAP_BASE - 1<<30)
+                            |      socket buffer        |
+                            +---------------------------+----------------- 0x0F_A000_0000 (KERNEL_PROCESS_SIGNAL_BASE - 1<<30)
                             |                           |
                             |            ...            |
     PHYSICAL_MEMORY_END --->+---------------------------+----------------- 0x8800_0000
@@ -120,7 +122,6 @@
 #define VIRTIO_V (VIRTIO + VIRT_OFFSET)
 
 // trampoline, signal trampoline, stack
-// TODO: memory init 那里可能会有问题
 #define TRAMPOLINE (VA_MAX - PAGE_SIZE)
 #define TRAPFRAME (TRAMPOLINE - PAGE_SIZE)
 #define SIGNAL_TRAMPOLINE (TRAPFRAME - PAGE_SIZE)
@@ -173,6 +174,7 @@
 
 #define FILE_SYSTEM_CLUSTER_BITMAP_BASE (KERNEL_PROCESS_SP_TOP - (1UL << 30))
 #define KERNEL_PROCESS_SIGNAL_BASE (FILE_SYSTEM_CLUSTER_BITMAP_BASE - (1UL << 30))
+#define SOCKET_BUFFER_BASE (KERNEL_PROCESS_SIGNAL_BASE - (1UL << 30))
 
 // #define USER_HEAP_TOP
 // #define USER_HEAP_BOTTOM
