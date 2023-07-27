@@ -188,8 +188,8 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    // if (scause != 8)
-    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
+    if (scause != 8)
+        printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
     // 判断中断或者异常，然后调用对应的处理函数
 
     // if (scause == 0xd)
@@ -241,6 +241,11 @@ void userHandler()
             }
             else
             {
+                printk("*pte: 0x%lx\n", *pte);
+                printk("tf->a6: 0x%lx\n", tf->a6);
+                printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
+                int cow;
+                printk("pa2VA(pa): 0x%lx\n", va2PA(myProcess()->pgdir, stval, &cow));
                 panic("unknown page fault.\n");
             }
             break;

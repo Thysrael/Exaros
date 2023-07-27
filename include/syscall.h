@@ -23,6 +23,7 @@
 #define SYSCALL_ACCESS 48
 #define SYSCALL_CHDIR 49
 
+#define SYSCALL_FCHMOD_AT 53
 #define SYSCALL_OPEN 55
 #define SYSCALL_OPENAT 56
 #define SYSCALL_CLOSE 57
@@ -202,6 +203,8 @@ void syscallReceiveFrom();
 void syscallListen();
 void syscallConnect();
 void syscallAccept();
+
+void syscallFchmodAt();
 
 extern void (*syscallVector[])(void);
 

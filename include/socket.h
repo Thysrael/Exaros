@@ -14,7 +14,7 @@ typedef struct
     u16 family;
     u16 port;
     u32 addr;
-    char zero[24];
+    char zero[8];
 } SocketAddr;
 
 typedef struct Socket
@@ -39,7 +39,7 @@ int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest);
 int receiveFrom(Socket *s, u64 buf, u32 len, int flags, u64 srcAddr);
 void socketFree(Socket *s);
 int accept(int sockfd, SocketAddr *addr);
-int connect(int sockfd, const SocketAddr *addr);
+int connect(int sockfd, SocketAddr *addr);
 int socket_read(Socket *sock, bool isUser, u64 addr, int n);
 int socket_write(Socket *sock, bool isUser, u64 addr, int n);
 int listen(int sockfd);

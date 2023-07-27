@@ -107,6 +107,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_LSEEK] syscallLseek,
     [SYSCALL_UTIMENSAT] syscallUtimensat,
     [SYSCALL_MEMORY_PROTECT] syscallMemoryProtect,
+    [SYSCALL_FCHMOD_AT] syscallFchmodAt,
     [MAX_SYSCALL] 0,
 };
 
@@ -2039,75 +2040,104 @@ void syscallSysinfo()
 
 void syscallSocket()
 {
+    printk("syscall socket begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int domain = tf->a0, type = tf->a1, protocal = tf->a2;
     tf->a0 = createSocket(domain, type, protocal);
     // printf("[%s] socket at fd = %d\n",__func__, tf->a0);
+    printk("syscall socket end.\n");
 }
 
 void syscallBind()
 {
+    printk("syscall bind begin.\n");
     Trapframe *tf = getHartTrapFrame();
-    // assert(tf->a2 == sizeof(SocketAddr));
+    printk("len : %d, sizeof(SocketAddr) is %d\n", tf->a2, sizeof(SocketAddr));
+    // wrong: assert(tf->a2 == sizeof(SocketAddr));
     SocketAddr sa;
     copyin(myProcess()->pgdir, (char *)&sa, tf->a1, tf->a2);
     tf->a0 = bindSocket(tf->a0, &sa);
+    printk("syscall bind end.\n");
 }
 
 void syscallGetSocketName()
 {
+    printk("syscall get socket name begin.\n");
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = getSocketName(tf->a0, tf->a1);
+    printk("syscall get socket name end.\n");
 }
 
 void syscallSetSocketOption()
 {
+    printk("syscall set socket option begin.\n");
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
+    printk("syscall set socket option end.\n");
+}
+
+void syscallFchmodAt()
+{
+    printk("syscall FchmodAt begin.\n");
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    printk("syscall FchmodAt end.\n");
 }
 
 void syscallSendTo()
 {
+    printk("syscall sentTo begin.\n");
     static char buf[PAGE_SIZE];
     Trapframe *tf = getHartTrapFrame();
-    assert(tf->a5 == sizeof(SocketAddr));
+    // assert(tf->a5 == sizeof(SocketAddr));
     SocketAddr sa;
-    copyin(myProcess()->pgdir, (char *)&sa, tf->a4, sizeof(SocketAddr));
+    copyin(myProcess()->pgdir, (char *)&sa, tf->a4, tf->a5);
     u32 len = MIN(tf->a2, PAGE_SIZE);
     copyin(myProcess()->pgdir, buf, tf->a1, len);
     tf->a0 = sendTo(myProcess()->ofile[tf->a0]->socket, buf, tf->a2, tf->a3, &sa);
+    printk("syscall sentTo end.\n");
 }
 
 void syscallReceiveFrom()
 {
+    printk("syscall receiveFrom begin.\n");
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = receiveFrom(myProcess()->ofile[tf->a0]->socket, tf->a1, tf->a2, tf->a3, tf->a4);
+    printk("syscall receiveFrom end.\n");
 }
 
 void syscallListen()
 {
+    printk("syscall listen begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int sockfd = tf->a0;
     // printf("[%s] fd %d\n",__func__, sockfd);
     tf->a0 = listen(sockfd);
+    printk("syscall listen end.\n");
 }
 
 void syscallConnect()
 {
+    printk("syscall connect begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int sockfd = tf->a0;
     SocketAddr sa;
+    // printk("address is 0x%lx, addr len is %d, %x\n", tf->a1, tf->a2, sa.port);
     copyin(myProcess()->pgdir, (char *)&sa, tf->a1, tf->a2);
+    // printk("address is 0x%lx, addr len is %d, %x\n", tf->a1, tf->a2, sa.port);
     tf->a0 = connect(sockfd, &sa);
+    printk("syscall connect end.\n");
 }
 
 void syscallAccept()
 {
+    printk("syscall accept begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int sockfd = tf->a0;
     SocketAddr sa;
     tf->a0 = accept(sockfd, &sa);
     copyout(myProcess()->pgdir, tf->a1, (char *)&sa, sizeof(sa));
+    printk("syscall accept end.\n");
 }
 
 void syscallLseek()
