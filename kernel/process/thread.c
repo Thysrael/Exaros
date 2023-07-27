@@ -62,7 +62,7 @@ void threadFree(Thread *th)
         p->retValue = th->retValue;
         processFree(p);
     }
-
+    printk("state!@@@");
     th->state = UNUSED;
     LIST_REMOVE(th, link);
     LIST_INSERT_HEAD(&freeThreads, th, link); // test pipe

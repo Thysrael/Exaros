@@ -21,6 +21,7 @@
 #include <lock.h>
 #include <thread.h>
 #include <fs.h>
+#include <futex.h>
 
 Process processes[PROCESS_TOTAL_NUMBER];
 ProcessList freeProcesses, usedProcesses;
@@ -441,7 +442,7 @@ void yield()
             LIST_REMOVE(th, scheduleLink);
             count = th->process->priority;
         }
-        // printk("finding a process to yield... %d, %d, %d\n", point, th->state, (int)intr_get());
+        printk("finding a process to yield... %d, %d, %d\n", point, th->state, (int)intr_get());
     }
 
     // 在这里关掉中断，不然 sleep 到一半的时候被打断
@@ -453,7 +454,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    CNX_DEBUG("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
+    printk("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
 
     // syscall_watetime 的范围值设置为 0
     if (th->awakeTime > 0)
@@ -461,6 +462,8 @@ void yield()
         getHartTrapFrame()->a0 = 0;
         th->awakeTime = 0;
     }
+
+    futexClear(th);
     threadRun(th);
 }
 

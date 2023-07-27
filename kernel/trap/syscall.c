@@ -1257,14 +1257,18 @@ void syscallExec()
     // 真正的执行
     // // 输出
 
-    int ret = exec(path, argv);
-
     printk("\npath: %s\n", path);
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {
         if (argv[i] > 0)
             printk("%d : %s\n", i, argv[i]);
+        if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c') // 跳过 pthread
+        {
+            goto bad;
+        }
     }
+
+    int ret = exec(path, argv);
 
     // 释放给参数开的空间
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
@@ -1272,7 +1276,7 @@ void syscallExec()
         pageFree(pa2Page((u64)argv[i]));
     }
     tf->a0 = ret;
-    // ("sucessfully exec %s, th: %lx, epc: %lx\n", path, myThread()->threadId, tf->epc);
+    printk("sucessfully exec %s, th: %lx, epc: %lx\n", path, myThread()->threadId, tf->epc);
     // printTrapframe(tf);
     return;
 bad:
@@ -1954,6 +1958,7 @@ void syscallFutex()
     u64 uaddr = tf->a0, newAddr = tf->a4;
     struct TimeSpec t;
     op &= (FUTEX_PRIVATE_FLAG - 1);
+    printk("uaddr: %lx\n", uaddr);
     switch (op)
     {
     case FUTEX_WAIT:

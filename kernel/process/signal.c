@@ -160,6 +160,23 @@ void initFrame(SignalContext *sc, Thread *thread)
     if ((r = pageAlloc(&page)) < 0) { panic(""); }
     pageInsert(myProcess()->pgdir, sp - PAGE_SIZE, page, PTE_USER_BIT | PTE_READ_BIT | PTE_WRITE_BIT);
     u32 pageTop = PAGE_SIZE;
+
+    // pageTop -= sizeof(SignalInfo);
+    // u64 sigInfo;
+    // sigInfo = pageTop = ALIGN_DOWN(pageTop, 16);
+    // SignalInfo si = {0};
+    // bcopy(&si, (void *)page2PA(page) + pageTop, sizeof(SignalInfo));
+    // pageTop -= sizeof(ucontext);
+    // u64 uContext;
+    // uContext = pageTop = ALIGN_DOWN(pageTop, 16);
+    // sc->uContext = (ucontext *)(uContext + page2PA(page));
+    // ucontext uc = {0};
+    // uc.uc_sigmask = thread->blocked;
+    // bcopy(&uc, (void *)page2PA(page) + pageTop, sizeof(ucontext));
+    // tf->a0 = sc->signal;
+    // tf->a1 = sigInfo + sp - PAGE_SIZE;
+    // tf->a2 = uContext + sp - PAGE_SIZE;
+
     tf->sp = pageTop + sp - PAGE_SIZE;
     tf->ra = SIGNAL_TRAMPOLINE;
 }
@@ -231,6 +248,7 @@ void handleSignal(Thread *thread)
         copyin(thread->process->pgdir, (char *)&self, thread->trapframe.tp - sizeof(struct pthread), sizeof(struct pthread));
         initFrame(sc, thread);
         tf->epc = (u64)sa->handler;
+        printk("handler %lx\n", sa->handler);
         return;
     }
 }
