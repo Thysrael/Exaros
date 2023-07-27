@@ -26,7 +26,6 @@ typedef struct FileSystem
     int deviceNumber;
     Buf *(*read)(FileSystem *fs, u64 blockNum);
 } FileSystem;
-
 /**
  * @brief 获得文件系统的 cluster bitmap
  * 应该是一个 fs 对应一个 bitmap
@@ -41,7 +40,17 @@ static inline u64 getFileSystemClusterBitmap(FileSystem *fs)
     return FILE_SYSTEM_CLUSTER_BITMAP_BASE + ((fs - fileSystem) << 10) * PAGE_SIZE;
 }
 
+typedef struct FileSystemStatus
+{
+    unsigned long f_type, f_bsize;
+    u64 f_blocks, f_bfree, f_bavail;
+    u64 f_files, f_ffree;
+    u64 f_fsid;
+    unsigned long f_namelen, f_frsize, f_flags, f_spare[4];
+} FileSystemStatus;
+
 int fsAlloc(FileSystem **fs);
 void initRootFileSystem();
+int getFsStatus(char *path, FileSystemStatus *fss);
 
 #endif

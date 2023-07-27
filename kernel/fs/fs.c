@@ -62,3 +62,21 @@ void initRootFileSystem()
     meta = metaCreate(AT_FDCWD, "/dev/vda2", T_DIR, O_RDONLY);
     meta->head = rootFileSystem;
 }
+
+int getFsStatus(char *path, FileSystemStatus *fss)
+{
+    DirMeta *de;
+    if ((de = metaName(AT_FDCWD, path, true)) == NULL)
+    {
+        return -1;
+    }
+    FileSystem *fs = de->fileSystem;
+    fss->f_bsize = 189;
+    fss->f_blocks = fs->superBlock.BPB.totSec - fs->superBlock.firstDataSec;
+    fss->f_bfree = 1;
+    fss->f_bavail = 2;
+    fss->f_files = 4;
+    fss->f_ffree = 3;
+    fss->f_namelen = FAT32_MAX_FILENAME;
+    return 0;
+}

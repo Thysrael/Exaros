@@ -20,8 +20,10 @@
 #define SYSCALL_LINKAT 37
 #define SYSCALL_UMOUNT 39
 #define SYSCALL_MOUNT 40
+#define SYS_statfs 43
 #define SYSCALL_CHDIR 49
 
+#define SYS_fchmodat 53
 #define SYSCALL_OPEN 55
 #define SYSCALL_OPENAT 56
 #define SYSCALL_CLOSE 57
@@ -37,9 +39,11 @@
 #define SYSCALL_SEND_FILE 71
 #define SYSCALL_SELECT 72
 #define SYSCALL_POLL 73
+#define SYS_readlinkat 78
 #define SYSCALL_FSTATAT 79
 
 #define SYSCALL_FSTAT 80
+#define SYS_fsync 82
 
 #define SYSCALL_EXIT 93
 #define SYSCALL_EXIT_GROUP 94 // TODO
@@ -94,6 +98,7 @@
 #define SYS_mlock 228
 #define SYS_madvise 233
 #define SYSCALL_WAIT 260
+#define SYS_renameat2 276
 
 void syscallGetProcessId();
 void syscallSetTidAddress();
@@ -173,6 +178,11 @@ void syscallMadvise();
 void syscallMlock();
 void syscallMprotect();
 void syscallMsync();
+void syscallReadlinkat();
+// void syscallRenameat2();
+void syscallStatfs();
+void syscallFchmodat();
+void syscallFsync();
 
 extern void (*syscallVector[])(void);
 
