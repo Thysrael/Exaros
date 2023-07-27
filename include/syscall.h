@@ -98,6 +98,7 @@
 #define SYS_mlock 228
 #define SYS_madvise 233
 #define SYSCALL_WAIT 260
+#define SYS_prlimit64 261
 #define SYS_renameat2 276
 
 void syscallGetProcessId();
@@ -183,6 +184,7 @@ void syscallReadlinkat();
 void syscallStatfs();
 void syscallFchmodat();
 void syscallFsync();
+void syscallPrlimit64();
 
 extern void (*syscallVector[])(void);
 

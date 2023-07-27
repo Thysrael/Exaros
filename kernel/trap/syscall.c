@@ -105,6 +105,7 @@ void (*syscallVector[])(void) = {
     [SYS_statfs] syscallStatfs,
     [SYS_fchmodat] syscallFchmodat,
     [SYS_fsync] syscallFsync,
+    [SYS_prlimit64] syscallPrlimit64,
 };
 
 void syscallPutchar()
@@ -2250,6 +2251,12 @@ void syscallFchmodat()
 }
 
 void syscallFsync()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallPrlimit64()
 {
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
