@@ -94,6 +94,12 @@ void (*syscallVector[])(void) = {
     [SYS_syslog] syscallSyslog,
     [SYS_umask] syscallUmask,
     [SYS_sysinfo] syscallSysinfo,
+    [SYS_rt_sigtimedwait] syscallRtSigtimedwait,
+    [SYS_times] syscallTimes,
+    [SYS_madvise] syscallMadvise,
+    [SYS_mlock] syscallMlock,
+    [SYS_mprotect] syscallMprotect,
+    [SYS_msync] syscallMsync,
 };
 
 void syscallPutchar()
@@ -930,6 +936,7 @@ void syscallGetCpuTimes()
  * @brief 获取当前时间
  *
  */
+// TODO timeval and timezone
 void syscallGetTime()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -2013,5 +2020,82 @@ void syscallSysinfo()
     struct sysinfo info;
     sysinfo(&info);
     copyout(myProcess()->pgdir, addr, (char *)&info, sizeof(struct sysinfo));
+    tf->a0 = 0;
+}
+
+void syscallRtSigtimedwait()
+{
+    TimeSpec ts;
+    Trapframe *tf = getHartTrapFrame();
+    Process *p = myProcess();
+    if (tf->a2)
+    {
+        copyin(p->pgdir, (char *)&ts, tf->a2, sizeof(TimeSpec));
+    }
+    SignalSet signalSet;
+    copyin(p->pgdir, (char *)&signalSet, tf->a0, tf->a3);
+    SignalInfo info;
+    copyin(p->pgdir, (char *)&info, tf->a0, sizeof(SignalInfo));
+    tf->a0 = rt_sigtimedwait(&signalSet, &info, tf->a2 ? &ts : 0);
+}
+
+// TODO struct tms, not TimeSpec
+void syscallTimes()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 time = r_time();
+    TimeSpec ts;
+    ts.second = time / 1000000;
+    ts.microSecond = time % 1000000;
+    copyout(myProcess()->pgdir, tf->a1, (char *)&ts, sizeof(TimeSpec));
+    tf->a0 = 0;
+}
+
+void syscallMadvise()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallMlock()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallMprotect()
+{
+    Trapframe *tf = getHartTrapFrame();
+
+    u64 start = ALIGN_DOWN(tf->a0, PAGE_SIZE);
+    u64 end = ALIGN_UP(tf->a0 + tf->a1, PAGE_SIZE);
+
+    u64 perm = 0;
+    if (PROT_EXEC(tf->a2)) { perm |= PTE_EXECUTE_BIT | PTE_READ_BIT; }
+    if (PROT_READ(tf->a2)) { perm |= PTE_READ_BIT; }
+    if (PROT_WRITE(tf->a2)) { perm |= PTE_WRITE_BIT | PTE_READ_BIT; }
+    while (start < end)
+    {
+        u64 *pte;
+        Page *page;
+        page = pageLookup(myProcess()->pgdir, start, &pte);
+        if (page == NULL)
+        {
+            passiveAlloc(myProcess()->pgdir, start);
+            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+        }
+        *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
+        // else
+        // {
+        //     *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm;
+        // }
+        start += PAGE_SIZE;
+    }
+    tf->a0 = 0;
+}
+
+void syscallMsync()
+{
+    Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
 }
