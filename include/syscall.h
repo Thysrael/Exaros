@@ -21,8 +21,10 @@
 #define SYSCALL_UMOUNT 39
 #define SYSCALL_MOUNT 40
 #define SYSCALL_ACCESS 48
+#define SYS_statfs 43
 #define SYSCALL_CHDIR 49
 
+#define SYS_fchmodat 53
 #define SYSCALL_OPEN 55
 #define SYSCALL_OPENAT 56
 #define SYSCALL_CLOSE 57
@@ -39,10 +41,12 @@
 #define SYSCALL_SEND_FILE 71
 #define SYSCALL_SELECT 72
 #define SYSCALL_POLL 73
+#define SYS_readlinkat 78
 #define SYSCALL_FSTATAT 79
 
 #define SYSCALL_FSTAT 80
 #define SYSCALL_UTIMENSAT 88
+#define SYS_fsync 82
 
 #define SYSCALL_EXIT 93
 #define SYSCALL_EXIT_GROUP 94 // TODO
@@ -63,9 +67,11 @@
 #define SYSCALL_TGKILL 131
 #define SYSCALL_SIGNAL_ACTION 134
 #define SYSCALL_SIGNAL_PROCESS_MASK 135
+#define SYS_rt_sigtimedwait 137
 #define SYSCALL_SIGRETURN 139
 #define SYS_getresuid 148
 #define SYS_getresgid 150
+#define SYS_times 153
 #define SYS_setpgid 154
 #define SYS_getpgid 155
 #define SYS_getsid 156
@@ -92,7 +98,13 @@
 #define SYSCALL_MAP_MEMORY 222
 #define SYSCALL_MEMORY_PROTECT 226
 
+#define SYS_mprotect 226
+#define SYS_msync 227
+#define SYS_mlock 228
+#define SYS_madvise 233
 #define SYSCALL_WAIT 260
+#define SYS_prlimit64 261
+#define SYS_renameat2 276
 
 #define MAX_SYSCALL 350
 
@@ -182,7 +194,18 @@ void syscallMemoryProtect();
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
-
+void syscallRtSigtimedwait();
+void syscallTimes();
+void syscallMadvise();
+void syscallMlock();
+void syscallMprotect();
+void syscallMsync();
+void syscallReadlinkat();
+// void syscallRenameat2();
+void syscallStatfs();
+void syscallFchmodat();
+void syscallFsync();
+void syscallPrlimit64();
 extern void (*syscallVector[])(void);
 
 int do_linkat(int oldDirFd, char *oldPath, int newDirFd, char *newPath);

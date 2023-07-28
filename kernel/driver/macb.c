@@ -1,0 +1,1155 @@
+#include <types.h>
+#include <macb.h>
+#include <delay.h>
+#include <debug.h>
+#include <memory.h>
+#include <delay.h>
+#include <mii.h>
+#include <phy_mscc.h>
+#include <string.h>
+
+#define GEM_RX_BUFFER_SIZE 2048
+#define MACB_RX_RING_SIZE 32
+#define MACB_TX_RING_SIZE 16
+#define RX_BUFFER_MULTIPLE 64
+
+#define HW_DMA_CAP_32B 0
+
+#define MACB_AUTONEG_TIMEOUT 5000000
+
+#define RXBUF_FRMLEN_MASK 0x00000fff
+#define TXBUF_FRMLEN_MASK 0x000007ff
+
+#define MACB_TX_TIMEOUT 1000
+
+/**
+ * @brief 设置 PRCI 时钟默认频率 12512500
+ *
+ */
+static void sifive_prci_set_rate()
+{
+    NET_DEBUG("macb rate set begin.\n");
+    u32 value = 0x206b982; // 可以查手册得到
+    *GEMGXL_REG(GEMGXL_PLL_CFG) = value;
+
+    // microseconds微秒，等待 70 微秒
+    u64 max_pll_lock_us = 70;
+    usdelay(max_pll_lock_us);
+
+    NET_DEBUG("macb rate set end.\n");
+}
+
+/**
+ * @brief 开启 PRCI 时钟
+ *
+ */
+static void sifive_prci_enable()
+{
+    NET_DEBUG("prci enable begin.\n");
+    u32 value = 0x80000000;
+    *GEMGXL_REG(GEMGXL_PLL_OUTDIV) = value;
+    NET_DEBUG("prci enable end.\n");
+}
+
+/**
+ * @brief 重启触发器，负责重启 gxemul，id 说明重启设备编号，所以一般是 5（gxemul），level 说明高低电平
+ *
+ * @param id 设备编号
+ * @param level 高低电平
+ */
+static void sifive_reset_trigger(u32 id, bool level)
+{
+    u32 regVal = *PRCI_REG(PRCI_RESETREG);
+    if (level)
+    {
+        regVal |= 1 << id;
+    }
+    else
+    {
+        regVal &= ~(1 << id);
+    }
+    NET_DEBUG("sifive_reset_trigger to write: 0x%x\n", regVal);
+    *PRCI_REG(PRCI_RESETREG) = regVal;
+}
+
+/**
+ * @brief 重启 prci
+ *
+ */
+static void sifive_prci_ethernet_release_reset()
+{
+    NET_DEBUG("prci reset begin.\n");
+    /* gemgxl_reset, Release GEMGXL reset */
+    sifive_reset_trigger(5, true);
+    // processor monitor
+    /* Procmon => core clock */
+    *PRCI_REG(PRCI_PROCMONCFG) = PRCI_PROCMONCFG_CORE_CLOCK_MASK;
+    /* cltx_reset, Release Chiplink reset */
+    // write id: 6, regval: 0x6f(110_1111)
+    sifive_reset_trigger(6, true);
+    NET_DEBUG("prci reset end.\n");
+}
+
+static bool macb_is_gem()
+{
+    u32 mid_value = *MACB_REG(MACB_MID);
+    u32 macb_bfext = (mid_value >> MACB_IDNUM_OFFSET) & ((1 << MACB_IDNUM_SIZE) - 1);
+    NET_DEBUG("mid value is 0x%x, macb bfext is 0x%x\n", mid_value, macb_bfext);
+    return macb_bfext >= 2;
+}
+
+static u32 gem_mdc_clk_div(u32 id, u64 pclk_rate)
+{
+    u32 config = 0;
+    u64 macb_hz = pclk_rate;
+
+    if (macb_hz < 20000000)
+    {
+        config = ((GEM_CLK_DIV8 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else if (macb_hz < 40000000)
+    {
+        config = ((GEM_CLK_DIV16 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else if (macb_hz < 80000000)
+    {
+        config = ((GEM_CLK_DIV32 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else if (macb_hz < 120000000)
+    {
+        config = ((GEM_CLK_DIV48 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else if (macb_hz < 160000000)
+    {
+        config = ((GEM_CLK_DIV64 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else if (macb_hz < 240000000)
+    {
+        config = ((GEM_CLK_DIV96 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else if (macb_hz < 320000000)
+    {
+        config = ((GEM_CLK_DIV128 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    else
+    {
+        config = ((GEM_CLK_DIV224 & ((1 << GEM_CLK_SIZE) - 1)) << GEM_CLK_OFFSET);
+    }
+    NET_DEBUG("NCFGR init value is 0x%x\n", config);
+    return config;
+}
+
+/*
+ * Get the DMA bus width field of the network configuration register that we
+ * should program. We find the width from decoding the design configuration
+ * register to find the maximum supported data bus width.
+ */
+u32 macb_dbw()
+{
+    u32 dcfg1_value = *MACB_REG(GEM_DCFG1);
+    u32 gem_bfex = (dcfg1_value >> GEM_DBWDEF_OFFSET) & ((1 << GEM_DBWDEF_SIZE) - 1);
+    NET_DEBUG("macb_dbw, dcfg1: 0x%x, gem_bfex: 0x%x\n", dcfg1_value, gem_bfex);
+    switch (gem_bfex)
+    {
+    case 4: {
+        return ((GEM_DBW128 & ((1 << GEM_DBW_SIZE) - 1)) << GEM_DBW_OFFSET);
+    }
+    case 2: {
+        return ((GEM_DBW64 & ((1 << GEM_DBW_SIZE) - 1)) << GEM_DBW_OFFSET);
+    }
+    default: {
+        return ((GEM_DBW32 & ((1 << GEM_DBW_SIZE) - 1)) << GEM_DBW_OFFSET);
+    }
+    }
+}
+
+static u32 macb_mdc_clk_div(u32 id, u64 pclk_rate)
+{
+    u32 config = 0;
+
+    // macb->pclk_rate
+    // let macb_hz: u64 = 125125000;
+    u64 macb_hz = pclk_rate;
+
+    if (macb_hz < 20000000)
+    {
+        config = ((MACB_CLK_DIV8 & ((1 << MACB_CLK_SIZE) - 1)) << MACB_CLK_OFFSET);
+    }
+    else if (macb_hz < 40000000)
+    {
+        config = ((MACB_CLK_DIV16 & ((1 << MACB_CLK_SIZE) - 1)) << MACB_CLK_OFFSET);
+    }
+    else if (macb_hz < 80000000)
+    {
+        config = ((MACB_CLK_DIV32 & ((1 << MACB_CLK_SIZE) - 1)) << MACB_CLK_OFFSET);
+    }
+    else
+    {
+        config = ((MACB_CLK_DIV64 & ((1 << MACB_CLK_SIZE) - 1)) << MACB_CLK_OFFSET);
+    }
+
+    return config;
+}
+
+static void macb_eth_probe()
+{
+    macb_is_gem();
+    // rx/tx ring dma
+    // rx_buffer_size: 2048
+    u32 id = 0;
+    u32 ncfgr = 0; // ncfgr, network config register
+
+    // RX==receive，接收，从开启到现在接收封包的情况，是下行流量（Downlink）
+    // TX==Transmit，发送，从开启到现在发送封包的情况，是上行流量（Uplink）
+
+    u64 pclk_rate = 125125000;
+    if (macb_is_gem())
+    {
+        ncfgr = gem_mdc_clk_div(id, pclk_rate);
+        ncfgr |= macb_dbw();
+    }
+    else
+    {
+        ncfgr = macb_mdc_clk_div(id, pclk_rate);
+    }
+
+    NET_DEBUG("write MACB_NCFGR: 0x%x\n", ncfgr);
+    *MACB_REG(MACB_NCFGR) = ncfgr;
+}
+
+MacbDevice macb;
+MacbConfig config;
+u32 send_buffers[32];
+u32 recv_buffers[64]; // 每个元素记录的都是 buffer 的物理地址
+DmaDesc *dummy_desc;
+
+/**
+ * @brief 初始化 GEMGXL TX 时钟。SiFive GEMGXL TX 有两种模式：
+ * 0 = GMII mode. Use 125 MHz gemgxlclk from PRCI in TX logic and output clock on GMII output signal GTX_CLK
+ * 1 = MII mode. Use MII input signal TX_CLK in TX logic
+ *
+ * @param rate 时钟频率
+ */
+static void macb_sifive_clk_init(u64 rate)
+{
+    int mod = (rate == 125000000) ? 0 : 1;
+    *GEMGXL_REG(0) = mod;
+}
+
+static bool is_big_endian()
+{
+    return false;
+}
+
+static u32 GEM_BF(u32 gem_offset, u32 gem_size, u32 value)
+{
+    return (value & ((1 << gem_size) - 1)) << gem_offset;
+}
+
+static u32 GEM_BFINS(u32 gem_offset, u32 gem_size, u32 value, u32 old)
+{
+    return (old & ~(((1 << gem_size) - 1) << gem_offset)) | GEM_BF(gem_offset, gem_size, value);
+}
+
+static u32 GEM_BIT(u32 offset)
+{
+    return 1 << offset;
+}
+
+/**
+ * @brief 应该是进行一些 dma 相关的配置
+ *
+ * @return i32
+ */
+static void gmac_configure_dma()
+{
+    u32 buffer_size = (macb.buffer_size / RX_BUFFER_MULTIPLE);
+    i64 neg = -1;
+    u32 dmacfg = *MACB_REG(GEM_DMACFG);
+    NET_DEBUG("gmac_configure_dma read GEM_DMACFG: 0x%x\n", dmacfg);
+    dmacfg &= ~GEM_BF(GEM_RXBS_OFFSET, GEM_RXBS_SIZE, neg);
+    NET_DEBUG("gmac_configure_dma dmacfg: 0x%x\n", dmacfg);
+
+    dmacfg |= GEM_BF(GEM_RXBS_OFFSET, GEM_RXBS_SIZE, buffer_size);
+
+    if (macb.config->dma_burst_length != 0)
+    {
+        dmacfg = GEM_BFINS(
+            GEM_FBLDO_OFFSET,
+            GEM_FBLDO_SIZE,
+            macb.config->dma_burst_length,
+            dmacfg);
+    }
+
+    dmacfg |= GEM_BIT(GEM_TXPBMS_OFFSET) | GEM_BF(GEM_RXBMS_OFFSET, GEM_RXBMS_SIZE, neg);
+    dmacfg &= ~GEM_BIT(GEM_ENDIA_PKT_OFFSET);
+
+    if (is_big_endian())
+    {
+        dmacfg |= GEM_BIT(GEM_ENDIA_DESC_OFFSET);
+    }
+    else
+    {
+        dmacfg &= ~GEM_BIT(GEM_ENDIA_DESC_OFFSET);
+    }
+
+    dmacfg &= ~GEM_BIT(GEM_ADDR64_OFFSET);
+
+    NET_DEBUG("gmac_configure_dma write GEM_DMACFG @ 0x%x, dmacfg = 0x%x\n",
+              MACB_IOBASE + GEM_DMACFG,
+              dmacfg);
+    *MACB_REG(GEM_DMACFG) = dmacfg;
+}
+
+static u32 GEM_TBQP(u32 hw_q)
+{
+    return 0x0440 + ((hw_q) << 2);
+}
+
+static u32 GEM_RBQP(u32 hw_q)
+{
+    return 0x0480 + ((hw_q) << 2);
+}
+
+static inline u32 readv(u32 *src)
+{
+    return *(volatile u32 *)src;
+}
+
+static inline void writev(u32 *dst, u32 value)
+{
+    *(volatile u32 *)dst = value;
+}
+
+static void gmac_init_multi_queues()
+{
+    i32 num_queues = 1;
+    // bit 0 is never set but queue 0 always exists
+    u32 queue_mask = 0xff & (*MACB_REG(GEM_DCFG6));
+    NET_DEBUG("gmac_init_multi_queues read GEM_DCFG6: 0x%x\n", queue_mask);
+    queue_mask |= 0x1;
+
+    for (int i = 1; i < MACB_MAX_QUEUES; ++i)
+    {
+        if ((queue_mask & (1 << i)) != 0)
+        {
+            num_queues += 1;
+        }
+    }
+
+    macb.dummy_desc[0].ctrl = 1 << MACB_TX_USED_OFFSET;
+    macb.dummy_desc[0].addr = 0;
+
+    u64 paddr = macb.dummy_desc_dma;
+
+    for (int i = 1; i < num_queues; ++i)
+    {
+        NET_DEBUG("gmac_init_multi_queues {%d} TBQP: {%d}, RBQP: {%d}",
+                  i,
+                  GEM_TBQP(i - 1),
+                  GEM_RBQP(i - 1));
+        writev((u32 *)(MACB_IOBASE + (u64)GEM_TBQP(i - 1)),
+               (u32)paddr);
+        writev((u32 *)(MACB_IOBASE + (u64)GEM_RBQP(i - 1)),
+               (u32)paddr);
+    }
+}
+
+static inline void fence()
+{
+    asm volatile("fence iorw, iorw");
+}
+
+u16 macb_mdio_read(u32 phy_adr, u32 reg)
+{
+    u32 netctl = *MACB_REG(MACB_NCR);
+    netctl |= 1 << MACB_MPE_OFFSET;
+    writev((u32 *)(MACB_IOBASE + MACB_NCR), netctl);
+
+    u32 frame = ((1 & ((1 << MACB_SOF_SIZE) - 1)) << MACB_SOF_OFFSET)
+                | ((2 & ((1 << MACB_RW_SIZE) - 1)) << MACB_RW_OFFSET)
+                | ((phy_adr & ((1 << MACB_PHYA_SIZE) - 1)) << MACB_PHYA_OFFSET)
+                | ((reg & ((1 << MACB_REGA_SIZE) - 1)) << MACB_REGA_OFFSET)
+                | ((2 & ((1 << MACB_CODE_SIZE) - 1)) << MACB_CODE_OFFSET);
+
+    writev((u32 *)(MACB_IOBASE + MACB_MAN), frame);
+    while ((readv((u32 *)(MACB_IOBASE + MACB_NSR)) & (1 << MACB_IDLE_OFFSET)) == 0)
+    {}
+
+    frame = readv((u32 *)(MACB_IOBASE + MACB_MAN));
+
+    netctl = readv((u32 *)(MACB_IOBASE + MACB_NCR));
+    netctl &= ~(1 << MACB_MPE_OFFSET);
+    writev((u32 *)(MACB_IOBASE + MACB_NCR), netctl);
+
+    return ((frame >> MACB_DATA_OFFSET) & ((1 << MACB_DATA_SIZE) - 1));
+}
+
+void macb_mdio_write(u32 phy_adr, u32 reg, u16 value)
+{
+    // info!("mdio write phy_adr: {:#x}, reg: {:#x}, value: {:#x}", phy_adr, reg, value);
+    u32 netctl = readv((u32 *)(MACB_IOBASE + MACB_NCR));
+    netctl |= 1 << MACB_MPE_OFFSET;
+    writev((u32 *)(MACB_IOBASE + MACB_NCR), netctl);
+
+    // MACB_BF(name,value)
+    // (((value) & ((1 << MACB_x_SIZE) - 1)) << MACB_x_OFFSET)
+
+    u32 frame = ((1 & ((1 << MACB_SOF_SIZE) - 1)) << MACB_SOF_OFFSET)
+                | ((1 & ((1 << MACB_RW_SIZE) - 1)) << MACB_RW_OFFSET)
+                | ((phy_adr & ((1 << MACB_PHYA_SIZE) - 1)) << MACB_PHYA_OFFSET)
+                | ((reg & ((1 << MACB_REGA_SIZE) - 1)) << MACB_REGA_OFFSET)
+                | ((2 & ((1 << MACB_CODE_SIZE) - 1)) << MACB_CODE_OFFSET)
+                | (((u32)value & ((1 << MACB_DATA_SIZE) - 1)) << MACB_DATA_OFFSET);
+
+    writev((u32 *)(MACB_IOBASE + MACB_MAN), frame);
+    while ((readv((u32 *)(MACB_IOBASE + MACB_NSR)) & (1 << MACB_IDLE_OFFSET)) == 0)
+    {}
+
+    netctl = readv((u32 *)(MACB_IOBASE + MACB_NCR));
+    netctl &= !(1 << MACB_MPE_OFFSET);
+    writev((u32 *)(MACB_IOBASE + MACB_NCR), netctl);
+}
+
+static i32 macb_phy_find()
+{
+    u16 phy_id = macb_mdio_read(macb.phy_addr, MII_PHYSID1);
+    if (phy_id != 0xffff)
+    {
+        NET_DEBUG("PHY present at 0x%x\n", macb.phy_addr);
+        return 0;
+    }
+    // Search for PHY...
+    for (int i = 0; i < 32; ++i)
+    {
+        macb.phy_addr = i;
+        phy_id = macb_mdio_read(macb.phy_addr, MII_PHYSID1);
+        if (phy_id != 0xffff)
+        {
+            NET_DEBUG("Found PHY present at {%d}\n", i);
+            return 0;
+        }
+    }
+
+    // PHY isn't up to snuff
+    NET_DEBUG("PHY not found\n");
+    return -19; // ENODEV
+}
+
+static int phy_reset(u32 phydev_addr, PhyInterfaceMode _interface, u32 phydev_flags)
+{
+    i32 timeout = 500;
+
+    NET_DEBUG("PHY soft reset\n");
+    if ((phydev_flags & PHY_FLAG_BROKEN_RESET) != 0)
+    {
+        NET_DEBUG("PHY soft reset not supported\n");
+        return 0;
+    }
+
+    macb_mdio_write(phydev_addr, MII_BMCR, BMCR_RESET);
+    /*
+     * Poll the control register for the reset bit to go to 0 (it is
+     * auto-clearing).  This should happen within 0.5 seconds per the
+     * IEEE spec.
+     */
+    u16 reg = macb_mdio_read(phydev_addr, MII_BMCR);
+    while (((reg & BMCR_RESET) != 0) && (timeout != 0))
+    {
+        timeout -= 1;
+        reg = macb_mdio_read(phydev_addr, MII_BMCR);
+        usdelay(1000);
+    }
+    if ((reg & BMCR_RESET) != 0)
+    {
+        NET_DEBUG("PHY reset timed out\n");
+        return -1;
+    }
+    return 0;
+}
+
+static void phy_connect_dev()
+{
+    u32 phydev_addr = macb.phy_addr;
+    PhyInterfaceMode phydev_interface = macb.phy_interface;
+    u32 phydev_flags = 0;
+
+    i32 phydev = 0xff;
+
+    if (phydev != 0)
+    {
+        /* Soft Reset the PHY */
+        phy_reset(phydev_addr, phydev_interface, phydev_flags);
+        NET_DEBUG("Ethernet connected to PHY\n");
+
+        // phy_config needs phydev
+        vsc8541_config(phydev_addr, phydev_interface);
+    }
+    else
+    {
+        NET_DEBUG("Could not get PHY for ethernet: addr 0x%x\n", macb.phy_addr);
+    }
+}
+
+static void macb_phy_reset(char *name)
+{
+    u32 status = 0;
+    u32 adv = ADVERTISE_CSMA | ADVERTISE_ALL;
+    macb_mdio_write(macb.phy_addr, MII_ADVERTISE, adv);
+    NET_DEBUG("%s Starting autonegotiation...\n", name);
+    macb_mdio_write(macb.phy_addr,
+                    MII_BMCR,
+                    (BMCR_ANENABLE | BMCR_ANRESTART));
+
+    u32 i = 0;
+    while (i < (MACB_AUTONEG_TIMEOUT / 100))
+    {
+        i += 1;
+        status = macb_mdio_read(macb.phy_addr, MII_BMSR);
+        if ((status & BMSR_ANEGCOMPLETE) != 0)
+        {
+            break;
+        }
+        usdelay(200);
+    }
+
+    if ((status & BMSR_ANEGCOMPLETE) != 0)
+    {
+        NET_DEBUG("{%s} Autonegotiation complete\n", name);
+    }
+    else
+    {
+        NET_DEBUG("{%s} Autonegotiation timed out (status={%d})\n", name, status);
+    }
+}
+
+static char *mystrncpy(char *s, const char *t, int n)
+{
+    char *os;
+
+    os = s;
+    while (n-- > 0 && (*s++ = *t++) != 0)
+        ;
+    while (n-- > 0)
+        *s++ = 0;
+    return os;
+}
+
+static i32 macb_linkspd_cb(u32 speed)
+{
+    u64 rate = 0;
+    switch (speed)
+    {
+    case 10: {
+        rate = 2500000;
+        break;
+    }
+    case 100: {
+        rate = 25000000;
+        break;
+    }
+    case 1000: {
+        rate = 125000000;
+        break;
+    }
+    default: {
+        return 0;
+    }
+    }
+    // clk_init
+    macb_sifive_clk_init(rate);
+    return 0;
+}
+
+static u32 mii_nway_result(u32 negotiated)
+{
+    u32 ret = 0;
+    if ((negotiated & LPA_100FULL) != 0)
+    {
+        ret = LPA_100FULL;
+    }
+    else if ((negotiated & LPA_100BASE4) != 0)
+    {
+        ret = LPA_100BASE4;
+    }
+    else if ((negotiated & LPA_100HALF) != 0)
+    {
+        ret = LPA_100HALF;
+    }
+    else if ((negotiated & LPA_10FULL) != 0)
+    {
+        ret = LPA_10FULL;
+    }
+    else
+    {
+        ret = LPA_10HALF;
+    }
+
+    return ret;
+}
+
+static i32 macb_phy_init(char *name)
+{
+    NET_DEBUG("macb phy init begin.\n");
+    // Auto-detect phy_addr
+    i32 ret = macb_phy_find(macb);
+    NET_DEBUG("macb phy find end.\n");
+    if (ret != 0) return ret;
+
+    // Check if the PHY is up to snuff...
+    u16 phy_id = macb_mdio_read(macb.phy_addr, MII_PHYSID1);
+    if (phy_id == 0xffff)
+    {
+        NET_DEBUG("No PHY present\n");
+        return -10; // ENODEV
+    }
+    NET_DEBUG("macb_phy_init phy_id: %d\n", phy_id);
+
+    // Find macb->phydev
+    phy_connect_dev(&macb);
+
+    u32 status = macb_mdio_read(macb.phy_addr, MII_BMSR);
+    if ((status & BMSR_LSTATUS) == 0)
+    {
+        // Try to re-negotiate if we don't have link already.
+        macb_phy_reset(name);
+        u32 i = 0;
+        while (i < (MACB_AUTONEG_TIMEOUT / 100))
+        {
+            i += 1;
+            status = macb_mdio_read(macb.phy_addr, MII_BMSR);
+            if ((status & BMSR_LSTATUS) != 0)
+            {
+                // Delay a bit after the link is established, so that the next xfer does not fail
+                msdelay(10);
+                break;
+            }
+            usdelay(100);
+        }
+    }
+
+    if ((status & BMSR_LSTATUS) == 0)
+    {
+        NET_DEBUG("%s link down (status: %d)\n", name, status);
+        return -100; // ENETDOWN
+    }
+
+    u32 ncfgr = 0;
+    u16 lpa = 0;
+    u16 adv = 0;
+
+    // First check for GMAC and that it is GiB capable
+    if (macb_is_gem())
+    {
+        lpa = macb_mdio_read(macb.phy_addr, MII_STAT1000);
+
+        if ((lpa & (u16)(LPA_1000FULL | LPA_1000HALF | LPA_1000XFULL | LPA_1000XHALF)) != 0)
+        {
+            u32 duplex = ((lpa & (u16)(LPA_1000FULL | LPA_1000XFULL)) == 0) ? 0 : 1;
+            char duplex_str[5];
+            if (duplex == 1) { mystrncpy(duplex_str, "full", 5); }
+            else { mystrncpy(duplex_str, "half", 4); }
+            NET_DEBUG("%s GiB capable, link up, 1000Mbps %s-duplex (lpa: %u)\n",
+                      name, duplex_str, lpa);
+
+            ncfgr = readv((u32 *)(MACB_IOBASE + MACB_NCFGR));
+            ncfgr &= ~((1 << MACB_SPD_OFFSET) | (1 << MACB_FD_OFFSET));
+            ncfgr |= 1 << GEM_GBE_OFFSET;
+            if (duplex == 1)
+            {
+                ncfgr |= 1 << MACB_FD_OFFSET;
+            }
+
+            writev((u32 *)(MACB_IOBASE + MACB_NCFGR), ncfgr);
+
+            macb_linkspd_cb(_1000BASET);
+
+            return 0;
+        }
+    }
+
+    // fall back for EMAC checking
+    adv = macb_mdio_read(macb.phy_addr, MII_ADVERTISE);
+    lpa = macb_mdio_read(macb.phy_addr, MII_LPA);
+    u32 media = mii_nway_result((u32)(lpa & adv));
+
+    u32 speed = ((media & (ADVERTISE_100FULL | ADVERTISE_100HALF)) == 0) ? 0 : 1;
+    char speed_str[4];
+    if (speed == 1) { mystrncpy(speed_str, "100", 4); }
+    else { mystrncpy(speed_str, "10", 4); }
+    u32 duplex = ((media & ADVERTISE_FULL) == 0) ? 0 : 0;
+    char duplex_str[5];
+    if (duplex == 1) { mystrncpy(duplex_str, "full", 5); }
+    else { mystrncpy(duplex_str, "half", 4); }
+    NET_DEBUG("{%s} link up, {%s}Mbps {%s}-duplex (lpa: {%d})\n",
+              name, speed_str, duplex_str, lpa);
+
+    ncfgr = readv((u32 *)(MACB_IOBASE + MACB_NCFGR));
+    ncfgr &= ~((1 << MACB_SPD_OFFSET) | (1 << MACB_FD_OFFSET) | (1 << GEM_GBE_OFFSET));
+    if (speed == 1)
+    {
+        ncfgr |= 1 << MACB_SPD_OFFSET;
+        macb_linkspd_cb(_100BASET);
+    }
+    else
+    {
+        macb_linkspd_cb(_10BASET);
+    }
+    if (duplex == 1)
+    {
+        ncfgr |= (1 << MACB_FD_OFFSET);
+    }
+    writev((u32 *)(MACB_IOBASE + MACB_NCFGR), ncfgr);
+    fence();
+    NET_DEBUG("macb phy init end.\n");
+    return 0;
+}
+
+static void macb_start()
+{
+    NET_DEBUG("MACB start begin.\n");
+
+    u32 buffer_size = GEM_RX_BUFFER_SIZE;
+    char name[] = "ethernet@10090000";
+
+    // sifive config
+    config.dma_burst_length = 16;
+    config.hw_dma_cap = HW_DMA_CAP_32B;
+    config.caps = 0;
+    config.clk_init = macb_sifive_clk_init;
+    config.usrio_mii = 1 << MACB_MII_OFFSET;
+    config.usrio_rmii = 1 << MACB_RMII_OFFSET;
+    config.usrio_rgmii = 1 << GEM_RGMII_OFFSET;
+    config.usrio_clken = 1 << MACB_CLKEN_OFFSET;
+    NET_DEBUG("sifive config compelete.\n");
+
+    // 给 tx_ring 和 rx_ring 各分配一页的空间
+    Page *page;
+    pageAlloc(&page);
+    page->ref++;
+    u64 tx_ring_dma = page2PA(page);
+    DmaDesc *tx_ring = (DmaDesc *)tx_ring_dma;
+    pageAlloc(&page);
+    page->ref++;
+    u64 rx_ring_dma = page2PA(page);
+    DmaDesc *rx_ring = (DmaDesc *)rx_ring_dma;
+    NET_DEBUG("alloc memory for the tx_ring and the rx_ring.\n");
+
+    u64 rx_buffer_dma = 0;
+    u64 paddr = 0;
+    // 分配 buffer, 将 buffer 首地址登记到 rx_ring 和 recv_buffer 中
+    for (int i = 0; i < MACB_RX_RING_SIZE; i++)
+    {
+        //
+        if (i % 2 == 0)
+        {
+            pageAlloc(&page);
+            page->ref++;
+            paddr = page2PA(page);
+            if (i == 0) rx_buffer_dma = paddr;
+        }
+        // 对于奇数 buffer，他在一页的 2048 偏移处
+        else
+        {
+            paddr += buffer_size;
+        }
+
+        if (i == MACB_RX_RING_SIZE - 1)
+        {
+            paddr |= 1 << MACB_RX_WRAP_OFFSET;
+        }
+
+        rx_ring[i].ctrl = 0;
+        rx_ring[i].addr = paddr;
+        recv_buffers[i] = paddr;
+    }
+    LOAD_DEBUG("Set ring desc buffer for RX\n");
+
+    // 和上面同理
+    u64 tx_buffer_dma = 0;
+    for (int i = 0; i < MACB_TX_RING_SIZE; ++i)
+    {
+        if (i % 2 == 0)
+        {
+            pageAlloc(&page);
+            page->ref++;
+            paddr = page2PA(page);
+            if (i == 0) tx_buffer_dma = paddr;
+        }
+        else
+        {
+            paddr = paddr + buffer_size;
+        }
+
+        tx_ring[i].addr = paddr;
+
+        if (i == MACB_TX_RING_SIZE - 1)
+        {
+            tx_ring[i].ctrl = (1 << MACB_TX_USED_OFFSET) | (1 << MACB_TX_WRAP_OFFSET);
+        }
+        else
+        {
+            tx_ring[i].ctrl = (1 << MACB_TX_USED_OFFSET);
+        }
+        // Used – must be zero for the controller to read data to the transmit buffer.
+        // The controller sets this to one for the first buffer of a frame once it has been successfully transmitted.
+        // Software must clear this bit before the buffer can be used again.
+
+        send_buffers[i] = paddr;
+    }
+    LOAD_DEBUG("Set ring desc buffer for TX\n");
+
+    // 分配 dummy desc
+    pageAlloc(&page);
+    page->ref++;
+    u64 dummy_desc_dma = page2PA(page);
+    dummy_desc = (DmaDesc *)dummy_desc_dma;
+    LOAD_DEBUG("dummy desc at 0x%lx\n", dummy_desc_dma);
+
+    // 填写 macb
+    u64 pclk_rate = 125125000; // from eth_macb.rs
+    macb.regs = MACB_IOBASE;
+    macb.is_big_endian = is_big_endian();
+    macb.config = &config;
+    macb.rx_tail = 0;
+    macb.tx_head = 0;
+    macb.tx_tail = 0;
+    macb.next_rx_tail = 0;
+    macb.wrapped = false;
+    macb.recv_buffers = recv_buffers;
+    macb.send_buffers = send_buffers;
+    macb.rx_ring = rx_ring;
+    macb.tx_ring = tx_ring;
+    macb.buffer_size = buffer_size;
+    macb.rx_buffer_dma = rx_buffer_dma;
+    macb.tx_buffer_dma = tx_buffer_dma;
+    macb.rx_ring_dma = rx_ring_dma;
+    macb.tx_ring_dma = tx_ring_dma;
+    macb.dummy_desc = dummy_desc;
+    macb.dummy_desc_dma = dummy_desc_dma;
+    macb.phy_addr = 0;
+    macb.pclk_rate = pclk_rate;
+    macb.phy_interface = PhyInterfaceMode_GMII;
+    LOAD_DEBUG("rx_buffer_dma is 0x%lx, tx_ring_dma is 0x%lx, dummy_desc_dma is 0x%lx\n",
+               rx_buffer_dma, tx_buffer_dma, dummy_desc_dma);
+    // 登记 RBQ 和 TBQ
+    *MACB_REG(MACB_RBQP) = (u32)rx_ring_dma;
+    *MACB_REG(MACB_TBQP) = (u32)tx_ring_dma;
+
+    u32 val = 0;
+    if (macb_is_gem())
+    {
+        gmac_configure_dma();
+        gmac_init_multi_queues();
+        if ((macb.phy_interface == PhyInterfaceMode_RGMII)
+            || (macb.phy_interface == PhyInterfaceMode_RGMII_ID)
+            || (macb.phy_interface == PhyInterfaceMode_RGMII_RXID)
+            || (macb.phy_interface == PhyInterfaceMode_RGMII_TXID))
+        {
+            val = macb.config->usrio_rgmii;
+        }
+        else if (macb.phy_interface
+                 == PhyInterfaceMode_RMII)
+        {
+            val = macb.config->usrio_rmii;
+        }
+        else if (macb.phy_interface
+                 == PhyInterfaceMode_MII)
+        {
+            val = macb.config->usrio_mii;
+        }
+
+        if ((macb.config->caps & ((u32)MACB_CAPS_USRIO_HAS_CLKEN)) != 0)
+        {
+            val |= macb.config->usrio_clken;
+        }
+
+        *MACB_REG(GEM_USRIO) = val;
+
+        if (macb.phy_interface == PhyInterfaceMode_SGMII)
+        {
+            u32 ncfgr = readv((u32 *)(MACB_IOBASE + MACB_NCFGR));
+            ncfgr |= (1 << GEM_SGMIIEN_OFFSET) | (1 << GEM_PCSSEL_OFFSET);
+            NET_DEBUG("Write MACB_NCFGR: 0x%x when SGMII\n", ncfgr);
+            *MACB_REG(MACB_NCFGR) = ncfgr;
+        }
+        else
+        {
+            if (macb.phy_interface == PhyInterfaceMode_RMII)
+            {
+                *MACB_REG(MACB_USRIO) = 0;
+            }
+            else
+            {
+                *MACB_REG(MACB_USRIO) = macb.config->usrio_mii;
+            }
+        }
+    }
+
+    i32 ret = macb_phy_init(name);
+    if (ret != 0)
+    {
+        panic("macb_phy_init returned: %d in failure", ret);
+    }
+
+    NET_DEBUG("Enable TX and RX\n");
+    *MACB_REG(MACB_NCR) = (1 << MACB_TE_OFFSET) | (1 << MACB_RE_OFFSET);
+    fence();
+
+    u32 nsr = *MACB_REG(MACB_NSR);
+    u32 tsr = *MACB_REG(MACB_TSR);
+
+    printk("MACB_NSR: 0x%x, MACB_TSR: 0x%x\n", nsr, tsr);
+    msdelay(90);
+}
+
+void macbInit()
+{
+    printk("macb init begin.\n");
+    sifive_prci_set_rate();
+    sifive_prci_enable();
+    sifive_prci_ethernet_release_reset();
+
+    macb_eth_probe();
+    macb_start();
+    printk("macb init end.\n");
+}
+
+void macbTest()
+{
+    u8 packet[64] = {
+        // dst
+        0x70,
+        0xb3,
+        0xd5,
+        0x92,
+        0xfa,
+        0xfc,
+        // src
+        0x70,
+        0xb3,
+        0xd5,
+        0x92,
+        0xfa,
+        0xfc,
+
+        // content
+        0x11,
+        0x23,
+    };
+    int len = sizeof(packet);
+    u8 *ans = kmalloc(100);
+    macbSend(packet, len);
+    printk("finished send.\n");
+    while ((len = macbRecv(ans)) == -11)
+        ;
+
+    printk("len is %d\n", len);
+    for (int i = 0; i < len; i += 16)
+    {
+        for (int j = 0; j < 16; j++)
+        {
+            printk("%0x ", ans[i * 16 + j]);
+        }
+        printk("\n");
+    }
+    panic("AC");
+}
+
+/**
+ * @brief 发送一个 mac 包
+ *
+ * @param packet 包的首地址
+ * @param length 包的长度
+ * @return i32 0 为成功
+ */
+i32 macbSend(u8 *packet, u32 length)
+{
+    u64 tx_head = macb.tx_head;
+    // let paddr: u64 = flush_dcache_range(packet, length); // DMA_TO_DEVICE
+    // let paddr: u64 = packet.as_ptr() as u64;
+
+    u32 ctrl = length & TXBUF_FRMLEN_MASK;
+
+    // Last buffer, when set this bit indicates that the last buffer in the current frame has been reached.
+    ctrl |= (1 << MACB_TX_LAST_OFFSET);
+    // Clear Used bit
+    ctrl &= ~(1 << MACB_TX_USED_OFFSET);
+
+    // 确定一个空闲的 buffer
+    // ring 的最后一个成员 TX_WRAP
+    if (tx_head == (MACB_TX_RING_SIZE - 1))
+    {
+        // Wrap - marks last descriptor in transmit buffer descriptor list.
+        // This can be set for any buffer within the frame.
+        ctrl |= (1 << MACB_TX_WRAP_OFFSET);
+        macb.tx_head = 0; // 预先把下一个 head 归为0
+    }
+    else
+    {
+        macb.tx_head += 1;
+    }
+
+    // 将 packet 的内容拷贝到这个包里
+    // u8 *txbuf = (u8 *)(macb.send_buffers[tx_head]);
+    u32 pa = macb.send_buffers[tx_head];
+    u8 *txbuf = (u8 *)((u64)pa);
+    for (int i = 0; i < length; ++i)
+    {
+        txbuf[i] = packet[i];
+    }
+
+    macb.tx_ring[tx_head].ctrl = ctrl;
+    // 初始化时已经填过 tx paddr
+    // macb.tx_ring[tx_head].addr = lower_32_bits(paddr);
+
+    fence();
+
+    // TX ring dma desc
+    NET_DEBUG("Send packet: buffer_id: %d len: %d, addr: 0x%lx, DmaDesc: 0x%lx\n",
+              tx_head, length, macb.send_buffers[tx_head], macb.tx_ring[tx_head]);
+
+    writev((u32 *)(MACB_IOBASE + MACB_NCR),
+           (1 << MACB_TE_OFFSET) | (1 << MACB_RE_OFFSET) | (1 << MACB_TSTART_OFFSET));
+
+    // u32 tsr = readv((u32 *)(MACB_IOBASE + MACB_TSR));
+    // NET_DEBUG("Tx MACB_TSR = 0x%x\n", tsr);
+
+    /*
+     * I guess this is necessary because the networking core may
+     * re-use the transmit buffer as soon as we return...
+     */
+    for (int i = 0; i < MACB_TX_TIMEOUT; ++i)
+    {
+        fence();
+        // barrier();
+        ctrl = macb.tx_ring[tx_head].ctrl;
+        if ((ctrl & (1 << MACB_TX_USED_OFFSET)) != 0)
+        {
+            if ((ctrl & (1 << MACB_TX_UNDERRUN_OFFSET)) != 0)
+            {
+                NET_DEBUG("TX underrun\n");
+            }
+            if ((ctrl & (1 << MACB_TX_BUF_EXHAUSTED_OFFSET)) != 0)
+            {
+                NET_DEBUG("TX buffers exhausted in mid frame\n");
+            }
+            NET_DEBUG("Tx %d desc.ctrl = 0x%x\n", tx_head, ctrl);
+            break;
+        }
+        usdelay(1);
+
+        if (i == MACB_TX_TIMEOUT) { NET_DEBUG("TX timeout\n"); }
+    }
+    // dma_unmap_single(paddr, length, DMA_TO_DEVICE);
+    return 0;
+}
+
+/**
+ * @brief 回收 rx_buffer，直到遇到 new_tail
+ *
+ * @param new_tail 真正的 tail
+ */
+static void reclaim_rx_buffers(u64 new_tail)
+{
+    u32 count = 0;
+    u64 i = macb.rx_tail;
+    NET_DEBUG("reclaim_rx_buffers, macb.rx_tail: %d, new_tail: %d\n",
+              i, new_tail);
+
+    while (i > new_tail)
+    {
+        count = i;
+        macb.rx_ring[count].addr &= ~(1 << MACB_RX_USED_OFFSET);
+        i += 1;
+        if (i >= MACB_RX_RING_SIZE)
+            i = 0;
+    }
+    while (i < new_tail)
+    {
+        count = i;
+        macb.rx_ring[count].addr &= ~(1 << MACB_RX_USED_OFFSET);
+        i += 1;
+    }
+    fence();
+    macb.rx_tail = new_tail;
+}
+
+/**
+ * @brief 接收一个包
+ *
+ * @param packet 目的地址
+ * @return i32 负值为错误，正值为长度
+ */
+i32 macbRecv(u8 *packet)
+{
+    u32 status = 0;
+    u32 length = 0;
+    u32 count = 0;
+
+    u64 next_rx_tail = macb.next_rx_tail;
+    macb.wrapped = false;
+    while (1)
+    {
+        count += 1; // TODO: count 到一定次数后，就走出循环
+        // 检验 next 是否被占用
+        if ((macb.rx_ring[next_rx_tail].addr & (1 << MACB_RX_USED_OFFSET)) == 0)
+        {
+            return -11; // EAGAIN
+        }
+        status = macb.rx_ring[next_rx_tail].ctrl;
+        if ((status & (1 << MACB_RX_SOF_OFFSET)) != 0)
+        {
+            if (next_rx_tail != macb.rx_tail)
+            {
+                reclaim_rx_buffers(next_rx_tail);
+            }
+            macb.wrapped = false;
+        }
+
+        if ((status & (1 << MACB_RX_EOF_OFFSET)) != 0)
+        {
+            // buffer = macb.rx_buffer + macb.rx_buffer_size * macb.rx_tail;
+            u64 buffer = macb.rx_buffer_dma + macb.buffer_size * macb.rx_tail;
+            length = status & RXBUF_FRMLEN_MASK;
+            //
+            if (macb.wrapped)
+            {
+                NET_DEBUG("recv wrapped net_rx_packets is not implemented\n");
+            }
+            else
+            {
+                // *packet = buffer;
+                // 把 DMA buffer中的网络包拷贝出来
+                u8 *rx_packets = (u8 *)buffer;
+                for (int i = 0; i < length; ++i)
+                {
+                    packet[i] = rx_packets[i];
+                }
+            }
+            NET_DEBUG("Recv packet: buffer_id: %d, count: %d, length: %d, addr: 0x%lx",
+                      next_rx_tail, count, length, macb.rx_ring[next_rx_tail]);
+
+            next_rx_tail += 1;
+            if (next_rx_tail >= MACB_RX_RING_SIZE)
+            {
+                next_rx_tail = 0;
+            }
+            macb.next_rx_tail = next_rx_tail;
+
+            return length;
+        }
+        else
+        {
+            next_rx_tail += 1;
+            if (next_rx_tail >= MACB_RX_RING_SIZE)
+            {
+                macb.wrapped = true;
+                next_rx_tail = 0;
+            }
+        }
+        fence();
+    } // loop
+
+    return -1;
+}

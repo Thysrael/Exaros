@@ -405,6 +405,13 @@ int tkill(int tid, int sig)
     return ret;
 }
 
+int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
+{
+    Thread *thread = myThread();
+    SignalContext *sc = getFirstSignalContext(thread);
+    return sc == NULL ? 0 : sc->signal;
+}
+
 void sigreturn()
 {
     Trapframe *tf = getHartTrapFrame();
