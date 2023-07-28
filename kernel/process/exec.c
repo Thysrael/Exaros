@@ -643,7 +643,7 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
     LOAD_DEBUG("finished push argv\n");
 
     // 拷贝环境变量
-    char *envVariable[] = {};
+    char *envVariable[] = {"PATH=/"};
     int envCount = sizeof(envVariable) / sizeof(char *);
     for (int i = 0; i < envCount; i++)
     {
