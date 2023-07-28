@@ -7,7 +7,7 @@
 // #define CNX_DEBUG_
 // #define QS_DEBUG_
 // #define CHL_DEBUG_
-#define LOAD_DEBUG_
+// #define LOAD_DEBUG_
 // #define SYSCALL_DEBUG_
 // #define NET_DEBUG_
 #define SOCKET_DEBUG_

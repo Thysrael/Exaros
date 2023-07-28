@@ -13,35 +13,35 @@
 
 #define MAX_ARG 32 // max exec arguments
 
-static int loadSeg(u64 *pagetable,
-                   u64 va,
-                   DirMeta *dm,
-                   u64 offset,
-                   u64 sz)
-{
-    u64 pa;
-    int cow;
-    u64 n;
-    u64 begin = va;
-    u64 end = va + sz;
-    while (begin < end)
-    {
-        printk("load seg at 0x%lx, offset is 0x%lx\n", begin, offset + (begin - va));
-        pa = va2PA(pagetable, begin, &cow);
-        if (pa == NULL)
-            panic("loadSeg: address should exist");
-        if (cow)
-        {
-            cowHandler(pagetable, begin);
-        }
-        n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
-        if (metaRead(dm, 0, (u64)pa, offset + (begin - va), n) != n)
-            return -1;
-        begin += n;
-    }
+// static int loadSeg(u64 *pagetable,
+//                    u64 va,
+//                    DirMeta *dm,
+//                    u64 offset,
+//                    u64 sz)
+// {
+//     u64 pa;
+//     int cow;
+//     u64 n;
+//     u64 begin = va;
+//     u64 end = va + sz;
+//     printk("load seg at 0x%lx, offset is 0x%lx\n", begin, offset + (begin - va));
+//     while (begin < end)
+//     {
+//         pa = va2PA(pagetable, begin, &cow);
+//         if (pa == NULL)
+//             panic("loadSeg: address should exist");
+//         if (cow)
+//         {
+//             cowHandler(pagetable, begin);
+//         }
+//         n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
+//         if (metaRead(dm, 0, (u64)pa, offset + (begin - va), n) != n)
+//             return -1;
+//         begin += n;
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
 // static int prepSeg(u64 *pagetable, u64 va, u64 filesz)
 // {
@@ -418,74 +418,75 @@ static u64 totalLoadRange(const Phdr *phdr, int phnum)
  * @param total_size load segment 的总长度
  * @return u64 映射后内存起始地址
  */
-// static u64 elf_map(struct File *filep, u64 addr, Phdr *eppnt, int prot, int type, u64 total_size)
-// {
-//     u64 map_addr;
-//     u64 size = eppnt->filesz + PAGE_OFFSET(eppnt->vaddr, PAGE_SIZE);
-//     u64 off = eppnt->offset - PAGE_OFFSET(eppnt->vaddr, PAGE_SIZE);
-//     addr = ALIGN_DOWN(addr, PAGE_SIZE);
-
-//     if (!size)
-//         return addr;
-
-//     /*
-//      * total_size is the size of the ELF (interpreter) image.
-//      * The _first_ do_mmap needs to know the full size, otherwise
-//      * randomization might put this image into an overlapping
-//      * position with the ELF binary image. (since size < total_size)
-//      * So we first map the 'big' image - and unmap the remainder at
-//      * the end. (which unmap is needed for ELF images with holes.)
-//      */
-//     // 这是第一次的情况，利用 do_map 将整个区域全部占住，这次是一个匿名 do_mmap
-//     // 之后在传参的时候，我们会注意将 total_size 置为 0
-//     if (total_size)
-//     {
-//         total_size = ALIGN_UP(total_size, PAGE_SIZE);
-//         map_addr = do_mmap(NULL, addr, total_size, prot, type, off);
-//         addr = map_addr;
-//         LOAD_DEBUG("first do map at 0x%lx\n", addr);
-//     }
-
-//     map_addr = do_mmap(filep, addr, size, prot, type, off);
-
-//     return map_addr;
-// }
-
-// static inline int make_prot(u32 p_flags)
-// {
-//     return PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT;
-// }
-
-static u64 heapInterpMap(u64 *pagetable, u64 total_size)
+static u64 elf_map(struct File *filep, u64 addr, Phdr *eppnt, int prot, int type, u64 total_size)
 {
-    Process *proc = myProcess();
-    // 分配出堆空间
-    proc->mmapHeapTop = ALIGN_UP(proc->mmapHeapTop, PAGE_SIZE);
-    u64 start = proc->mmapHeapTop;
-    proc->mmapHeapTop = ALIGN_UP(proc->mmapHeapTop + total_size, PAGE_SIZE);
-    assert(proc->mmapHeapTop < USER_STACK_BOTTOM);
+    u64 map_addr;
+    u64 size = eppnt->filesz + PAGE_OFFSET(eppnt->vaddr, PAGE_SIZE);
+    u64 off = eppnt->offset - PAGE_OFFSET(eppnt->vaddr, PAGE_SIZE);
+    addr = ALIGN_DOWN(addr, PAGE_SIZE);
 
-    Page *p;
-    u64 pa;
-    int cow;
-    u64 begin = start;
-    u64 end = begin + total_size;
-    u64 n;
-    while (begin < end)
+    if (!size)
+        return addr;
+
+    /*
+     * total_size is the size of the ELF (interpreter) image.
+     * The _first_ do_mmap needs to know the full size, otherwise
+     * randomization might put this image into an overlapping
+     * position with the ELF binary image. (since size < total_size)
+     * So we first map the 'big' image - and unmap the remainder at
+     * the end. (which unmap is needed for ELF images with holes.)
+     */
+    // 这是第一次的情况，利用 do_map 将整个区域全部占住，这次是一个匿名 do_mmap
+    // 之后在传参的时候，我们会注意将 total_size 置为 0
+    if (total_size)
     {
-        pa = va2PA(pagetable, begin, &cow);
-        if (pa == NULL)
-        {
-            if (pageAlloc(&p) < 0)
-                return -1;
-            pageInsert(pagetable, begin, p,
-                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT);
-        }
-        n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
-        begin += n;
+        total_size = ALIGN_UP(total_size, PAGE_SIZE);
+        map_addr = do_mmap(NULL, addr, total_size, prot, type, off);
+        addr = map_addr;
+        LOAD_DEBUG("first do map at 0x%lx\n", addr);
     }
-    return start;
+
+    map_addr = do_mmap(filep, addr, size, prot, type, off);
+
+    return map_addr;
 }
+
+static inline int make_prot(u32 p_flags)
+{
+    return PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
+}
+
+// static u64 heapInterpMap(u64 *pagetable, u64 total_size)
+// {
+//     Process *proc = myProcess();
+//     // 分配出堆空间
+//     proc->mmapHeapTop = ALIGN_UP(proc->mmapHeapTop, PAGE_SIZE);
+//     u64 start = proc->mmapHeapTop;
+//     proc->mmapHeapTop = ALIGN_UP(proc->mmapHeapTop + total_size, PAGE_SIZE);
+//     assert(proc->mmapHeapTop < USER_STACK_BOTTOM);
+
+//     Page *p;
+//     u64 pa;
+//     int cow;
+//     u64 begin = start;
+//     u64 end = begin + total_size;
+//     u64 n;
+//     while (begin < end)
+//     {
+//         printk("pre seg at 0x%lx\n", begin);
+//         pa = va2PA(pagetable, begin, &cow);
+//         if (pa == NULL)
+//         {
+//             if (pageAlloc(&p) < 0)
+//                 return -1;
+//             pageInsert(pagetable, begin, p,
+//                        PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT);
+//         }
+//         n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
+//         begin += n;
+//     }
+//     return start;
+// }
 
 /**
  * @brief 加载动态链接器，似乎是将动态链接器的 load segment 都加载到内存中
@@ -502,7 +503,7 @@ u64 load_elf_interp(u64 *pagetable, Ehdr *interp_elf_ex, DirMeta *interpreter, u
     Phdr *eppnt;
     u64 load_addr = 0;
     // 应该是一个 bool 值，表示 load_addr 是否被赋值
-    // int load_addr_set = 0;
+    int load_addr_set = 0;
     u64 error = ~0UL;
     u64 total_size;
     int i;
@@ -520,45 +521,49 @@ u64 load_elf_interp(u64 *pagetable, Ehdr *interp_elf_ex, DirMeta *interpreter, u
     首先申请 total_size（这里是不固定的，需要 OS 来分配）。直接调用 do_mmap();
     然后再把每个段填进去（这里的地址是确定的）
     */
-    load_addr = heapInterpMap(pagetable, total_size);
+    // load_addr = heapInterpMap(pagetable, total_size);
     // 遍历所有的 segment 项
     eppnt = interp_elf_phdata;
     for (i = 0; i < interp_elf_ex->phnum; i++, eppnt++)
     {
         if (eppnt->type == PT_LOAD)
         {
-            loadSeg(pagetable, eppnt->vaddr + load_addr, interpreter, eppnt->offset, eppnt->filesz);
-            // // type 是做 mmap 的类型
-            // int elf_type = MAP_PRIVATE_BIT;
-            // // prot 是页表的权限相关
-            // int elf_prot = make_prot(eppnt->flags);
-            // u64 vaddr = 0;
-            // // load 段的起始地址
-            // u64 map_addr;
+            // loadSeg(pagetable, eppnt->vaddr + load_addr, interpreter, eppnt->offset, eppnt->filesz);
+            // type 是做 mmap 的类型
+            int elf_type = MAP_PRIVATE_BIT;
+            // prot 是页表的权限相关
+            int elf_prot = make_prot(eppnt->flags);
+            u64 vaddr = 0;
+            // load 段的起始地址
+            u64 map_addr;
 
-            // vaddr = eppnt->vaddr;
-            // LOAD_DEBUG("load vaddr is 0x%lx\n", vaddr);
-            // /* 第一次会走第二个分支，第二次会走第一个分支 */
-            // if (interp_elf_ex->type == ET_EXEC || load_addr_set)
-            //     elf_type |= MAP_FIXED_BIT;
-            // else if (no_base && interp_elf_ex->type == ET_DYN)
-            //     load_addr = -vaddr;
-            // LOAD_DEBUG("elf map addr is 0x%lx\n", load_addr + vaddr);
-            // struct File interp_file;
-            // interp_file.meta = interpreter;
-            // interp_file.type = FD_ENTRY;
-            // interp_file.readable = 1;
-            // map_addr = elf_map(&interp_file, load_addr + vaddr, eppnt, elf_prot, elf_type, total_size);
-            // total_size = 0;
-            // error = map_addr;
-            // if (map_addr == -1)
-            //     panic("elf_map failed");
+            vaddr = eppnt->vaddr;
+            LOAD_DEBUG("load vaddr is 0x%lx\n", vaddr);
+            /* 第一次会走第二个分支，第二次会走第一个分支 */
+            if (interp_elf_ex->type == ET_EXEC || load_addr_set)
+            {
+                elf_type |= MAP_FIXED_BIT;
+                elf_prot = PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT;
+            }
 
-            // if (!load_addr_set && interp_elf_ex->type == ET_DYN)
-            // {
-            //     load_addr = map_addr - PAGE_OFFSET(vaddr, PAGE_SIZE);
-            //     load_addr_set = 1;
-            // }
+            else if (no_base && interp_elf_ex->type == ET_DYN)
+                load_addr = -vaddr;
+            LOAD_DEBUG("elf map addr is 0x%lx\n", load_addr + vaddr);
+            struct File interp_file;
+            interp_file.meta = interpreter;
+            interp_file.type = FD_ENTRY;
+            interp_file.readable = 1;
+            map_addr = elf_map(&interp_file, load_addr + vaddr, eppnt, elf_prot, elf_type, total_size);
+            total_size = 0;
+            error = map_addr;
+            if (map_addr == -1)
+                panic("elf_map failed");
+
+            if (!load_addr_set && interp_elf_ex->type == ET_DYN)
+            {
+                load_addr = map_addr - PAGE_OFFSET(vaddr, PAGE_SIZE);
+                load_addr_set = 1;
+            }
         }
     }
 
@@ -738,7 +743,9 @@ u64 exec(char *path, char **argv)
     // 根据 path 查询文件系统 meta
     DirMeta *srcMeta;
     processSegmentMapFree(myProcess());
-
+    Process *p = myProcess();
+    p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     if ((srcMeta = metaName(AT_FDCWD, path, true)) == 0)
     {
         printk("find file error, path: %s\n", path);
@@ -805,9 +812,7 @@ u64 exec(char *path, char **argv)
     LOAD_DEBUG("elf entry is 0x%lx\n", elfEntry);
     getHartTrapFrame()->sp = sp; // initial stack pointer
     LOAD_DEBUG("stack pointer is 0x%lx\n", sp);
-    Process *p = myProcess();
-    p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
-    p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
+
     p->execFile = srcMeta;
     pgdirFree(oldPageTable);
     asm volatile("fence.i");
