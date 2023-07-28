@@ -85,10 +85,10 @@ int socketAlloc(Socket **s)
  */
 Socket *remote_find_peer_socket(const Socket *local_sock)
 {
-    SocketAddr targetSa = local_sock->target_addr;
-    SocketAddr sourceSa = local_sock->addr;
-    SOCKET_DEBUG("source addr: 0x%x, port: 0x%x\n", sourceSa.addr, sourceSa.port);
-    SOCKET_DEBUG("target addr: 0x%x, port: 0x%x\n", targetSa.addr, targetSa.port);
+    // SocketAddr targetSa = local_sock->target_addr;
+    // SocketAddr sourceSa = local_sock->addr;
+    // SOCKET_DEBUG("source addr: 0x%x, port: 0x%x\n", sourceSa.addr, sourceSa.port);
+    // SOCKET_DEBUG("target addr: 0x%x, port: 0x%x\n", targetSa.addr, targetSa.port);
     for (int i = 0; i < SOCKET_COUNT; ++i)
     {
         if (sockets[i].used)
@@ -184,6 +184,7 @@ int bindSocket(int fd, SocketAddr *sa)
  */
 int listen(int sockfd)
 {
+    SOCKET_DEBUG("server tid is %d\n", myThread()->threadId);
     File *f = myProcess()->ofile[sockfd];
     if (f == NULL)
         panic("");
@@ -192,8 +193,8 @@ int listen(int sockfd)
     if (!sock)
         assert(0);
     sock->listening = 1;
-    SocketAddr *sa = &sock->addr;
-    SOCKET_DEBUG("addr: 0x%x, family: 0x%x, port: 0x%x\n", sa->addr, sa->family, sa->port);
+    // SocketAddr *sa = &sock->addr;
+    // SOCKET_DEBUG("addr: 0x%x, family: 0x%x, port: 0x%x\n", sa->addr, sa->family, sa->port);
     return 0;
 }
 
@@ -380,9 +381,10 @@ int accept(int sockfd, SocketAddr *addr)
     new_f->type = FD_SOCKET;
     new_f->readable = new_f->writable = true;
     // 唤醒客户端的 socket
-    Socket *peer_sock = remote_find_peer_socket(new_sock);
-    SOCKET_DEBUG("peer addr: 0x%x, port: 0x%x\n", peer_sock->addr.addr, peer_sock->addr.port);
-    wakeup(peer_sock);
+    // Socket *peer_sock = remote_find_peer_socket(new_sock);
+    // SOCKET_DEBUG("peer addr: 0x%x, port: 0x%x\n", peer_sock->addr.addr, peer_sock->addr.port);
+
+    // wakeup(peer_sock);
     // printf("[%s] wake up client\n", __func__);
 
     /* ----------- process on Remote Host --------- */
@@ -417,6 +419,10 @@ int connect(int sockfd, SocketAddr *addr)
     transSocketAddr(addr);
     // addr->addr = (127 << 24) + 1;
     // addr->family = 2;
+    if (addr->port == 0xffff)
+    {
+        addr->port = 12865;
+    }
     File *f = myProcess()->ofile[sockfd];
     assert(f->type == FD_SOCKET);
 
@@ -447,7 +453,9 @@ int connect(int sockfd, SocketAddr *addr)
 
     // Wait for server to accept the connection request.
     acquireLock(&local_sock->lock);
-    sleep(local_sock, &local_sock->lock);
+    SOCKET_DEBUG("I am sleeping, tid is %d\n", myThread()->threadId);
+    // sleep(local_sock, &local_sock->lock);
+    SOCKET_DEBUG("I wake up\n");
     releaseLock(&local_sock->lock);
 
     /* ----------- process on Remote Host --------- */
