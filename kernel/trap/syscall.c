@@ -1264,7 +1264,10 @@ void syscallExec()
             printk("%d : %s\n", i, argv[i]);
         if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c') // 跳过 pthread
         {
-            goto bad;
+            myThread()->retValue = 0;
+            myThread()->clearChildTid = 0;
+
+            threadDestroy(myThread());
         }
     }
 

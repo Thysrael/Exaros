@@ -442,7 +442,7 @@ void yield()
             LIST_REMOVE(th, scheduleLink);
             count = th->process->priority;
         }
-        printk("finding a process to yield... %d, %d, %d\n", point, th->state, (int)intr_get());
+        CNX_DEBUG("finding a process to yield... %d, %d, %d\n", point, th->state, (int)intr_get());
     }
 
     // 在这里关掉中断，不然 sleep 到一半的时候被打断
@@ -454,7 +454,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    printk("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
+    CNX_DEBUG("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
 
     // syscall_watetime 的范围值设置为 0
     if (th->awakeTime > 0)
