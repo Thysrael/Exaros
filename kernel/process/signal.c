@@ -5,39 +5,47 @@
 #include "process.h"
 #include "signal.h"
 
-int signalEmptySet(SignalSet *set)
+int signalSetEmpty(SignalSet *set)
 {
     set->signal = 0;
     return 0;
 }
 
-int signalFillset(SignalSet *set)
+int signalSetFill(SignalSet *set)
 {
     set->signal = 0xffffffffffffffff;
     return 0;
 }
 
-int signalAddSet(SignalSet *set, int signal)
+int signalSetAdd(SignalSet *set, int signal)
 {
     if (signal < 1 || signal > SIGNAL_COUNT) { return -1; }
     set->signal |= 1ULL << (signal - 1);
     return 0;
 }
 
-int signalDelSet(SignalSet *set, int signal)
+int signalSetDel(SignalSet *set, int signal)
 {
     if (signal < 1 || signal > SIGNAL_COUNT) { return -1; }
     set->signal &= ~(1ULL << (signal - 1));
     return 0;
 }
 
-bool signalIsMember(SignalSet *set, int signal)
+int signalSetOr(SignalSet *set, SignalSet *set1)
+{
+    set->signal |= set1->signal;
+    return 0;
+}
+
+bool signalSetIsMember(SignalSet *set, int signal)
 {
     return (set->signal & (1ULL << (signal - 1))) != 0;
 }
 
 SignalContext signalContext[SIGNAL_CONTEXT_COUNT];
+
 SignalContextList freeSignalContextList;
+
 struct Spinlock signalContextListLock;
 
 /**
@@ -54,16 +62,6 @@ void signalInit()
 }
 
 /**
- * @brief 释放 Signal Context
- *
- * @param sc
- */
-void signalContextFree(SignalContext *sc)
-{
-    LIST_INSERT_HEAD(&freeSignalContextList, sc, link);
-}
-
-/**
  * @brief 申请 Signal Context
  *
  * @param signalContext
@@ -76,7 +74,6 @@ int signalContextAlloc(SignalContext **signalContext)
     {
         *signalContext = sc;
         LIST_REMOVE(sc, link);
-        sc->start = false;
         return 0;
     }
     printk("there's no signal context left!\n");
@@ -84,113 +81,28 @@ int signalContextAlloc(SignalContext **signalContext)
     return -1;
 }
 
-// SignalContext *getFirstSignalContext(Thread *thread)
-// {
-//     SignalContext *sc = NULL;
-//     int signal;
-//     // 按照 ID 一个个进行处理
-//     for (signal = 0; signal < SIGNAL_COUNT; ++signal)
-//     {
-//         if (signalIsMember(&thread->pending, signal) && !signalIsMember(&thread->blocked, signal)) { break; }
-//     }
-//     if (signal == SIGNAL_COUNT) { return sc; }
-//     signal++;
-//     LIST_FOREACH(sc, &thread->waitingSignal, link)
-//     {
-//         if (sc->signal != signal) { continue; }
-//         break;
-//     }
-//     return sc;
-// }
+void signalContextFree(SignalContext *sc)
+{
+    LIST_REMOVE(sc, link);
+    LIST_INSERT_HEAD(&freeSignalContextList, sc, link);
+}
 
-SignalContext *getFirstSignalContext(Thread *thread)
+SignalContext *getFirstPendingSignal(Thread *thread)
 {
     SignalContext *sc = NULL;
-    LIST_FOREACH(sc, &thread->waitingSignal, link)
+    LIST_FOREACH(sc, &thread->pendingSignal, link)
     {
-        printk("ssssss: %lx, %d, %d, %d\n", (u64)sc, sc->start, signalIsMember(&thread->blocked, sc->signal), signalIsMember(&thread->processing, sc->signal));
-        if (!sc->start && (signalIsMember(&thread->blocked, sc->signal) || signalIsMember(&thread->processing, sc->signal)))
-        {
-            continue;
-        }
+        if (signalSetIsMember(&thread->blocked, sc->signal)) { continue; }
         return sc;
     }
     return NULL;
 }
 
-SignalContext *getHandlingSignal(Thread *thread)
-{
-    SignalContext *sc = NULL;
-    // acquireLock(&thread->lock);
-    LIST_FOREACH(sc, &thread->waitingSignal, link)
-    {
-        if (sc->start)
-        {
-            break;
-        }
-    }
-    // releaseLock(&thread->lock);
-    assert(sc != NULL);
-    return sc;
-}
-
-bool hasKillSignal(Thread *thread)
-{
-    SignalContext *sc = NULL;
-    // acquireLock(&thread->lock);
-    bool find = false;
-    LIST_FOREACH(sc, &thread->waitingSignal, link)
-    {
-        if (sc->signal == SIGKILL)
-        {
-            find = true;
-            break;
-        }
-    }
-    // releaseLock(&thread->lock);
-    return find;
-}
-
-void initFrame(SignalContext *sc, Thread *thread)
-{
-    Trapframe *tf = getHartTrapFrame();
-    u64 sp = ALIGN_DOWN(tf->sp - PAGE_SIZE, PAGE_SIZE);
-    Page *page;
-    int r;
-    if ((r = pageAlloc(&page)) < 0) { panic(""); }
-    pageInsert(myProcess()->pgdir, sp - PAGE_SIZE, page, PTE_USER_BIT | PTE_READ_BIT | PTE_WRITE_BIT);
-    u32 pageTop = PAGE_SIZE;
-
-    // pageTop -= sizeof(SignalInfo);
-    // u64 sigInfo;
-    // sigInfo = pageTop = ALIGN_DOWN(pageTop, 16);
-    // SignalInfo si = {0};
-    // bcopy(&si, (void *)page2PA(page) + pageTop, sizeof(SignalInfo));
-    // pageTop -= sizeof(ucontext);
-    // u64 uContext;
-    // uContext = pageTop = ALIGN_DOWN(pageTop, 16);
-    // sc->uContext = (ucontext *)(uContext + page2PA(page));
-    // ucontext uc = {0};
-    // uc.uc_sigmask = thread->blocked;
-    // bcopy(&uc, (void *)page2PA(page) + pageTop, sizeof(ucontext));
-    // tf->a0 = sc->signal;
-    // tf->a1 = sigInfo + sp - PAGE_SIZE;
-    // tf->a2 = uContext + sp - PAGE_SIZE;
-
-    tf->sp = pageTop + sp - PAGE_SIZE;
-    tf->ra = SIGNAL_TRAMPOLINE;
-}
-
-void signalFinish(Thread *thread, SignalContext *sc)
-{
-    LIST_REMOVE(sc, link);
-    signalContextFree(sc);
-}
-
 extern Process processes[];
 SignalAction *getSignalHandler(Process *p)
 {
-    return (SignalAction *)(KERNEL_PROCESS_SIGNAL_BASE + (u64)(p - processes) * PAGE_SIZE);
+    return (SignalAction *)(KERNEL_PROCESS_SIGNAL_BASE
+                            + (u64)(p - processes) * PAGE_SIZE);
 }
 
 void SignalActionDefault(Thread *thread, int signal)
@@ -215,51 +127,52 @@ void SignalActionDefault(Thread *thread, int signal)
     // }
 }
 
-void handleSignal(Thread *thread)
+void handleSignal()
 {
+    Thread *thread = myThread();
+    if (thread->killed) { threadDestroy(thread); } // SIGKILL to here
     SignalContext *sc;
     while (1)
     {
-        if (thread->killed)
-        {
-            threadDestroy(thread);
-        }
-        sc = getFirstSignalContext(thread);
-        if (sc == NULL)
-        {
-            return;
-        }
-        if (sc->start)
-        {
-            return;
-        }
+        sc = getFirstPendingSignal(thread);
+        if (sc == NULL) { break; }
         SignalAction *sa = getSignalHandler(thread->process) + (sc->signal - 1);
         if (sa->handler == NULL)
         {
             SignalActionDefault(thread, sc->signal);
-            signalFinish(thread, sc);
             continue;
         }
-        sc->start = true;
-        signalAddSet(&thread->processing, sc->signal);
         Trapframe *tf = getHartTrapFrame();
         bcopy(tf, &sc->contextRecover, sizeof(Trapframe));
-        struct pthread self;
-        copyin(thread->process->pgdir, (char *)&self, thread->trapframe.tp - sizeof(struct pthread), sizeof(struct pthread));
-        initFrame(sc, thread);
+        sc->blockedRecover = thread->blocked;        // 原有 block
+        signalSetAdd(&thread->blocked, sc->signal);  // block 自己
+        signalSetOr(&thread->blocked, &sa->sa_mask); // block sa 中规定的信号
+        printk("sa->flag = %x\n", sa->sa_flags);     // TODO sa->flag;
+        tf->sp = ALIGN_DOWN(tf->sp, PAGE_SIZE);
+        tf->ra = SIGNAL_TRAMPOLINE;
         tf->epc = (u64)sa->handler;
-        printk("handler %lx\n", sa->handler);
-        return;
+        LIST_REMOVE(sc, link);                               // 从 pendingSignal 取出
+        LIST_INSERT_HEAD(&thread->handlingSignal, sc, link); // 插入 handlingSignal
     }
+}
+
+void rt_sigreturn()
+{
+    Thread *thread = myThread();
+    SignalContext *sc = LIST_FIRST(&thread->pendingSignal);
+    Trapframe *tf = getHartTrapFrame();
+
+    bcopy(&sc->contextRecover, tf, sizeof(Trapframe));
+    thread->blocked = sc->blockedRecover;
+
+    LIST_REMOVE(sc, link);
+    LIST_INSERT_HEAD(&freeSignalContextList, sc, link);
 }
 
 int rt_sigaction(int sig, u64 act, u64 oldAction)
 {
     Thread *th = myThread();
-    if (sig < 1 || sig > SIGNAL_COUNT)
-    {
-        return -1;
-    }
+    if (sig < 1 || sig > SIGNAL_COUNT) { return -1; }
     SignalAction *k = getSignalHandler(th->process) + (sig - 1);
     if (oldAction)
     {
@@ -275,7 +188,6 @@ int rt_sigaction(int sig, u64 act, u64 oldAction)
 int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize)
 {
     Thread *th = myThread();
-    // sigsetsize 为 sizeof(SignalSet) = 8
     oldset->signal = th->blocked.signal;
     switch (how)
     {
@@ -293,34 +205,14 @@ int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize)
     }
 }
 
-// void handleSignal(Thread *thread)
-// {
-//     SignalContext *sc;
-//     while (1)
-//     {
-//         if (thread->killed) { threadDestroy(thread); }
-//         sc = getFirstSignalContext(thread);
-//         if (sc == NULL) { return; }
-//         SignalAction *sa = getSignalHandler(thread->process) + (sc->signal - 1);
-//         // 如果没有注册对应函数，调用默认函数
-//         if (sa->handler == NULL)
-//         {
-//             SignalActionDefault(thread, sc->signal);
-//             continue;
-//         }
-
-//         sc->start = true;
-//         // signalAddSet(sc->signal, &thread->processing);// 忽略相同信号
-//         Trapframe *tf = getHartTrapFrame();
-//         // 拷贝 Trapframe
-//         bcopy(tf, &sc->contextRecover, sizeof(Trapframe));
-//         // struct pthread self;
-//         // copyin(thread->process->pgdir, (char *)&self, thread->trapframe.tp - sizeof(struct pthread), sizeof(struct pthread));
-//         initFrame(sc, thread);
-//         tf->epc = (u64)sa->handler;
-//         return;
-//     }
-// }
+// TODO
+int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
+{
+    printk("rt_sigtimedwait TODO!");
+    Thread *thread = myThread();
+    SignalContext *sc = getFirstPendingSignal(thread);
+    return sc == NULL ? 0 : sc->signal;
+}
 
 int threadSignalSend(Thread *thread, int sig)
 {
@@ -329,13 +221,13 @@ int threadSignalSend(Thread *thread, int sig)
     if (r < 0) { panic(""); }
 
     sc->signal = sig;
-    // TODO
     if (sig == SIGKILL) // SIGKILL 直接修改 thread 状态
     {
         thread->state = RUNNABLE;
         thread->killed = true;
     }
-    LIST_INSERT_HEAD(&thread->waitingSignal, sc, link);
+    // 最近的信号在最后面，从而保证先插入旧的到 handling
+    LIST_INSERT_TAIL(&thread->pendingSignal, sc, link);
     return 0;
 }
 
@@ -401,23 +293,7 @@ int tkill(int tid, int sig)
     int ret = -ESRCH;
     Thread *thread = NULL;
     ret = tid2Thread(tid, &thread, 0);
+    if (ret < 0) { return ret; }
     ret = threadSignalSend(thread, sig);
     return ret;
-}
-
-int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
-{
-    Thread *thread = myThread();
-    SignalContext *sc = getFirstSignalContext(thread);
-    return sc == NULL ? 0 : sc->signal;
-}
-
-void sigreturn()
-{
-    Trapframe *tf = getHartTrapFrame();
-    Thread *thread = myThread();
-    SignalContext *sc = getHandlingSignal(thread);
-    bcopy(&sc->contextRecover, tf, sizeof(Trapframe));
-    signalDelSet(&thread->processing, sc->signal);
-    signalFinish(thread, sc);
 }
