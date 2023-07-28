@@ -1075,6 +1075,7 @@ void syscallMapMemory()
 {
     Trapframe *tf = getHartTrapFrame();
     u64 addr, length, prot, flags, offset;
+    File *file;
     if ((argaddr(0, &addr) < 0)
         || (argaddr(1, &length) < 0)
         || (argaddr(2, &prot) < 0)
@@ -1086,7 +1087,7 @@ void syscallMapMemory()
     }
     if (length == 0)
     {
-        tf->a0 = -1;
+        tf->a0 = -EINVAL;
         return;
     }
 
@@ -1099,15 +1100,24 @@ void syscallMapMemory()
         perm |= PTE_WRITE_BIT | PTE_READ_BIT;
 
     /* TODO */
-    // tf->a0 = do_mmap(addr, length, perm, flags, fd, offset);
     // 将 fd 从 offset 开始长度为 length 的块以 perm 权限映射到
     // 自定的位置
+
+    argfd(4, 0, &file);
+    // // printf("mmap: %lx %lx %lx %lx %d\n", start, len, prot, flags, fd);
+    // // printf("heap bottom: %lx\n", myProcess()->heapBottom);
+
+    // trapframe->a0 =
+    //     do_mmap(fd, start, len, perm, /*'type' currently not used */ flags, off);
+    // // printf("mmap return value: %d\n", trapframe->a0);
+    // return;
 
     Process *p = myProcess();
     int alloc = (addr == NULL);
     if (alloc == 0)
     {
-        panic("Syscall mmap can't handle addr(0x%x) != 0", addr);
+        tf->a0 = do_mmap(file, addr, length, perm, flags, offset);
+        return;
     }
     addr = p->mmapHeapTop;
     u64 start = p->mmapHeapTop; // mmapHeapTop 必然是页对齐的
@@ -1149,7 +1159,6 @@ void syscallMapMemory()
         return;
     }
     int fd;
-    File *file;
     if (argfd(4, &fd, &file) < 0)
     {
         tf->a0 = -1;
@@ -1166,20 +1175,6 @@ void syscallMapMemory()
     }
     tf->a0 = addr;
     return;
-    // if (MAP_SHARED(flags))
-    // {
-    //     /* TODO */
-    //     tf->a0 = addr;
-    //     return;
-    // }
-    // if (MAP_PRIVATE(flags))
-    // {
-    //     /* TODO */
-    //     tf->a0 = addr;
-    //     return;
-    // }
-    // tf->a0 = -1;
-    // return;
 }
 
 /**
