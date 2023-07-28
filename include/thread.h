@@ -32,15 +32,13 @@ typedef struct Thread
     u64 currentKernelSp;
     int reason;
     u32 retValue;
-    // u64 setChildTid;
     u64 clearChildTid;
     Process *process;
-    // u64 robustHeadPointer;
-    bool killed;          // 信号 SIGKILL
-    SignalSet blocked;    // 屏蔽的信号集合（事实上是阻塞）
-    SignalSet pending;    // 未决 = 仍然未处理的信号集合
-    SignalSet processing; // 正在处理的信号集合（同样的信号将被忽略）
-    SignalContextList waitingSignal;
+
+    bool killed;                      // 信号 SIGKILL
+    SignalSet blocked;                // 屏蔽的信号集合（事实上是阻塞）
+    SignalContextList pendingSignal;  // 未决 = 仍然未处理的信号，最近的一条在最后面
+    SignalContextList handlingSignal; // 正在处理的信号（同样的信号将被忽略），最近的一条在最前面
 } Thread;
 
 #define LOCALE_NAME_MAX 23

@@ -95,102 +95,50 @@ typedef struct SignalInfo
     unsigned int si_arch; /* arch of attempted syscall */
 } SignalInfo;
 
+// sig set 形态需要保持一致
+// 参阅 linux
 typedef struct SignalSet
 {
     u64 signal;
 } SignalSet;
 
+// sig action 形态需要保持一致
+// 参阅 linux
 typedef struct SignalAction
 {
     void (*handler)(int);
-    unsigned long flags;
-    void (*restorer)(void);
-    unsigned mask[2];
+    SignalSet sa_mask;
+    int sa_flags;
+    void (*sa_restorer)(void);
 } SignalAction;
-
-typedef unsigned long gregset_t[32];
-
-struct __riscv_f_ext_state
-{
-    unsigned int f[32];
-    unsigned int fcsr;
-};
-
-struct __riscv_d_ext_state
-{
-    unsigned long long f[32];
-    unsigned int fcsr;
-};
-
-struct __riscv_q_ext_state
-{
-    unsigned long long f[64] __attribute__((aligned(16)));
-    unsigned int fcsr;
-    unsigned int reserved[3];
-};
-
-union __riscv_fp_state
-{
-    struct __riscv_f_ext_state f;
-    struct __riscv_d_ext_state d;
-    struct __riscv_q_ext_state q;
-};
-typedef union __riscv_fp_state fpregset_t;
-
-typedef struct sigcontext
-{
-    gregset_t gregs;
-    fpregset_t fpregs;
-} mcontext;
-
-typedef struct sigaltstack
-{
-    void *ss_sp;
-    int ss_flags;
-    u64 ss_size;
-} sigaltstack;
-
-typedef struct ucontext
-{
-    unsigned long uc_flags;
-    struct ucontext *uc_link;
-    struct sigaltstack uc_stack;
-    SignalSet uc_sigmask;
-    mcontext uc_mcontext;
-} ucontext;
 
 typedef struct SignalContext
 {
     Trapframe contextRecover;
-    bool start;
+    SignalSet blockedRecover;
     u8 signal;
-    ucontext *uContext;
     LIST_ENTRY(link, SignalContext)
     link;
 } SignalContext;
 
 typedef LIST_HEAD(SignalContextList, SignalContext) SignalContextList;
 
+SignalContext *getFirstPendingSignal(Thread *thread);
+void signalContextFree(SignalContext *sc);
 void signalInit();
-void handleSignal(Thread *thread);
+void handleSignal();
 int kill(int pid, int sig);
 int tgkill(int tgid, int tid, int sig);
 int tkill(int tid, int sig);
 int rt_sigaction(int sig, u64 act, u64 oldAction);
 int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize);
 int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts);
-void sigreturn();
-void signalContextFree(SignalContext *sc);
+void rt_sigreturn();
 
-int signalEmptySet(SignalSet *set);
-
-int signalFillset(SignalSet *set);
-
-int signalAddSet(SignalSet *set, int signal);
-
-int signalDelSet(SignalSet *set, int signal);
-
-bool signalIsMember(SignalSet *set, int signal);
-
-SignalContext *getFirstSignalContext(Thread *thread);
+int signalSetEmpty(SignalSet *set);
+int signalSetFill(SignalSet *set);
+int signalSetAdd(SignalSet *set, int signal);
+int signalSetDel(SignalSet *set, int signal);
+int signalSetOr(SignalSet *set, SignalSet *set1);
+bool signalSetIsMember(SignalSet *set, int signal);
 #endif

@@ -39,11 +39,13 @@ Thread *myThread()
 void threadFree(Thread *th)
 {
     Process *p = th->process;
-    while (!LIST_EMPTY(&th->waitingSignal))
+    while (!LIST_EMPTY(&th->pendingSignal))
     {
-        SignalContext *sc = LIST_FIRST(&th->waitingSignal);
-        LIST_REMOVE(sc, link);
-        signalContextFree(sc);
+        signalContextFree(LIST_FIRST(&th->pendingSignal));
+    }
+    while (!LIST_EMPTY(&th->handlingSignal))
+    {
+        signalContextFree(LIST_FIRST(&th->handlingSignal));
     }
     // releaseLock(&th->lock);
     // acquireLock(&p->lock);
@@ -295,12 +297,11 @@ void threadSetup(Thread *th)
     th->state = UNUSED;
     th->reason = 0;
     th->awakeTime = 0;
-    th->killed = false;
 
-    signalEmptySet(&th->blocked);
-    signalEmptySet(&th->pending);
-    signalEmptySet(&th->processing);
-    LIST_INIT(&th->waitingSignal);
+    th->killed = false;
+    signalSetEmpty(&th->blocked);
+    LIST_INIT(&th->pendingSignal);
+    LIST_INIT(&th->handlingSignal);
 
     Page *page;
 

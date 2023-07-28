@@ -1639,13 +1639,6 @@ void syscallTkill()
     Trapframe *tf = getHartTrapFrame();
     int tid = tf->a0;
     int sig = tf->a1;
-    // Thread *th;
-    // tid2Thread(tid, &th, 0);
-    // if (signalIsMember(&th->processing, sig))
-    // {
-    //     tf->a0 = -1;
-    //     return;
-    // }
     tf->a0 = tkill(tid, sig);
     return;
 }
@@ -1662,7 +1655,7 @@ void syscallTgkill()
 
 void syscallSigreturn()
 {
-    sigreturn();
+    rt_sigreturn();
     return;
 }
 
