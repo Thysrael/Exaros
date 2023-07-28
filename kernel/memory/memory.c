@@ -556,7 +556,10 @@ int copyin(u64 *pgdir, char *dst, u64 va, u64 len)
     while (len > 0)
     {
         pa = va2PA(pgdir, va, &cow); // 内核态获取用户虚拟地址对应物理地址
-        panic_on(!pa);
+        if (!pa)
+        {
+            pa = passiveAlloc(pgdir, va);
+        }
         n = PAGE_SIZE - (pa - ALIGN_DOWN(pa, PAGE_SIZE));
         if (n > len)
         {

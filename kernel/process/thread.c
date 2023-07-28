@@ -39,7 +39,6 @@ Thread *myThread()
 void threadFree(Thread *th)
 {
     Process *p = th->process;
-    printk("&1");
     while (!LIST_EMPTY(&th->waitingSignal))
     {
         SignalContext *sc = LIST_FIRST(&th->waitingSignal);
@@ -49,14 +48,12 @@ void threadFree(Thread *th)
     // releaseLock(&th->lock);
     // acquireLock(&p->lock);
 
-    printk("&2");
     if (th->clearChildTid)
     {
         int val = 0;
         copyout(p->pgdir, th->clearChildTid, (char *)&val, sizeof(int));
         futexWake(th->clearChildTid, 1);
     }
-    printk("&3");
 
     p->threadCount--;
     if (!p->threadCount)

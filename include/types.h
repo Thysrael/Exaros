@@ -19,6 +19,8 @@ typedef int __attribute__((__mode__(SI))) i32;
 typedef int __attribute__((__mode__(DI))) i64;
 
 typedef unsigned char uchar;
+typedef unsigned int uint;
+typedef u32 uint32;
 typedef unsigned short wchar; // wide char 16 bit
 
 typedef u8 bool;

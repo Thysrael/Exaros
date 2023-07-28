@@ -35,5 +35,6 @@ typedef struct Inode
 void metaFreeInode(DirMeta *meta);
 void metaFindInode(DirMeta *meta, int pos);
 void metaCacheInode(DirMeta *meta, int clus);
+int inodeAlloc();
 
 #endif

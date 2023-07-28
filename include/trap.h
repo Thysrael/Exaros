@@ -41,8 +41,8 @@
 // #define EXCEPTION_    9      // Environment call from S mode
 // #define EXCEPTION_    11     // Environment call from M mode
 // #define EXCEPTION_    12     // Instruction page fault
-#define EXCEPTION_LOAD_FAULT 13  // Load page fault
-#define EXCEPTION_STORE_FAULT 15 // Store page fault
+#define EXCEPTION_LOAD_FAULT 13        // Load page fault
+#define EXCEPTION_STORE_FAULT 15       // Store page fault
 
 #define SIE_SSIE (1L << INTERRUPT_SSI) // Supervisor software interrupt
 #define SIE_STIE (1L << INTERRUPT_STI) // Supervisor software interrupt
@@ -91,12 +91,6 @@ void printTrapframe(Trapframe *tf);
 
 // about timer
 #define TIMER_INTERVAL 100000
-
-typedef struct TimeSpec
-{
-    u64 second;
-    long microSecond;
-} TimeSpec;
 
 typedef struct IntervalTimer
 {

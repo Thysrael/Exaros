@@ -108,7 +108,11 @@ typedef union dentry
     short_name_entry_t sne;
     long_name_entry_t lne;
 } Dentry;
-
+typedef struct TimeSpec
+{
+    u64 second;
+    long microSecond;
+} TimeSpec;
 int getSectorNumber(DirMeta *meta, int dataSectorNum);
 u32 rwClus(FileSystem *fs, u32 cluster, int write, int user, u64 data, u32 off, u32 n);
 int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc);
@@ -124,4 +128,5 @@ DirMeta *metaNameDir(int fd, char *path, char *name);
 void loadDirMetas(FileSystem *fs, DirMeta *parent);
 void dumpDirMetas(FileSystem *fs, DirMeta *parent);
 int fatInit(FileSystem *fs);
+void eSetTime(DirMeta *entry, TimeSpec ts[2]);
 #endif

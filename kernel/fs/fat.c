@@ -1368,3 +1368,171 @@ void dumpDirMetas(FileSystem *fs, DirMeta *curMeta)
         }
     }
 }
+
+uint rw_clus(FileSystem *fs, int cluster,
+             int write,
+             int user,
+             u64 data,
+             uint off,
+             uint n)
+{
+    if (off + n > fs->superBlock.bytsPerClus)
+        panic("offset out of range");
+    // printf("%s %d: rw_clus get in\n", __FILE__, __LINE__);
+    uint tot, m;
+    Buf *bp;
+    uint sec = firstSecOfClus(fs, cluster) + off / fs->superBlock.BPB.bytsPerSec;
+    off = off % fs->superBlock.BPB.bytsPerSec;
+
+    int bad = 0;
+    for (tot = 0; tot < n; tot += m, off += m, data += m, sec++)
+    {
+        bp = fs->read(fs, sec);
+        m = BUFFER_SIZE - off % BUFFER_SIZE;
+        if (n - tot < m)
+        {
+            m = n - tot;
+        }
+        if (write)
+        {
+            if ((bad = either_copyin(bp->data + (off % BUFFER_SIZE), user, data,
+                                     m))
+                != -1)
+            {
+                bwrite(bp);
+            }
+        }
+        else
+        {
+            bad = either_copyout(user, data, bp->data + (off % BUFFER_SIZE), m);
+        }
+        brelse(bp);
+        if (bad == -1)
+        {
+            break;
+        }
+    }
+    // printf("%s %d: rw_clus get out\n", __FILE__, __LINE__);
+    return tot;
+}
+
+/**
+ * for the given entry, relocate the curClus field based on the off
+ * @param   entry       modify its curClus field
+ * @param   off         the offset from the beginning of the relative file
+ * @param   alloc       whether alloc new cluster when meeting end of FAT chains
+ * @return              the offset from the new curClus
+ */
+int reloc_clus(FileSystem *fs, DirMeta *entry, uint off, int alloc)
+{
+    assert(entry->firstClus != 0);
+    assert(entry->inodeMaxCluster > 0);
+    assert(entry->firstClus == entry->inode.item[0]);
+    int clus_num = off / fs->superBlock.bytsPerClus;
+    int ret = off % fs->superBlock.bytsPerClus;
+    if (clus_num < entry->inodeMaxCluster)
+    {
+        metaFindInode(entry, clus_num);
+        return ret;
+    }
+    if (entry->inodeMaxCluster > 0)
+    {
+        metaFindInode(entry, entry->inodeMaxCluster - 1);
+    }
+    while (clus_num > entry->clusCnt)
+    {
+        int clus = readFat(fs, entry->curClus);
+        if (clus >= FAT32_EOC)
+        {
+            if (alloc)
+            {
+                clus = allocClus(fs);
+                writeFat(fs, entry->curClus, clus);
+            }
+            else
+            {
+                entry->curClus = entry->firstClus;
+                entry->clusCnt = 0;
+                return -1;
+            }
+        }
+        entry->curClus = clus;
+        entry->clusCnt++;
+        u32 pos = entry->clusCnt;
+        assert(pos == entry->inodeMaxCluster);
+        entry->inodeMaxCluster++;
+        if (pos < INODE_SECOND_LEVEL_BOTTOM)
+        {
+            entry->inode.item[pos] = clus;
+            continue;
+        }
+        if (pos < INODE_THIRD_LEVEL_BOTTOM)
+        {
+            int idx1 = INODE_SECOND_ITEM_BASE + (pos - INODE_SECOND_LEVEL_BOTTOM) / INODE_ITEM_NUM;
+            int idx2 = (pos - INODE_SECOND_LEVEL_BOTTOM) % INODE_ITEM_NUM;
+            if (idx2 == 0)
+            {
+                entry->inode.item[idx1] = inodeAlloc();
+            }
+            inodes[entry->inode.item[idx1]].item[idx2] = clus;
+            continue;
+        }
+        if (pos < INODE_THIRD_LEVEL_TOP)
+        {
+            int idx1 = INODE_THIRD_ITEM_BASE + (pos - INODE_THIRD_LEVEL_BOTTOM) / INODE_ITEM_NUM / INODE_ITEM_NUM;
+            int idx2 = (pos - INODE_THIRD_LEVEL_BOTTOM) / INODE_ITEM_NUM % INODE_ITEM_NUM;
+            int idx3 = (pos - INODE_THIRD_LEVEL_BOTTOM) % INODE_ITEM_NUM;
+            if (idx3 == 0)
+            {
+                if (idx2 == 0)
+                {
+                    entry->inode.item[idx1] = inodeAlloc();
+                }
+                inodes[entry->inode.item[idx1]].item[idx2] = inodeAlloc();
+            }
+            inodes[inodes[entry->inode.item[idx1]].item[idx2]].item[idx3] = clus;
+            continue;
+        }
+        panic("");
+    }
+    return ret;
+}
+
+#define UTIME_NOW ((1l << 30) - 1l)
+#define UTIME_OMIT ((1l << 30) - 2l)
+void eSetTime(DirMeta *entry, TimeSpec ts[2])
+{
+    uint entcnt = 0;
+    FileSystem *fs = entry->fileSystem;
+    uint32 off = reloc_clus(fs, entry->parent, entry->off, 0);
+    rw_clus(fs, entry->parent->curClus, 0, 0, (u64)&entcnt, off, 1);
+    entcnt &= ~LAST_LONG_ENTRY;
+    off = reloc_clus(fs, entry->parent, entry->off + (entcnt << 5), 0);
+    union dentry de;
+    rw_clus(entry->fileSystem, entry->parent->curClus, 0, 0, (u64)&de, off, sizeof(de));
+    u64 time = r_time();
+    TimeSpec now;
+    now.second = time / 1000000;
+    now.microSecond = time % 1000000 * 1000;
+    if (ts[0].microSecond != UTIME_OMIT)
+    {
+        if (ts[0].microSecond == UTIME_NOW)
+        {
+            ts[0].second = now.second;
+        }
+        de.sne._crt_date = ts[0].second & ((1 << 16) - 1);
+        de.sne._crt_time = (ts[0].second >> 16) & ((1 << 16) - 1);
+        de.sne._crt_time_tenth = (ts[0].second >> 32) & ((1 << 8) - 1);
+    }
+    if (ts[1].microSecond != UTIME_OMIT)
+    {
+        if (ts[1].microSecond == UTIME_NOW)
+        {
+            ts[1].second = now.second;
+        }
+        de.sne._lst_wrt_date = ts[1].second & ((1 << 16) - 1);
+        de.sne._lst_wrt_time = (ts[1].second >> 16) & ((1 << 16) - 1);
+        de.sne._lst_acce_date = (ts[1].second >> 32) & ((1 << 16) - 1);
+    }
+    rw_clus(entry->fileSystem, entry->parent->curClus, true, 0, (u64)&de, off, sizeof(de));
+}

@@ -1257,11 +1257,11 @@ void syscallExec()
     // 真正的执行
     // // 输出
 
-    printk("\npath: %s\n", path);
+    // printk("\npath: %s\n", path);
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {
-        if (argv[i] > 0)
-            printk("%d : %s\n", i, argv[i]);
+        // if (argv[i] > 0)
+        // printk("%d : %s\n", i, argv[i]);
         if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c') // 跳过 pthread
         {
             myThread()->retValue = 0;
@@ -1385,7 +1385,8 @@ void syscallSignProccessMask()
     u64 setSize = tf->a3;
     Process *p = myProcess();
     SignalSet set, oldSet;
-    copyin(p->pgdir, (char *)&set, setAddr, setSize);
+    if (setAddr)
+        copyin(p->pgdir, (char *)&set, setAddr, setSize);
     tf->a0 = rt_sigprocmask(how, &set, &oldSet, setSize);
     if (oldSetAddr != 0)
         copyout(p->pgdir, oldSetAddr, (char *)&oldSet, setSize);
@@ -2113,7 +2114,7 @@ void syscallUtimensat()
         }
         if ((de = metaName(dirFd, path, true)) == NULL)
         {
-            tf->a0 = -ENOENT;
+            tf->a0 = -ENOTDIR;
             return;
         }
     }
@@ -2131,8 +2132,7 @@ void syscallUtimensat()
     {
         TimeSpec ts[2];
         copyin(myProcess()->pgdir, (char *)ts, tf->a2, sizeof(ts));
-        // eSetTime(de, ts);
-        // todo
+        eSetTime(de, ts);
     }
     tf->a0 = 0;
 }

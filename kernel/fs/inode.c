@@ -20,7 +20,7 @@ u64 inodeBitmap[INODE_NUM / 64];
  *
  * @return int 一个 inode 编号
  */
-static int inodeAlloc()
+int inodeAlloc()
 {
     for (int i = 0; i < sizeof(inodeBitmap); i++)
     {
