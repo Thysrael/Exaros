@@ -20,6 +20,7 @@
 #include <bio.h>
 #include <virtio.h>
 #include <sd.h>
+#include <macb.h>
 #include <signal.h>
 
 /**
@@ -76,7 +77,7 @@ void main(u64 hartId)
     sdInit();
 #endif
     fileinit();
-
+    macbInit();
     trapInit();
     plicinit();
     plicinithart();

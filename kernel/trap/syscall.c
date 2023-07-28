@@ -94,6 +94,18 @@ void (*syscallVector[])(void) = {
     [SYS_syslog] syscallSyslog,
     [SYS_umask] syscallUmask,
     [SYS_sysinfo] syscallSysinfo,
+    [SYS_rt_sigtimedwait] syscallRtSigtimedwait,
+    [SYS_times] syscallTimes,
+    [SYS_madvise] syscallMadvise,
+    [SYS_mlock] syscallMlock,
+    [SYS_mprotect] syscallMprotect,
+    [SYS_msync] syscallMsync,
+    [SYS_readlinkat] syscallReadlinkat,
+    // [SYS_renameat2] syscallRenameat2,
+    [SYS_statfs] syscallStatfs,
+    [SYS_fchmodat] syscallFchmodat,
+    [SYS_fsync] syscallFsync,
+    [SYS_prlimit64] syscallPrlimit64,
 };
 
 void syscallPutchar()
@@ -931,6 +943,7 @@ u64 timeOffset = 0;
  * @brief 获取当前时间
  *
  */
+// TODO timeval and timezone
 void syscallGetTime()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -2022,5 +2035,238 @@ void syscallSysinfo()
     struct sysinfo info;
     sysinfo(&info);
     copyout(myProcess()->pgdir, addr, (char *)&info, sizeof(struct sysinfo));
+    tf->a0 = 0;
+}
+
+void syscallRtSigtimedwait()
+{
+    TimeSpec ts;
+    Trapframe *tf = getHartTrapFrame();
+    Process *p = myProcess();
+    if (tf->a2)
+    {
+        copyin(p->pgdir, (char *)&ts, tf->a2, sizeof(TimeSpec));
+    }
+    SignalSet signalSet;
+    copyin(p->pgdir, (char *)&signalSet, tf->a0, tf->a3);
+    SignalInfo info;
+    copyin(p->pgdir, (char *)&info, tf->a0, sizeof(SignalInfo));
+    tf->a0 = rt_sigtimedwait(&signalSet, &info, tf->a2 ? &ts : 0);
+}
+
+// TODO struct tms, not TimeSpec
+void syscallTimes()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 time = r_time();
+    TimeSpec ts;
+    ts.second = time / 1000000;
+    ts.microSecond = time % 1000000;
+    copyout(myProcess()->pgdir, tf->a1, (char *)&ts, sizeof(TimeSpec));
+    tf->a0 = 0;
+}
+
+void syscallMadvise()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallMlock()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallMprotect()
+{
+    Trapframe *tf = getHartTrapFrame();
+
+    u64 start = ALIGN_DOWN(tf->a0, PAGE_SIZE);
+    u64 end = ALIGN_UP(tf->a0 + tf->a1, PAGE_SIZE);
+
+    u64 perm = 0;
+    if (PROT_EXEC(tf->a2)) { perm |= PTE_EXECUTE_BIT | PTE_READ_BIT; }
+    if (PROT_READ(tf->a2)) { perm |= PTE_READ_BIT; }
+    if (PROT_WRITE(tf->a2)) { perm |= PTE_WRITE_BIT | PTE_READ_BIT; }
+    while (start < end)
+    {
+        u64 *pte;
+        Page *page;
+        page = pageLookup(myProcess()->pgdir, start, &pte);
+        if (page == NULL)
+        {
+            passiveAlloc(myProcess()->pgdir, start);
+            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+        }
+        *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
+        // else
+        // {
+        //     *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm;
+        // }
+        start += PAGE_SIZE;
+    }
+    tf->a0 = 0;
+}
+
+void syscallMsync()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallReadlinkat()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int dirFd = tf->a0;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    tf->a0 = -1;
+    DirMeta *entryPoint = metaName(dirFd, path, false);
+    if (entryPoint == NULL || entryPoint->reserve != DT_LNK)
+    {
+        goto bad;
+    }
+    // char kbuf[FAT32_MAX_FILENAME];
+    // eread(entryPoint, false, (u64)kbuf, 0, entryPoint->file_size);
+    // ewrite(entryPoint, true, (u64)buf, 0, MIN(size, sizeof(kbuf)));
+    tf->a0 = 0;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+// void syscallRenameat2()
+// {
+//     Trapframe *tf = getHartTrapFrame();
+// #ifndef DEBUG_FS
+//     int oldFd = tf->a0, newFd = tf->a2;
+//     char old[FAT32_MAX_PATH], new[FAT32_MAX_PATH];
+//     if (argstr(1, old, FAT32_MAX_PATH) < 0 || argstr(3, new, FAT32_MAX_PATH) < 0)
+//     {
+//         tf->a0 = -1;
+//         return;
+//     }
+
+//     DirMeta *src = NULL, *dst = NULL, *pdst = NULL;
+//     int srclock = 0;
+//     char *name;
+//     if ((src = ename(oldFd, old, true)) == NULL || (pdst = enameparent(newFd, new, old)) == NULL || (name = formatname(old)) == NULL)
+//     {
+//         goto fail; // src doesn't exist || dst parent doesn't exist || illegal
+//                    // new name
+//     }
+//     for (DirMeta *ep = pdst; ep != NULL; ep = ep->parent)
+//     {
+//         if (ep == src)
+//         { // In what universe can we move a directory into its child?
+//             goto fail;
+//         }
+//     }
+
+//     u32 off;
+//     elock(src); // must hold child's lock before acquiring parent's, because we
+//                 // do so in other similar cases
+//     srclock = 1;
+//     elock(pdst);
+//     dst = dirlookup(pdst, name, &off);
+//     if (dst != NULL)
+//     {
+//         eunlock(pdst);
+//         if (src == dst)
+//         {
+//             goto fail;
+//         }
+//         else if (src->attribute & dst->attribute & ATTR_DIRECTORY)
+//         {
+//             if (!isDirEmpty(dst))
+//             { // it's ok to overwrite an empty dir
+//                 eunlock(dst);
+//                 goto fail;
+//             }
+//         }
+//         else
+//         { // src is not a dir || dst exists and is not an dir
+//             goto fail;
+//         }
+//     }
+
+//     if (dst)
+//     {
+//         eremove(dst);
+//         eunlock(dst);
+//     }
+//     memmove(src->filename, name, FAT32_MAX_FILENAME);
+//     emake(pdst, src, off);
+//     if (src->parent != pdst)
+//     {
+//         eunlock(pdst);
+//         elock(src->parent);
+//     }
+//     eremove(src);
+//     eunlock(src->parent);
+//     DirMeta *psrc = src->parent; // src must not be root, or it won't
+//                                  // pass the for-loop test
+//     src->parent = edup(pdst);
+//     src->off = off;
+//     src->valid = 1;
+//     eunlock(src);
+
+//     eput(psrc);
+//     if (dst)
+//     {
+//         eput(dst);
+//     }
+//     eput(pdst);
+//     eput(src);
+// #endif
+//     tf->a0 = 0;
+//     return;
+
+// #ifndef DEBUG_FS
+// fail:
+//     tf->a0 = -1;
+//     return;
+// #endif
+// }
+
+void syscallStatfs()
+{
+    Trapframe *tf = getHartTrapFrame();
+    char path[FAT32_MAX_PATH];
+    if (argstr(0, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+    FileSystemStatus fss;
+    memset(&fss, 0, sizeof(FileSystemStatus));
+    tf->a0 = getFsStatus(path, &fss);
+    if (tf->a0 == 0)
+    {
+        // printf("bjoweihgre8i %ld\n", tf->a1);
+        copyout(myProcess()->pgdir, tf->a1, (char *)&fss, sizeof(FileSystemStatus));
+    }
+}
+
+void syscallFchmodat()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallFsync()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallPrlimit64()
+{
+    Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
 }
