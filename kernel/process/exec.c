@@ -9,6 +9,7 @@
 #include <debug.h>
 #include <mmap.h>
 #include <auxvec.h>
+#include <string.h>
 #include <thread.h>
 
 #define MAX_ARG 32 // max exec arguments
@@ -274,7 +275,11 @@ static u64 loadScript(DirMeta *srcMeta, char *path, char **argv)
         interp_arg = cp;
 
     LOAD_DEBUG("interp path %s\n", interp_path);
-
+    if (strncmp(interp_path, "/bin/busybox", 12) == 0)
+    {
+        interp_path = "/busybox";
+    }
+    LOAD_DEBUG("changing interp path: %s\n", interp_path);
     // 制作新的参数
     char *script_argv[MAX_ARG] = {0};
     int script_argc = 0;

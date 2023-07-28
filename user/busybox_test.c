@@ -9,8 +9,7 @@ char *argvIperf[] = {"./busybox", "sh", "iperf_testcode.sh", 0};
 // char *argvLibc[] = {"./busybox", "sh", "libctest_testcode.sh", 0};
 char *argvDynamic[] = {"./busybox", "sh", "run-dynamic.sh", 0};
 // char *argvLmbanch[] = {"./busybox", "sh", "lmbench_testcode.sh", 0};
-char
-    *shell[] = {"./busybox", "sh", 0};
+char *shell[] = {"./busybox", "sh", 0};
 char *timet[] = {"./time-test"};
 
 void main()
@@ -23,7 +22,7 @@ void main()
 
     if (pid == 0)
     {
-        exec("./busybox", argvLibc);
+        exec("./busybox", shell);
         // exec("./time-test", timet);
     }
     else
