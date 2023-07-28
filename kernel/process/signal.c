@@ -208,7 +208,7 @@ int rt_sigprocmask(int how, SignalSet *set, SignalSet *oldset, int sigsetsize)
 // TODO
 int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
 {
-    printk("rt_sigtimedwait TODO!");
+    // printk("rt_sigtimedwait TODO!");
     Thread *thread = myThread();
     SignalContext *sc = getFirstPendingSignal(thread);
     return sc == NULL ? 0 : sc->signal;
