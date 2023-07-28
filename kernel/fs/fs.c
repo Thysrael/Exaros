@@ -65,8 +65,10 @@ void initRootFileSystem()
     meta->head = rootFileSystem;
     // meta = metaCreate(AT_FDCWD, "/dev/shm", T_DIR, O_RDONLY);   // share memory
     meta = metaCreate(AT_FDCWD, "/dev/null", T_CHAR, O_RDONLY); // share memory
-    // meta->dev = NONE;
+    meta->dev = NONE;
     meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY); // share memory
+    meta = metaCreate(AT_FDCWD, "/dev/urandom", T_CHAR, O_RDONLY);
+    // meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY);       // share memory
     // meta = metaCreate(AT_FDCWD, "/dev/zero", T_CHAR, O_RDONLY);
     // meta->dev = ZERO;
     // meta = metaCreate(AT_FDCWD, "/dev/tty", T_CHAR, O_RDONLY);

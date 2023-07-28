@@ -24,6 +24,7 @@
 //     u64 n;
 //     u64 begin = va;
 //     u64 end = va + sz;
+//     printk("load seg at 0x%lx, offset is 0x%lx\n", begin, offset + (begin - va));
 //     while (begin < end)
 //     {
 //         pa = va2PA(pagetable, begin, &cow);
@@ -328,7 +329,7 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
                 seg->src = srcMeta;
                 seg->srcOffset = ph.offset;
                 seg->loadAddr = ph.vaddr + interpOffset;
-                LOAD_DEBUG("load address start at 0x%lx, %lx\n", seg->loadAddr, ph.vaddr);
+                LOAD_DEBUG("load address start at 0x%lx, 0x%lx\n", seg->loadAddr, ph.vaddr);
                 seg->len = ph.filesz;
                 seg->flag = PTE_EXECUTE_BIT | PTE_READ_BIT | PTE_WRITE_BIT;
                 segmentMapAppend(p, seg);
@@ -340,7 +341,7 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
                 seg->src = NULL;
                 seg->srcOffset = 0;
                 seg->loadAddr = ph.vaddr + ph.filesz + interpOffset;
-                LOAD_DEBUG("load  bss address start at 0x%lx, %lx\n", seg->loadAddr, ph.vaddr);
+                LOAD_DEBUG("load bss address start at 0x%lx, 0x%lx\n", seg->loadAddr, ph.vaddr);
                 seg->len = ph.memsz - ph.filesz;
                 seg->flag = PTE_READ_BIT | PTE_WRITE_BIT | MAP_ZERO;
                 segmentMapAppend(p, seg);
@@ -365,7 +366,7 @@ static void segmentTraverse(DirMeta *srcMeta, Ehdr *elfHeader, u64 interpOffset,
             metaRead(srcMeta, 0, (u64)interp_path, ph.offset, ph.filesz);
             LOAD_DEBUG("dynamic interpreter path is %s\n", interp_path);
             // 由于 Fat32 文件系统不支持动态链接功能，因此比赛时各队伍请将 `/lib/ld-musl-riscv64-sf.so.1` 当作  `/libc.so` 处理
-            strncpy(interp_path, "/libc.so", strlen("libc.so") + 1);
+            strncpy(interp_path, "/libc.so\0", strlen("/libc.so") + 1);
             LOAD_DEBUG("changing dynamic interpreter path is %s\n", interp_path);
             // 根据这个东西查找 libc.so.6 的 DirMeta
             *interpMeta = metaName(AT_FDCWD, interp_path, true);
@@ -435,12 +436,14 @@ static u64 elf_map(struct File *filep, u64 addr, Phdr *eppnt, int prot, int type
      * So we first map the 'big' image - and unmap the remainder at
      * the end. (which unmap is needed for ELF images with holes.)
      */
-
+    // 这是第一次的情况，利用 do_map 将整个区域全部占住，这次是一个匿名 do_mmap
+    // 之后在传参的时候，我们会注意将 total_size 置为 0
     if (total_size)
     {
         total_size = ALIGN_UP(total_size, PAGE_SIZE);
         map_addr = do_mmap(NULL, addr, total_size, prot, type, off);
         addr = map_addr;
+        LOAD_DEBUG("first do map at 0x%lx\n", addr);
     }
 
     map_addr = do_mmap(filep, addr, size, prot, type, off);
@@ -450,8 +453,40 @@ static u64 elf_map(struct File *filep, u64 addr, Phdr *eppnt, int prot, int type
 
 static inline int make_prot(u32 p_flags)
 {
-    return PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT;
+    return PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT;
 }
+
+// static u64 heapInterpMap(u64 *pagetable, u64 total_size)
+// {
+//     Process *proc = myProcess();
+//     // 分配出堆空间
+//     proc->mmapHeapTop = ALIGN_UP(proc->mmapHeapTop, PAGE_SIZE);
+//     u64 start = proc->mmapHeapTop;
+//     proc->mmapHeapTop = ALIGN_UP(proc->mmapHeapTop + total_size, PAGE_SIZE);
+//     assert(proc->mmapHeapTop < USER_STACK_BOTTOM);
+
+//     Page *p;
+//     u64 pa;
+//     int cow;
+//     u64 begin = start;
+//     u64 end = begin + total_size;
+//     u64 n;
+//     while (begin < end)
+//     {
+//         printk("pre seg at 0x%lx\n", begin);
+//         pa = va2PA(pagetable, begin, &cow);
+//         if (pa == NULL)
+//         {
+//             if (pageAlloc(&p) < 0)
+//                 return -1;
+//             pageInsert(pagetable, begin, p,
+//                        PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT);
+//         }
+//         n = PAGE_SIZE < end - begin ? PAGE_SIZE : end - begin;
+//         begin += n;
+//     }
+//     return start;
+// }
 
 /**
  * @brief 加载动态链接器，似乎是将动态链接器的 load segment 都加载到内存中
@@ -479,19 +514,21 @@ u64 load_elf_interp(u64 *pagetable, Ehdr *interp_elf_ex, DirMeta *interpreter, u
         error = -22;
         goto out;
     }
+    LOAD_DEBUG("interper total load size is 0x%lx\n", total_size);
     /*
     | <-----------------total_size------------------> |
     | <------Seg1------>     <---------Seg2-------->  |
     首先申请 total_size（这里是不固定的，需要 OS 来分配）。直接调用 do_mmap();
     然后再把每个段填进去（这里的地址是确定的）
     */
-
+    // load_addr = heapInterpMap(pagetable, total_size);
     // 遍历所有的 segment 项
     eppnt = interp_elf_phdata;
     for (i = 0; i < interp_elf_ex->phnum; i++, eppnt++)
     {
         if (eppnt->type == PT_LOAD)
         {
+            // loadSeg(pagetable, eppnt->vaddr + load_addr, interpreter, eppnt->offset, eppnt->filesz);
             // type 是做 mmap 的类型
             int elf_type = MAP_PRIVATE_BIT;
             // prot 是页表的权限相关
@@ -501,14 +538,17 @@ u64 load_elf_interp(u64 *pagetable, Ehdr *interp_elf_ex, DirMeta *interpreter, u
             u64 map_addr;
 
             vaddr = eppnt->vaddr;
-
+            LOAD_DEBUG("load vaddr is 0x%lx\n", vaddr);
             /* 第一次会走第二个分支，第二次会走第一个分支 */
             if (interp_elf_ex->type == ET_EXEC || load_addr_set)
+            {
                 elf_type |= MAP_FIXED_BIT;
-            // 这个分支永远不会走，应为 no_base 恒为 0
+                elf_prot = PTE_READ_BIT | PTE_WRITE_BIT | PTE_USER_BIT | PTE_ACCESSED_BIT;
+            }
+
             else if (no_base && interp_elf_ex->type == ET_DYN)
                 load_addr = -vaddr;
-
+            LOAD_DEBUG("elf map addr is 0x%lx\n", load_addr + vaddr);
             struct File interp_file;
             interp_file.meta = interpreter;
             interp_file.type = FD_ENTRY;
@@ -633,12 +673,12 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 #define from_kuid_munged(x, y) (0)
 #define from_kgid_munged(x, y) (0)
 
-    u64 secureexec = 0;                                                // the default value is 1, 但是我不清楚哪些情况会把它变成 0
-    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);                                  // CPU 的 extension 信息
-    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE);                         // PAGE_SIZE
-    NEW_AUX_ENT(AT_PHDR, phdrAddr);                                    // Phdr * phdr_addr; 指向用户态。
-    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));                               // 每个 Phdr 的大小
-    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);                           // phdr的数量
+    u64 secureexec = 0;                        // the default value is 1, 但是我不清楚哪些情况会把它变成 0
+    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);          // CPU 的 extension 信息
+    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE); // PAGE_SIZE
+    NEW_AUX_ENT(AT_PHDR, phdrAddr);            // Phdr * phdr_addr; 指向用户态。
+    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));       // 每个 Phdr 的大小
+    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);   // phdr的数量
     NEW_AUX_ENT(AT_BASE, interpLoadAddr);
     NEW_AUX_ENT(AT_ENTRY, elfHeader->entry + interpOffset);            // 源程序的入口
     NEW_AUX_ENT(AT_UID, from_kuid_munged(cred->user_ns, cred->uid));   // 0
@@ -703,7 +743,9 @@ u64 exec(char *path, char **argv)
     // 根据 path 查询文件系统 meta
     DirMeta *srcMeta;
     processSegmentMapFree(myProcess());
-
+    Process *p = myProcess();
+    p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     if ((srcMeta = metaName(AT_FDCWD, path, true)) == 0)
     {
         printk("find file error, path: %s\n", path);
@@ -747,12 +789,14 @@ u64 exec(char *path, char **argv)
         Phdr *interpPhdrData = kmalloc(interpPhdrsSize);
         // 读出 interpreter 的 program table
         metaRead(interpMeta, false, (u64)interpPhdrData, interpElfHeader.phoff, interpPhdrsSize);
-
+        LOAD_DEBUG("begin load interperter.\n");
         interpLoadAddr = load_elf_interp(myProcess()->pgdir, &interpElfHeader, interpMeta, load_bias,
                                          interpPhdrData);
         elfEntry = interpLoadAddr;
-
+        LOAD_DEBUG("interpLoadAddr is 0x%lx\n", interpLoadAddr);
         elfEntry += interpElfHeader.entry;
+        LOAD_DEBUG("relative offset entry is 0x%0x\n", interpElfHeader.entry);
+        LOAD_DEBUG("interp elf entry is 0x%lx\n", elfEntry);
         kfree((char *)interpPhdrData);
     }
     else
@@ -762,16 +806,13 @@ u64 exec(char *path, char **argv)
 
     // 用户栈的构造
     u64 sp = initUserStack(argv, phAddr, &elfHeader, interpLoadAddr, interpOffset);
-
     // 其他的收尾工作
     myThread()->clearChildTid = 0;
     getHartTrapFrame()->epc = elfEntry;
-    LOAD_DEBUG("elf entry is 0x%x\n", elfEntry);
+    LOAD_DEBUG("elf entry is 0x%lx\n", elfEntry);
     getHartTrapFrame()->sp = sp; // initial stack pointer
     LOAD_DEBUG("stack pointer is 0x%lx\n", sp);
-    Process *p = myProcess();
-    p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
-    p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
+
     p->execFile = srcMeta;
     pgdirFree(oldPageTable);
     asm volatile("fence.i");

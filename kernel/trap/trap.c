@@ -241,6 +241,11 @@ void userHandler()
             }
             else
             {
+                // printk("*pte: 0x%lx\n", *pte);
+                // printk("tf->a6: 0x%lx\n", tf->a6);
+                // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
+                // int cow;
+                // printk("pa2VA(pa): 0x%lx\n", va2PA(myProcess()->pgdir, stval, &cow));
                 panic("unknown page fault.\n");
             }
             break;

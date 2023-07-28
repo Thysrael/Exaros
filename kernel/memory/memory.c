@@ -567,9 +567,17 @@ int copyin(u64 *pgdir, char *dst, u64 va, u64 len)
     {
         pa = va2PA(pgdir, va, &cow); // 内核态获取用户虚拟地址对应物理地址
         if (!pa)
-        {
-            pa = passiveAlloc(pgdir, va);
+        { // 不存在对应映射，申请新页
+            passiveAlloc(pgdir, va);
+            pa = va2PA(pgdir, va, &cow);
+            // cow = 0;
         }
+        if (cow)
+        { // cow 手动处理
+            cowHandler(pgdir, va);
+            pa = va2PA(pgdir, va, &cow);
+        }
+        // panic_on(!pa);
         n = PAGE_SIZE - (pa - ALIGN_DOWN(pa, PAGE_SIZE));
         if (n > len)
         {

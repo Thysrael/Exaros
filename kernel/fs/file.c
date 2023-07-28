@@ -5,6 +5,7 @@
 #include <fat.h>
 #include <string.h>
 #include <mmap.h>
+#include <debug.h>
 
 struct devsw devsw[NDEV];
 struct
@@ -135,8 +136,11 @@ int fileread(File *f, bool isUser, u64 addr, int n)
         if ((r = metaRead(f->meta, isUser, addr, f->off, n)) > 0)
             f->off += r;
         break;
+    case FD_SOCKET:
+        r = socket_read(f->socket, isUser, addr, n);
+        break;
     default:
-        panic("fileread");
+        panic("fileread not implement.\n");
     }
 
     return r;
@@ -180,9 +184,13 @@ int filewrite(File *f, bool isUser, u64 addr, int n)
             ret = -1;
         }
     }
+    else if (f->type == FD_SOCKET)
+    {
+        ret = socket_write(f->socket, isUser, addr, n);
+    }
     else
     {
-        panic("filewrite");
+        panic("filewrite not implement.\n");
     }
 
     return ret;
@@ -221,7 +229,7 @@ int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen)
 }
 
 /**
- * @brief 将文件中的一部分映射到内存中，文件是广义的
+ * @brief 将文件中的一部分映射到内存中的堆上，文件是广义的
  *
  * @param fd 文件
  * @param start 内存起始地址
@@ -233,9 +241,12 @@ int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen)
  */
 u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
 {
+    // 如果 start 是 0 的话，就在堆中分配空间
+    LOAD_DEBUG("start address is 0x%lx, len is 0x%lx\n", start, len);
     bool alloc = (start == 0);
     assert(PAGE_OFFSET(start, PAGE_SIZE) == 0);
     Process *p = myProcess();
+    // 在堆中分配空间
     if (alloc)
     {
         p->mmapHeapTop = ALIGN_UP(p->mmapHeapTop, PAGE_SIZE);
@@ -245,40 +256,46 @@ u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
     }
 
     u64 addr = start, end = start + len;
+    LOAD_DEBUG("start: 0x%lx, end: 0x%lx, brkHeapTop: 0x%lx\n", start, end, p->brkHeapTop);
     if (flags & MAP_FIXED_BIT)
     {
-        assert(start <= p->brkHeapTop);
-        p->brkHeapTop = MAX(ALIGN_UP(end, PAGE_SIZE), p->brkHeapTop);
+        // assert(start <= p->brkHeapTop);
+        // p->brkHeapTop = MAX(ALIGN_UP(end, PAGE_SIZE), p->brkHeapTop);
     }
 
     // 为 [start, start + len] 分配多个物理页
     while (start < end)
     {
+        LOAD_DEBUG("begin load at 0x%lx\n", start);
         // 先查询页表项
         u64 *pte;
-        u64 pa = page2PA(pageLookup(p->pgdir, start, &pte));
-        // 需要写时复制
-        if (pa > 0 && (*pte & PTE_COW_BIT))
-        {
-            cowHandler(p->pgdir, start);
-            pa = page2PA(pageLookup(p->pgdir, start, &pte));
-        }
-
-        // 如果没有查到，那么就分配一页
-        if (pa == 0)
+        Page *page = pageLookup(p->pgdir, start, &pte);
+        // 如果没有查询到，那么就插入一页
+        if (page == NULL)
         {
             Page *page;
             if (pageAlloc(&page) < 0)
             {
                 return -1;
             }
+            LOAD_DEBUG("alloc a heap page for this.\n");
             pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT);
         }
+        // 如果查到了，那么就清空这片区域
         else
         {
+            u64 pa = page2PA(page);
+            // 需要写时复制
+            if (pa > 0 && (*pte & PTE_COW_BIT))
+            {
+                cowHandler(p->pgdir, start);
+                pa = page2PA(pageLookup(p->pgdir, start, &pte));
+            }
             bzero((void *)pa, MIN(PAGE_SIZE, end - start));
-            *pte = PA2PTE(pa) | perm | PTE_USER_BIT | PTE_VALID_BIT;
+            *pte = PA2PTE(pa) | perm | PTE_USER_BIT | PTE_VALID_BIT | PTE_DIRTY_BIT;
+            LOAD_DEBUG("clear a heap page for this, pa is 0x%lx\n", pa);
         }
+
         start += PAGE_SIZE;
     }
 
@@ -286,7 +303,7 @@ u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
     {
         return addr;
     }
-    /* if fd == NULL, we think this is a anonymous map */
+    // 如果文件描述符不为空，那么就将文件中的内容读取到这片分配好的内存中
     if (fd != NULL)
     {
         fd->off = off;
@@ -299,6 +316,7 @@ u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
             return -1;
         }
     }
+    // 如果文件描述符为空，那么就等价于只在堆中分配了这样的一片空白空间
     else
     {
         return addr;

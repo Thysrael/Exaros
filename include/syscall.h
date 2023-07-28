@@ -24,7 +24,7 @@
 #define SYS_statfs 43
 #define SYSCALL_CHDIR 49
 
-#define SYS_fchmodat 53
+#define SYSCALL_FCHMOD_AT 53
 #define SYSCALL_OPEN 55
 #define SYSCALL_OPENAT 56
 #define SYSCALL_CLOSE 57
@@ -89,6 +89,16 @@
 #define SYSCALL_GET_THREAD_ID 178
 #define SYS_sysinfo 179
 #define SYSCALL_SHUTDOWN 210
+
+#define SYSCALL_SOCKET 198
+#define SYSCALL_BIND 200
+#define SYSCALL_LISTEN 201
+#define SYSCALL_ACCEPT 202
+#define SYSCALL_CONNECT 203
+#define SYSCALL_GET_SOCKET_NAME 204
+#define SYSCALL_SEND_TO 206
+#define SYSCALL_RECEIVE_FROM 207
+#define SYSCALL_SET_SOCKET_OPTION 208
 
 #define SYSCALL_BRK 214
 
@@ -194,6 +204,7 @@ void syscallMemoryProtect();
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
+
 void syscallRtSigtimedwait();
 void syscallTimes();
 void syscallMadvise();
@@ -206,6 +217,18 @@ void syscallStatfs();
 void syscallFchmodat();
 void syscallFsync();
 void syscallPrlimit64();
+void syscallSocket();
+void syscallBind();
+void syscallGetSocketName();
+void syscallSetSocketOption();
+void syscallSendTo();
+void syscallReceiveFrom();
+void syscallListen();
+void syscallConnect();
+void syscallAccept();
+
+void syscallFchmodAt();
+
 extern void (*syscallVector[])(void);
 
 int do_linkat(int oldDirFd, char *oldPath, int newDirFd, char *newPath);
