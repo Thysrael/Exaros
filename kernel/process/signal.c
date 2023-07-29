@@ -165,7 +165,7 @@ void handleSignal()
 void rt_sigreturn()
 {
     Thread *thread = myThread();
-    SignalContext *sc = LIST_FIRST(&thread->pendingSignal);
+    SignalContext *sc = LIST_FIRST(&thread->handlingSignal);
     Trapframe *tf = getHartTrapFrame();
 
     bcopy(&sc->contextRecover, tf, sizeof(Trapframe));

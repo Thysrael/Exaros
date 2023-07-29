@@ -643,7 +643,9 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
     LOAD_DEBUG("finished push argv\n");
 
     // 拷贝环境变量
-    char *envVariable[] = {"PATH=/"};
+    // char *envVariable[] = {"PATH=/"};
+    char *envVariable[] = {"LD_LIBRARY_PATH=.", "PATH=/" /*, "LOOP_O=11", "TIMING_O=1", "ENOUGH=1"*/};
+
     int envCount = sizeof(envVariable) / sizeof(char *);
     for (int i = 0; i < envCount; i++)
     {
@@ -678,12 +680,12 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 #define from_kuid_munged(x, y) (0)
 #define from_kgid_munged(x, y) (0)
 
-    u64 secureexec = 0;                        // the default value is 1, 但是我不清楚哪些情况会把它变成 0
-    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);          // CPU 的 extension 信息
-    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE); // PAGE_SIZE
-    NEW_AUX_ENT(AT_PHDR, phdrAddr);            // Phdr * phdr_addr; 指向用户态。
-    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));       // 每个 Phdr 的大小
-    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);   // phdr的数量
+    u64 secureexec = 0;                                                // the default value is 1, 但是我不清楚哪些情况会把它变成 0
+    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);                                  // CPU 的 extension 信息
+    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE);                         // PAGE_SIZE
+    NEW_AUX_ENT(AT_PHDR, phdrAddr);                                    // Phdr * phdr_addr; 指向用户态。
+    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));                               // 每个 Phdr 的大小
+    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);                           // phdr的数量
     NEW_AUX_ENT(AT_BASE, interpLoadAddr);
     NEW_AUX_ENT(AT_ENTRY, elfHeader->entry + interpOffset);            // 源程序的入口
     NEW_AUX_ENT(AT_UID, from_kuid_munged(cred->user_ns, cred->uid));   // 0
