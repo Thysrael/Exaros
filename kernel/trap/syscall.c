@@ -1017,7 +1017,16 @@ void syscallBrk()
     {
         if (addr < p->brkHeapTop)
         {
-            panic("Syscall brk can't decrease the size of heap from 0x%x to 0x%x\n", addr, addr);
+            u64 start = ALIGN_UP(addr, PAGE_SIZE); // 权限一致，需要新的页则直接申请
+            u64 end = ALIGN_UP(p->brkHeapTop, PAGE_SIZE);
+            while (start < end)
+            {
+                pageRemove(p->pgdir, start);
+                start += PAGE_SIZE;
+            }
+            p->brkHeapTop = addr;
+            tf->a0 = 0;
+            return;
         }
         u64 start = ALIGN_UP(p->brkHeapTop, PAGE_SIZE); // 权限一致，需要新的页则直接申请
         u64 end = ALIGN_UP(addr, PAGE_SIZE);
