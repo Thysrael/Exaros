@@ -18,6 +18,7 @@
 #include <file.h>
 #include <lock.h>
 #include <segment.h>
+#include <resource.h>
 
 #define NOFILE 1024 // Number of fds that a process can open
 #define LOG_PROCESS_NUM 10
@@ -198,7 +199,7 @@ typedef struct Process
     // u64 setChildTid;
     // u64 clearChildTid;
     // int threadCount;
-    // struct ResourceLimit fileDescription;
+    struct ResourceLimit fileDescription;
     u32 pgid;
     u32 sid;
     SegmentMap *segmentMapHead; // 记录着这个进程的所有 segment 映射信息

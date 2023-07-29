@@ -266,6 +266,7 @@ int setupProcess(Process *p)
     p->parentId = 0;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->fileDescription.hard = p->fileDescription.soft = NOFILE;
 
     p->cwd = &(rootFileSystem->root);
 
@@ -566,7 +567,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
         segmentMapAppend(process, new);
     }
 
-    for (int i = 0; i < NOFILE; i++)
+    for (int i = 0; i < process->fileDescription.hard; i++)
     {
         if (myprocess->ofile[i])
         {
