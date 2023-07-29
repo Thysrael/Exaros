@@ -10,6 +10,7 @@
 #include <virtio.h>
 #include <syscall.h>
 #include <thread.h>
+#include <signal.h>
 
 Trapframe *getHartTrapFrame()
 {
@@ -114,7 +115,16 @@ int handleInterrupt()
         return EXTERNAL_TRAP;
         break;
     case INTERRUPT_STI: // s timer interrupt
-        timerTick();
+        if (myThread()->setAlarm)
+        {
+            tkill(myThread()->threadId, SIGALRM);
+            myThread()->setAlarm = 0;
+        }
+        else
+            yield();
+
+        setNextTimeoutInterval(readRealTime() * 2);
+        // timerTick();
         // user timer interrupt
         return TIMER_INTERRUPT;
         break;
@@ -189,7 +199,7 @@ void userHandler()
 
     writeStvec((u64)kernelTrap);
     // if (scause != 8)
-    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
+    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx, threadid: %lx\n", scause, stval, readSepc(), readSip(), tf->sp, myThread()->threadId);
     // 判断中断或者异常，然后调用对应的处理函数
 
     // if (scause == 0xd)
@@ -286,7 +296,6 @@ void userTrapReturn()
     // spp 位置零，spie 位置 1 （spp 表示进入异常的前一个状态的特权级别，0:u, 1:s
     sstatus &= ~SSTATUS_SPP;
     sstatus |= SSTATUS_SPIE;
-
     writeSstatus(sstatus);
 
     u64 satp = MAKE_SATP(SV39, PA2PPN((myProcess()->pgdir)));

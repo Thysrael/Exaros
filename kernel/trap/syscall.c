@@ -1289,20 +1289,13 @@ void syscallExec()
     {
         // if (argv[i] > 0)
         // printk("%d : %s\n", i, argv[i]);
-        if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c') // 跳过 pthread
+        if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c' && argv[i][9] == 'a') // 跳过 pthread
         {
             myThread()->retValue = 0;
             myThread()->clearChildTid = 0;
 
             threadDestroy(myThread());
         }
-        // if (i == 1 && argv[i][0] == 's' && argv[i][1] == 'o' && argv[i][2] == 'c') // 跳过 socket
-        // {
-        //     myThread()->retValue = 0;
-        //     myThread()->clearChildTid = 0;
-
-        //     threadDestroy(myThread());
-        // }
     }
 
     int ret = exec(path, argv);
@@ -1403,6 +1396,10 @@ void syscallGetFileStateAt(void)
     tf->a0 = 0;
 }
 
+/**
+ * @brief 设置对指定信号的处理方法
+ *
+ */
 void syscallSignalAction()
 {
     Trapframe *tf = getHartTrapFrame();

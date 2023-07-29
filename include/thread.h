@@ -37,6 +37,7 @@ typedef struct Thread
 
     bool killed;                      // 信号 SIGKILL
     SignalSet blocked;                // 屏蔽的信号集合（事实上是阻塞）
+    u64 setAlarm;
     SignalContextList pendingSignal;  // 未决 = 仍然未处理的信号，最近的一条在最后面
     SignalContextList handlingSignal; // 正在处理的信号（同样的信号将被忽略），最近的一条在最前面
 } Thread;

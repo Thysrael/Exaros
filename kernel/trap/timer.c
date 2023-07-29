@@ -11,6 +11,7 @@
 #include <riscv.h>
 #include <trap.h>
 #include <driver.h>
+#include <thread.h>
 
 static u32 ticks;
 IntervalTimer timer;
@@ -20,6 +21,11 @@ void setNextTimeout()
     SBI_CALL_1(SBI_SET_TIMER, readRealTime() + TIMER_INTERVAL);
 }
 
+void setNextTimeoutInterval(u64 interval)
+{
+    SBI_CALL_1(SBI_SET_TIMER, readRealTime() + interval);
+}
+
 void timerTick()
 {
     ticks++;
@@ -27,9 +33,13 @@ void timerTick()
     setNextTimeout();
 }
 
-void setTimer(IntervalTimer new)
+void setTimer(IntervalTimer time)
 {
-    timer = new;
+    timer = time;
+    u64 interval = time.expiration.second * 1000000 + time.expiration.microSecond;
+    setNextTimeoutInterval(interval);
+    Thread *t = myThread();
+    t->setAlarm = interval;
 }
 
 IntervalTimer getTimer()

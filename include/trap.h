@@ -115,6 +115,7 @@ TRAPFRAME  ----------------------
 Trapframe *getHartTrapFrame();
 
 void setNextTimeout();
+void setNextTimeoutInterval(u64 interaval);
 void timerTick();
 void setTimer(IntervalTimer new);
 IntervalTimer getTimer();
