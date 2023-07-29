@@ -21,6 +21,7 @@
 #include <futex.h>
 #include <syslog.h>
 #include <sysinfo.h>
+#include <resource.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -138,7 +139,7 @@ int fdalloc(File *f)
     int fd;
     Process *p = myProcess();
 
-    for (fd = 0; fd < NOFILE; fd++)
+    for (fd = 0; fd < p->fileDescription.hard; fd++)
     {
         if (p->ofile[fd] == 0)
         {
@@ -169,7 +170,7 @@ void syscallDup(void)
     // 将 f 与新的 fd 关联起来
     if ((fd = fdalloc(f)) < 0)
     {
-        tf->a0 = -1;
+        tf->a0 = -EMFILE;
         return;
     }
 
@@ -1286,6 +1287,13 @@ void syscallExec()
 
             threadDestroy(myThread());
         }
+        // if (i == 1 && argv[i][0] == 's' && argv[i][1] == 'o' && argv[i][2] == 'c') // 跳过 socket
+        // {
+        //     myThread()->retValue = 0;
+        //     myThread()->clearChildTid = 0;
+
+        //     threadDestroy(myThread());
+        // }
     }
 
     int ret = exec(path, argv);
@@ -2116,7 +2124,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
@@ -2281,6 +2289,33 @@ void syscallFsync()
 void syscallPrlimit64()
 {
     Trapframe *tf = getHartTrapFrame();
+    u64 pid = tf->a0, resouce = tf->a1, newVa = tf->a2, oldVa = tf->a3;
+    if (pid)
+    {
+        panic("Resource limit not current process!\n");
+    }
+    // printf("resource limit: pid: %lx, resource: %d, new: %lx, old: %lx\n", pid, resouce, newVa, oldVa);
+    struct ResourceLimit newLimit;
+    Process *process = myProcess();
+    if (newVa && copyin(process->pgdir, (char *)&newLimit, newVa, sizeof(struct ResourceLimit)) < 0)
+    {
+        tf->a0 = -1;
+    }
+    switch (resouce)
+    {
+    case RLIMIT_NOFILE:
+        if (newVa)
+        {
+            process->fileDescription.hard = newLimit.hard;
+            process->fileDescription.soft = newLimit.soft;
+        }
+        if (oldVa)
+        {
+            copyout(process->pgdir, oldVa, (char *)&process->fileDescription, sizeof(struct ResourceLimit));
+        }
+        break;
+    }
+    // releaseLock(&process->lock);
     tf->a0 = 0;
 }
 
