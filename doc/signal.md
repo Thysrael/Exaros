@@ -2,30 +2,78 @@
 
 ## 信号处理流程
 
-* 未决信号集（pending set）
-* 阻塞信号集（blocking set）
-  * 事实上就是 mask
-* signalAction
-  * 进程内的线程组共享一个处理函数
+当一个信号被产生时，它进入待处理状态 *pending*。通常情况下，它只会在短时间内保持为待处理状态，然后被传递给被信号指示的进程。然而，如果这种类型的信号目前被阻塞 *blocked*，它可能会无限期地保持为待处理状态，直到该类型的信号被解除阻塞。一旦解除阻塞，该信号将立即被传递。请参阅"Blocking Signals"（阻塞信号）。
 
-* 进程在由中断 / 异常返回前检查是否有未处理的信号：`userTrapReturn()`
-* 处理信号：
-  * 未注册信号：默认处理
-    * 默认处理的方式需要注意
-  * 已注册信号：
-    * 系统注册的特殊信号，如 SIGKILL，SIGSTOP，由系统注册的处理函数处理
-    * 用户注册的信号，由用户注册的处理函数在用户态处理
-      * 此时可能再次被信号打断（信号重入）
-* 从内核态返回用户态
+如果对某种信号的指定操作是忽略它，则生成的任何此类信号都会立即丢弃。 即使当时信号也被阻止，这种情况也会发生。 以这种方式丢弃的信号将永远不会被传递，即使程序随后为该类型的信号指定了不同的操作然后解除它的阻止也是如此。
 
-我们选取 [Linux 5.10](https://github.com/torvalds/linux/blob/v5.10/include/uapi/asm-generic/unistd.h) 中 signal 的系统调用的一个子集进行实现
+如果程序既没有处理也没有忽略的信号到达，则执行默认操作。 每种信号都有其自己的默认操作，如下所述（请参阅标准信号）。 对于大多数类型的信号，默认操作是终止进程。 对于代表“无害”事件的某些类型的信号，默认操作是不执行任何操作。
 
-```c
-#define SYSCALL_KILL 129
-#define SYSCALL_TKILL 130
-#define SYSCALL_TGKILL 131
-#define SYSCALL_SIGNAL_ACTION 134
-#define SYSCALL_SIGNAL_PROCESS_MASK 135
-#define SYSCALL_SIGRETURN 139
-```
+## Singal(int signum, sighander_t action)
 
+第二个参数 action 指定用于信号符号的操作。 这可以是以下之一：
+
+* SIG_DFL 指定特定信号的默认操作。 标准信号中规定了各种信号的默认操作。
+* SIG_IGN 指定应忽略该信号。
+
+您的程序通常不应忽略代表严重事件或通常用于请求终止的信号。 您根本不能忽略 SIGKILL 或 SIGSTOP 信号。 您可以忽略诸如 SIGSEGV 之类的程序错误信号，但忽略错误不会使程序继续有意义地执行。 忽略 SIGINT、SIGQUIT 和 SIGTSTP 等用户请求是不友好的。
+
+当您不希望在程序的某个部分传递信号时，要做的就是阻止它们，而不是忽略它们。 请参阅阻塞信号。
+
+处理程序
+提供程序中处理程序函数的地址，以指定运行此处理程序作为传递信号的方式。
+
+如果将信号的操作设置为 SIG_IGN，或者将其设置为 SIG_DFL 并且默认操作是忽略该信号，则该类型的任何待处理信号都会被丢弃（即使它们被阻止）。 丢弃挂起的信号意味着它们永远不会被传递，即使您随后指定另一个操作并取消阻止此类信号也是如此。
+
+信号函数返回先前对指定符号有效的操作。 您可以保存该值并稍后通过再次调用信号来恢复它。
+
+## int sigaction (int signum, const struct sigaction *restrict action, struct sigaction *restrict old-action)
+
+数据类型：struct sigaction
+
+sigaction 函数中使用 struct sigaction 类型的结构来指定有关如何处理特定信号的所有信息。 该结构至少包含以下成员：
+
+sighandler_t sa_handler
+它的使用方式与信号函数的操作参数相同。 该值可以是 SIG_DFL、SIG_IGN 或函数指针。 请参阅基本信号处理。
+
+sigset_t sa_mask
+这指定了处理程序运行时要阻止的一组信号。 阻塞在处理程序的阻塞信号中进行了解释。 请注意，默认情况下，在启动其处理程序之前，传递的信号会被自动阻止； 无论 sa_mask 中的值如何，这都是正确的。 如果您希望该信号在其处理程序中不被阻止，则必须在处理程序中编写代码以解除对它的阻止。
+
+int sa_flags
+这指定了可以影响信号行为的各种标志。 这些在 sigaction 的标志中有更详细的描述。
+
+* SA_NOCLDSTOP
+  * 该标志仅对 SIGCHLD 信号有意义。 设置该标志后，系统会为已终止的子进程传递信号，但不会为已停止的子进程传递信号。 默认情况下，SIGCHLD 会传递给已终止的子项和已停止的子项。
+* SA_ONSTACK
+  * 如果为特定信号编号设置了此标志，则系统在传递此类信号时将使用信号堆栈。 请参阅使用单独的信号堆栈。 如果带有此标志的信号到达并且您尚未设置信号堆栈，则将使用普通用户堆栈，就像未设置该标志一样。
+* SA_RESTART
+  * 该标志控制在某些原语（例如打开、读取或写入）期间传递信号时发生的情况，并且信号处理程序正常返回。 有两种选择：库函数可以恢复，或者返回失败并返回错误代码 EINTR。
+  * 该选择由所传递的特定类型信号的 SA_RESTART 标志控制。 如果设置了该标志，则从处理程序返回将恢复库函数。 如果该标志已清除，则从处理程序返回会使该函数失败。 请参阅被信号中断的原语。
+
+## 初始化 Signal Action
+
+创建新进程时（请参阅创建进程），它会从其父进程继承信号处理。 但是，当您使用 exec 函数加载新的进程映像时（请参阅执行文件），您已定义自己的处理程序以恢复其 SIG_DFL 处理的任何信号。 （如果您稍微考虑一下，这是有道理的；旧程序中的处理程序函数特定于该程序，甚至不存在于新程序映像的地址空间中。）当然，新程序可以 建立自己的处理程序。
+
+## 处理函数运行时另一个信号到达
+
+当调用特定信号的处理程序时，该信号会自动阻塞，直到处理程序返回。 这意味着如果两个同类信号同时到达，第二个信号将被保留，直到第一个信号被处理为止。 （如果您想允许更多此类信号到达，处理程序可以使用 sigprocmask 显式解除信号阻塞；请参阅处理信号掩码。）
+
+但是，您的处理程序仍然可以通过另一种信号的传递来中断。 为了避免这种情况，您可以使用传递给 sigaction 的操作结构的 sa_mask 成员来显式指定在信号处理程序运行时应阻止哪些信号。 这些信号是除了调用处理程序的信号以及通常被进程阻止的任何其他信号之外的信号。 请参阅处理程序的阻塞信号。
+
+当处理程序返回时，阻塞信号集将恢复到处理程序运行之前的值。 因此，在处理程序内部使用 sigprocmask 只会影响处理程序本身执行期间可以到达的信号，而不影响处理程序返回后可以到达的信号。
+
+当异常返回前发现多个信号处理函数时:    异常返回前会循环遍历所有未被当前线程block的信号，如果有多个信号均需要执行信号处理函数, 那么内核会在进程栈中依次堆叠多个信号栈帧, 如某线程依次收到了需要执行handler的 sig1/sig2两个信号, 则内核会先为sig1设置栈帧，然后为sig2设置栈帧。而最终用户态的执行流程是 sig2_handler => sys_rt_sigreturn => sig1_handler => sys_rt_sigreturn => 用户态上下文， 即后到的信号被优先处理(举例见备注)。
+
+## int sigprocmask (int how, const sigset_t *restrict set, sigset_t *restrict oldset)
+
+SIG_BLOCK
+Block the signals in set—add them to the existing mask. In other words, the new mask is the union of the existing mask and set.
+
+SIG_UNBLOCK
+Unblock the signals in set—remove them from the existing mask.
+
+SIG_SETMASK
+Use set for the mask; ignore the previous value of the mask.
+
+## Signal Stack
+
+信号堆栈是一个特殊的内存区域，在信号处理程序期间用作执行堆栈。 它应该相当大，以避免依次溢出的危险； 宏 SIGSTKSZ 被定义为信号堆栈的规范大小。 您可以使用 malloc 为堆栈分配空间。 然后调用 sigaltstack 或 sigstack 告诉系统将该空间用于信号堆栈

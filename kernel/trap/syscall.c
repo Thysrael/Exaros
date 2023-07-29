@@ -1017,7 +1017,16 @@ void syscallBrk()
     {
         if (addr < p->brkHeapTop)
         {
-            panic("Syscall brk can't decrease the size of heap from 0x%x to 0x%x\n", addr, addr);
+            u64 start = ALIGN_UP(addr, PAGE_SIZE); // 权限一致，需要新的页则直接申请
+            u64 end = ALIGN_UP(p->brkHeapTop, PAGE_SIZE);
+            while (start < end)
+            {
+                pageRemove(p->pgdir, start);
+                start += PAGE_SIZE;
+            }
+            p->brkHeapTop = addr;
+            tf->a0 = 0;
+            return;
         }
         u64 start = ALIGN_UP(p->brkHeapTop, PAGE_SIZE); // 权限一致，需要新的页则直接申请
         u64 end = ALIGN_UP(addr, PAGE_SIZE);
@@ -1642,13 +1651,6 @@ void syscallTkill()
     Trapframe *tf = getHartTrapFrame();
     int tid = tf->a0;
     int sig = tf->a1;
-    // Thread *th;
-    // tid2Thread(tid, &th, 0);
-    // if (signalIsMember(&th->processing, sig))
-    // {
-    //     tf->a0 = -1;
-    //     return;
-    // }
     tf->a0 = tkill(tid, sig);
     return;
 }
@@ -1665,7 +1667,7 @@ void syscallTgkill()
 
 void syscallSigreturn()
 {
-    sigreturn();
+    rt_sigreturn();
     return;
 }
 
@@ -1987,11 +1989,10 @@ void syscallFutex()
     u64 uaddr = tf->a0, newAddr = tf->a4;
     struct TimeSpec t;
     op &= (FUTEX_PRIVATE_FLAG - 1);
-    printk("uaddr: %lx\n", uaddr);
     switch (op)
     {
     case FUTEX_WAIT:
-        printk("FUTEX_WAIT\n");
+        // printk("FUTEX_WAIT\n");
         copyin(myProcess()->pgdir, (char *)&userVal, uaddr, sizeof(int));
         if (time)
         {
@@ -2000,7 +2001,6 @@ void syscallFutex()
                 panic("copy time error!\n");
             }
         }
-        printk("val: %d\n", userVal);
         if (userVal != val)
         {
             tf->a0 = -1;
@@ -2009,12 +2009,12 @@ void syscallFutex()
         futexWait(uaddr, myThread(), time ? &t : 0);
         break;
     case FUTEX_WAKE:
-        printk("FUTEX_WAKE\n");
+        // printk("FUTEX_WAKE\n");
         // printf("val: %d\n", val);
         futexWake(uaddr, val);
         break;
     case FUTEX_REQUEUE:
-        printk("FUTEX_REQUEUE\n");
+        // printk("FUTEX_REQUEUE\n");
         // printf("val: %d\n", val);
         futexRequeue(uaddr, val, newAddr);
         break;
