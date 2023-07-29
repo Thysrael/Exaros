@@ -95,21 +95,23 @@ typedef struct SignalInfo
     unsigned int si_arch; /* arch of attempted syscall */
 } SignalInfo;
 
-// sig set 形态需要保持一致
+// sig set 形态需要保持一致handler
 // 参阅 linux
+
 typedef struct SignalSet
 {
     u64 signal;
 } SignalSet;
 
+typedef void (*__sighandler_t)(int);
+
 // sig action 形态需要保持一致
 // 参阅 linux
 typedef struct SignalAction
 {
-    void (*handler)(int);
+    __sighandler_t sa_handler;
+    unsigned long sa_flags;
     SignalSet sa_mask;
-    int sa_flags;
-    void (*sa_restorer)(void);
 } SignalAction;
 
 typedef struct SignalContext

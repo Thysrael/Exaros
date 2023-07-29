@@ -137,7 +137,7 @@ void handleSignal()
         sc = getFirstPendingSignal(thread);
         if (sc == NULL) { break; }
         SignalAction *sa = getSignalHandler(thread->process) + (sc->signal - 1);
-        if (sa->handler == NULL)
+        if (sa->sa_handler == NULL)
         {
             SignalActionDefault(thread, sc->signal);
             continue;
@@ -147,10 +147,16 @@ void handleSignal()
         sc->blockedRecover = thread->blocked;        // 原有 block
         signalSetAdd(&thread->blocked, sc->signal);  // block 自己
         signalSetOr(&thread->blocked, &sa->sa_mask); // block sa 中规定的信号
-        printk("sa->flag = %x\n", sa->sa_flags);     // TODO sa->flag;
+        // printk("sa->flag %x\n", sa->sa_flags);       // TODO sa->flag;
         tf->sp = ALIGN_DOWN(tf->sp, PAGE_SIZE);
         tf->ra = SIGNAL_TRAMPOLINE;
-        tf->epc = (u64)sa->handler;
+        tf->epc = (u64)sa->sa_handler;
+        // printk("sa->sa_handler 0x%lx\n", sa->sa_handler);
+        if (sa->sa_flags & 0x0004)
+        {
+            sa->sa_handler = NULL;
+            signalSetEmpty(&sa->sa_mask);
+        }
         LIST_REMOVE(sc, link);                               // 从 pendingSignal 取出
         LIST_INSERT_HEAD(&thread->handlingSignal, sc, link); // 插入 handlingSignal
     }
