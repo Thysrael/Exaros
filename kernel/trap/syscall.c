@@ -1972,11 +1972,10 @@ void syscallFutex()
     u64 uaddr = tf->a0, newAddr = tf->a4;
     struct TimeSpec t;
     op &= (FUTEX_PRIVATE_FLAG - 1);
-    printk("uaddr: %lx\n", uaddr);
     switch (op)
     {
     case FUTEX_WAIT:
-        printk("FUTEX_WAIT\n");
+        // printk("FUTEX_WAIT\n");
         copyin(myProcess()->pgdir, (char *)&userVal, uaddr, sizeof(int));
         if (time)
         {
@@ -1985,7 +1984,6 @@ void syscallFutex()
                 panic("copy time error!\n");
             }
         }
-        printk("val: %d\n", userVal);
         if (userVal != val)
         {
             tf->a0 = -1;
@@ -1994,12 +1992,12 @@ void syscallFutex()
         futexWait(uaddr, myThread(), time ? &t : 0);
         break;
     case FUTEX_WAKE:
-        printk("FUTEX_WAKE\n");
+        // printk("FUTEX_WAKE\n");
         // printf("val: %d\n", val);
         futexWake(uaddr, val);
         break;
     case FUTEX_REQUEUE:
-        printk("FUTEX_REQUEUE\n");
+        // printk("FUTEX_REQUEUE\n");
         // printf("val: %d\n", val);
         futexRequeue(uaddr, val, newAddr);
         break;
