@@ -1484,39 +1484,39 @@ bad:
 
 void syscallReadVector()
 {
-    //     Trapframe *tf = getHartTrapFrame();
-    //     struct File *f;
-    //     int fd = tf->a0;
+    Trapframe *tf = getHartTrapFrame();
+    struct File *f;
+    int fd = tf->a0;
 
-    //     if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
-    //     {
-    //         goto bad;
-    //     }
+    if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    {
+        goto bad;
+    }
 
-    //     int cnt = tf->a2;
-    //     if (cnt < 0 || cnt >= IOVMAX)
-    //     {
-    //         goto bad;
-    //     }
+    int cnt = tf->a2;
+    if (cnt < 0 || cnt >= IOVMAX)
+    {
+        goto bad;
+    }
 
-    //     struct Iovec vec[IOVMAX];
-    //     struct Process *p = myProcess();
+    struct Iovec vec[IOVMAX];
+    struct Process *p = myProcess();
 
-    //     if (copyin(p->pgdir, (char *)vec, tf->a1, cnt * sizeof(struct Iovec)) != 0)
-    //     {
-    //         goto bad;
-    //     }
+    if (copyin(p->pgdir, (char *)vec, tf->a1, cnt * sizeof(struct Iovec)) != 0)
+    {
+        goto bad;
+    }
 
-    //     u64 len = 0;
-    //     for (int i = 0; i < cnt; i++)
-    //     {
-    //         len += fileread(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
-    //     }
-    //     tf->a0 = len;
-    //     return;
+    u64 len = 0;
+    for (int i = 0; i < cnt; i++)
+    {
+        len += fileread(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
+    }
+    tf->a0 = len;
+    return;
 
-    // bad:
-    //     tf->a0 = -1;
+bad:
+    tf->a0 = -1;
 }
 
 void syscallGetClockTime()
@@ -2131,7 +2131,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
