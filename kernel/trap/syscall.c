@@ -1797,20 +1797,20 @@ void syscallSelect()
     {
         if (timeout)
         {
-            struct TimeSpec ts;
-            copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
-            if (ts.microSecond == 0 && ts.second == 0)
-            {
-                goto selectFinish;
-            }
+            // struct TimeSpec ts;
+            // copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+            // if (ts.microSecond == 0 && ts.second == 0)
+            // {
+            //     goto selectFinish;
+            // }
         }
-        tf->epc -= 4;
+        // tf->epc -= 4;
         yield();
     }
-selectFinish:
+    // selectFinish:
     copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
 
-    // printf("select end cnt %d\n",cnt);
+    printk("select end cnt %d\n", cnt);
     tf->a0 = cnt;
 }
 
@@ -2628,7 +2628,15 @@ void syscallSHMGet()
 void syscallSHMCtrl()
 {
     Trapframe *tf = getHartTrapFrame();
-    SHM_DEBUG("hello\n");
+    if (tf->a0 == 114)
+    {
+        printk("syscall SHMCtrl");
+        long long *cp = (long long *)0xf00002000;
+        printk("flag is %ld\n", *cp);
+        long long userFlag;
+        copyin(myProcess()->pgdir, (char *)&userFlag, 0x3bfffff000, sizeof(long long));
+        printk("user flag is %ld\n", userFlag);
+    }
     tf->a0 = 0;
 }
 

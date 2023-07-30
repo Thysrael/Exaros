@@ -188,8 +188,8 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    if (scause != 8)
-        printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
+    // if (scause != 8)
+    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx\n", scause, stval, readSepc(), readSip(), tf->sp);
     // 判断中断或者异常，然后调用对应的处理函数
 
     // if (scause == 0xd)
@@ -215,8 +215,8 @@ void userHandler()
             // printk("ecall\n");
             tf->epc += 4;
             // if (tf->a7 != 63 && tf->a7 != 64)
-            if (tf->a7 != 63)
-                printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
+            // if (tf->a7 != 63)
+            //     printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
 
             if (syscallVector[tf->a7] == 0)
             {

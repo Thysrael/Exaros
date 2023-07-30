@@ -456,7 +456,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    printk("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
+    // printk("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
 
     // syscall_watetime 的范围值设置为 0
     if (th->awakeTime > 0)
@@ -627,7 +627,8 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
                 {
                     continue;
                 }
-                if (pa2[k] & PTE_WRITE_BIT)
+
+                if (pa2[k] & PTE_WRITE_BIT && !(pa2[k] & PTE_SHM_BIT))
                 {
                     pa2[k] |= PTE_COW_BIT;
                     pa2[k] &= ~PTE_WRITE_BIT;

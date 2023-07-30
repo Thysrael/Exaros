@@ -88,7 +88,7 @@ void main(u64 hartId)
     // PROCESS_CREATE_PRIORITY(processB, 1);
     // PROCESS_CREATE_PRIORITY(processC, 1);
     // PROCESS_CREATE_PRIORITY(syscall_test, 10);
-    PROCESS_CREATE_PRIORITY(busybox_test, 10);
+    PROCESS_CREATE_PRIORITY(busybox_test, 1);
     // PROCESS_CREATE_PRIORITY(pipe_test, 10);
 
     // 时钟中断的开关，在比赛中没有必要开启时钟中断

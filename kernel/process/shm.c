@@ -18,6 +18,7 @@ int shmAlloc(int key, u64 size, int shmflg)
 {
     // key, flag 均没有用到
     SHM_DEBUG("key: %d, size: 0x%lx, shmflag: 0x%x\n", key, size, shmflg);
+    SHM_DEBUG("PID: %d\n", myProcess()->processId);
     for (int i = 0; i < SHM_COUNT; i++)
     {
         if (!shms[i].used)
@@ -58,6 +59,7 @@ u64 shmAt(int shmid, u64 shmaddr, int shmflg)
 {
     // shmaddr, shmflg 均没有用到
     SHM_DEBUG("shmid: %d, shmaddr: 0x%lx, shmflag: 0x%x\n", shmid, shmaddr, shmflg);
+    SHM_DEBUG("PID: %d\n", myProcess()->processId);
     if (shms[shmid].used == false)
     {
         panic("shmAt before shmGet\n");
@@ -75,7 +77,7 @@ u64 shmAt(int shmid, u64 shmaddr, int shmflg)
         Page *page = pageLookup(kernelPageDirectory, kernelCur, &tmpPte);
         u64 pa = page2PA(page);
         SHM_DEBUG("map user va 0x%lx to kenerl va 0x%lx, pa is 0x%lx\n", userCur, kernelCur, pa);
-        pageMap(p->pgdir, userCur, pa, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT);
+        pageMap(p->pgdir, userCur, pa, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT | PTE_SHM_BIT);
         userCur += PAGE_SIZE;
         kernelCur += PAGE_SIZE;
     }

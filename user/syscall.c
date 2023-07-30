@@ -271,3 +271,8 @@ uintptr_t shmat(int shmid, long long addr, int shmflg)
 {
     return syscall(SYS_shmat, shmid, addr, shmflg);
 }
+
+int select(long long a5)
+{
+    return syscall(72, 0, 0, 0, 0, a5);
+}

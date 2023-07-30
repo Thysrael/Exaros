@@ -766,6 +766,14 @@ u64 exec(char *path, char **argv)
     {
         return loadScript(srcMeta, path, argv);
     }
+    // TODO: 暂时对应那种 ./script.sh 的形式
+    if (!isElfFormat((u8 *)&elfHeader))
+    {
+        char *scriptArgv[4] = {"./busybox", "sh"};
+        scriptArgv[2] = path;
+        scriptArgv[3] = NULL;
+        return exec("/busybox", scriptArgv);
+    }
     // 如果不是脚本，那么就是 elf 文件
     assert(isElfFormat((u8 *)&elfHeader));
 
