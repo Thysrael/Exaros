@@ -2134,7 +2134,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
@@ -2454,7 +2454,18 @@ void syscallLseek()
         off += file->off;
         break;
     case SEEK_END:
-        off += file->meta->fileSize;
+        if (file->type == FD_ENTRY)
+        {
+            off += file->meta->fileSize;
+        }
+        else if (file->type == FD_PIPE)
+        {
+            off += file->pipe->nwrite % PIPESIZE;
+        }
+        else
+        {
+            panic("Exaros doesn't support this file seek end\n");
+        }
         break;
     default:
         goto bad;
