@@ -1470,7 +1470,8 @@ void syscallWriteVector()
     u64 len = 0;
     for (int i = 0; i < cnt; i++)
     {
-        len += filewrite(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
+        if (vec[i].iovLen > 0)
+            len += filewrite(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
     }
     tf->a0 = len;
     return;
@@ -2128,7 +2129,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
