@@ -120,6 +120,11 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UTIMENSAT] syscallUtimensat,
     [SYSCALL_MEMORY_PROTECT] syscallMemoryProtect,
     [SYSCALL_FCHMOD_AT] syscallFchmodAt,
+    [SYS_sched_setscheduler] syscallSchedSetscheduler,
+    [SYS_sched_getscheduler] syscallSchedGetscheduler,
+    [SYS_sched_getparam] syscallSchedGetparam,
+    [SYS_sched_setaffinity] syscallSchedSetaffinity,
+    [SYS_sched_getaffinity] syscallSchedGetaffinity,
     [MAX_SYSCALL] 0,
 };
 
@@ -2572,4 +2577,55 @@ void syscallMemoryProtect()
         start += PAGE_SIZE;
     }
     tf->a0 = 0;
+}
+
+void syscallSchedSetscheduler()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 pid = tf->a0;
+    int policy = tf->a1;
+    u64 addr = tf->a2;
+    sched_param param;
+    copyin(myProcess()->pgdir, (char *)&param, addr, sizeof(sched_param));
+    tf->a0 = sched_setscheduler(pid, policy, &param);
+    return;
+}
+
+void syscallSchedGetscheduler()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 pid = tf->a0;
+    tf->a0 = sched_getscheduler(pid);
+    return;
+}
+
+void syscallSchedGetparam()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+    return;
+}
+
+void syscallSchedSetaffinity()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 pid = tf->a0;
+    u64 cpusetsize = tf->a1;
+    u64 addr = tf->a2;
+    cpu_set_t cpuset;
+    copyin(myProcess()->pgdir, (char *)&cpuset, addr, cpusetsize);
+    tf->a0 = sched_setaffinity(pid, cpusetsize, &cpuset);
+    return;
+}
+
+void syscallSchedGetaffinity()
+{
+    Trapframe *tf = getHartTrapFrame();
+    u64 pid = tf->a0;
+    u64 cpusetsize = tf->a1;
+    u64 addr = tf->a2;
+    cpu_set_t cpuset;
+    tf->a0 = sched_getaffinity(pid, cpusetsize, &cpuset);
+    copyout(myProcess()->pgdir, addr, (char *)&cpuset, cpusetsize);
+    return;
 }

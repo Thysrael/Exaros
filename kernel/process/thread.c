@@ -297,7 +297,8 @@ void threadSetup(Thread *th)
     th->state = UNUSED;
     th->reason = 0;
     th->awakeTime = 0;
-
+    CPU_ZERO(&th->cpuset);
+    CPU_SET(0, &th->cpuset);
     th->killed = false;
     signalSetEmpty(&th->blocked);
     LIST_INIT(&th->pendingSignal);
