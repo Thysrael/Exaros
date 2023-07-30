@@ -146,6 +146,23 @@ int fileread(File *f, bool isUser, u64 addr, int n)
     return r;
 }
 
+int fileTrunc(File *f, int len)
+{
+    int r = 0;
+
+    switch (f->type)
+    {
+    case FD_ENTRY:
+        metaResize(f->meta, len);
+        break;
+    default:
+        r = -1;
+        break;
+    }
+
+    return r;
+}
+
 /**
  * @brief 写入文件，对于不同文件采用不同方式
  *

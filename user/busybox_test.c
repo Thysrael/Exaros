@@ -7,6 +7,7 @@ char *argvStatic[] = {"./busybox", "sh", "run-static.sh", 0};
 char *argvNetperf[] = {"./busybox", "sh", "netperf_testcode.sh", 0};
 char *argvIperf[] = {"./busybox", "sh", "iperf_testcode.sh", 0};
 char *argvLibc[] = {"./busybox", "sh", "libctest_testcode.sh", 0};
+char *argvIOZone[] = {"./busybox", "sh", "iozone_testcode.sh", 0};
 char *argvDynamic[] = {"./busybox", "sh", "run-dynamic.sh", 0};
 char *argvLmbanch[] = {"./busybox", "sh", "lmbench_testcode.sh", 0};
 char *argvCyclic[] = {"./busybox", "sh", "cyclictest_testcode.sh", 0};
@@ -26,7 +27,7 @@ void main()
 
     if (pid == 0)
     {
-        exec("./busybox", argvLua);
+        exec("./busybox", tmp);
         // exec("./time-test", timet);
     }
     else

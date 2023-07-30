@@ -30,11 +30,13 @@
                             |            ...            |
     ------------------------+---------------------------+----------------- 0x0F_C800_0000
                             |          BIT_MAP          |
-    FILE_SYSTEM_CLUSTER_BITMAP_BASE --------------------+----------------- 0x0F_C000_0000 (KERNEL_PROCESS_SP_TOP - 1<<30)
+    FILE_SYSTEM_CLUSTER_BITMAP_BASE --------------------+----------------- 0x0F_C000_0000 (KERNEL_PROCESS_SP_TOP - 1 << 30)
                             |       signalAction        |
-    KERNEL_PROCESS_SIGNAL_BASE -------------------------+----------------- 0x0F_B000_0000 (FILE_SYSTEM_CLUSTER_BITMAP_BASE - 1<<30)
+    KERNEL_PROCESS_SIGNAL_BASE -------------------------+----------------- 0x0F_8000_0000 (FILE_SYSTEM_CLUSTER_BITMAP_BASE - 1 << 30)
                             |      socket buffer        |
-                            +---------------------------+----------------- 0x0F_A000_0000 (KERNEL_PROCESS_SIGNAL_BASE - 1<<30)
+    SOCKET_BUFFER_BASE ---> +---------------------------+----------------- 0x0F_4000_0000 (KERNEL_PROCESS_SIGNAL_BASE - 1 << 30)
+                            |      Shared Memory        |
+    SHM_BASE -------------> +---------------------------+----------------- 0x0F_0000_0000 (SOCKET_BUFFER_BASE - 1 << 30)
                             |                           |
                             |            ...            |
     PHYSICAL_MEMORY_END --->+---------------------------+----------------- 0x8800_0000
@@ -89,6 +91,13 @@
                             |User BRK Heap(dynamic, up) |        |
                             |                           |        v
     USER_BRK_HEAP_BOTTOM -->+---------------------------+----0x3C_FFFF_D000
+    USER_SHM_HEAP_BOTTOM    |                           |        ^
+                            |                           |        |
+    shmHeapPointer -------->+---------------------------+        |
+                            |                           |     1 << 32
+                            | User SHM Heap(dynamic,up) |        |
+                            |                           |        v
+    USER_SHM_HEAP_BOTTOM -->+---------------------------+----0x3B_FFFF_D000
                             |                           |
     ----------------------->+---------------------------+-----------------
                             |       .data               |
@@ -135,6 +144,8 @@
 #define USER_MMAP_HEAP_BOTTOM (USER_MMAP_HEAP_TOP - (1UL << 32))
 #define USER_BRK_HEAP_TOP USER_MMAP_HEAP_BOTTOM
 #define USER_BRK_HEAP_BOTTOM (USER_BRK_HEAP_TOP - (1UL << 32))
+#define USER_SHM_HEAP_TOP USER_BRK_HEAP_BOTTOM
+#define USER_SHM_HEAP_BOTTOM (USER_SHM_HEAP_TOP - (1UL << 32))
 
 // 用户的信号返回地址
 // #define SIGNAL_TRAMPOLINE (USER_BRK_HEAP_BOTTOM - PAGE_SIZE)
@@ -177,6 +188,7 @@
 #define FILE_SYSTEM_CLUSTER_BITMAP_BASE (KERNEL_PROCESS_SP_TOP - (1UL << 30))
 #define KERNEL_PROCESS_SIGNAL_BASE (FILE_SYSTEM_CLUSTER_BITMAP_BASE - (1UL << 30))
 #define SOCKET_BUFFER_BASE (KERNEL_PROCESS_SIGNAL_BASE - (1UL << 30))
+#define SHM_BASE (SOCKET_BUFFER_BASE - (1UL << 30))
 
 // #define USER_HEAP_TOP
 // #define USER_HEAP_BOTTOM

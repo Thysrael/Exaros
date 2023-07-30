@@ -751,6 +751,7 @@ u64 exec(char *path, char **argv)
     Process *p = myProcess();
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
+    p->shmHeapTop = USER_SHM_HEAP_BOTTOM;
     if ((srcMeta = metaName(AT_FDCWD, path, true)) == 0)
     {
         printk("find file error, path: %s\n", path);

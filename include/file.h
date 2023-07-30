@@ -46,10 +46,10 @@ typedef struct File
     int ref; // reference count
     char readable;
     char writable;
-    Pipe *pipe;        // FD_PIPE
-    DirMeta *meta;     // FD_ENTRY, 用于存储文件的信息
-    u32 off;           // FD_ENTRY
-    short major;       // FD_DEVICE
+    Pipe *pipe;    // FD_PIPE
+    DirMeta *meta; // FD_ENTRY, 用于存储文件的信息
+    u32 off;       // FD_ENTRY
+    short major;   // FD_DEVICE
     Socket *socket;
     DirMeta *curChild; // current child for getDirmeta
 } File;
@@ -94,6 +94,7 @@ void fileclose(File *f);
 int filestat(File *f, u64 addr);
 int fileread(File *f, bool isUser, u64 addr, int n);
 int filewrite(File *f, bool isUser, u64 addr, int n);
+int fileTrunc(File *f, int n);
 int getAbsolutePath(DirMeta *d, int isUser, u64 buf, int maxLen);
 u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off);
 #endif

@@ -266,6 +266,7 @@ int setupProcess(Process *p)
     p->parentId = 0;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->shmHeapTop = USER_SHM_HEAP_BOTTOM;
     p->fileDescription.hard = p->fileDescription.soft = NOFILE;
 
     p->cwd = &(rootFileSystem->root);
@@ -579,6 +580,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     process->priority = myprocess->priority;
     process->brkHeapTop = myprocess->brkHeapTop;
     process->mmapHeapTop = myprocess->mmapHeapTop;
+    process->shmHeapTop = myprocess->shmHeapTop;
 
     memmove(&th->trapframe, trapframe, sizeof(Trapframe));
     th->trapframe.a0 = 0;

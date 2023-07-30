@@ -22,6 +22,7 @@
 #include <syslog.h>
 #include <sysinfo.h>
 #include <resource.h>
+#include <shm.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -120,6 +121,12 @@ void (*syscallVector[])(void) = {
     [SYSCALL_UTIMENSAT] syscallUtimensat,
     [SYSCALL_MEMORY_PROTECT] syscallMemoryProtect,
     [SYSCALL_FCHMOD_AT] syscallFchmodAt,
+    [SYSCALL_SYNC] syscallSync,
+    [SYSCALL_FTRUNCATE] syscallFtruncate,
+    [SYSCALL_SHM_GET] syscallSHMGet,
+    [SYSCALL_SHM_CTL] syscallSHMCtrl,
+    [SYSCALL_SHM_AT] syscallSHMAt,
+    [SYSCALL_SHM_DT] syscallSHMDt,
     [MAX_SYSCALL] 0,
 };
 
@@ -254,7 +261,6 @@ void syscallWrite(void)
         return;
     }
 
-    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
 }
 
@@ -1121,9 +1127,11 @@ void syscallMapMemory()
     //     do_mmap(fd, start, len, perm, /*'type' currently not used */ flags, off);
     // // printf("mmap return value: %d\n", trapframe->a0);
     // return;
-
+    // printk("\n** mmap size is 0x%lx **\n", length);
     Process *p = myProcess();
     int alloc = (addr == NULL);
+    // printk("** alloc is %d **\n", alloc);
+    // 这个分支似乎永远不会执行
     if (alloc == 0)
     {
         tf->a0 = do_mmap(file, addr, length, perm, flags, offset);
@@ -2573,5 +2581,68 @@ void syscallMemoryProtect()
         }
         start += PAGE_SIZE;
     }
+    tf->a0 = 0;
+}
+
+void syscallSync()
+{
+    Trapframe *tf = getHartTrapFrame();
+    asm volatile("fence iorw, iorw");
+    tf->a0 = 0;
+}
+
+void syscallFtruncate()
+{
+    Trapframe *tf = getHartTrapFrame();
+    File *f;
+    int fd = tf->a0;
+    int len = tf->a1;
+
+    if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    if (len < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    tf->a0 = fileTrunc(f, len);
+}
+
+void syscallSHMGet()
+{
+    // int shmid = shmget(key_t key, size_t size, int shmflg);
+    Trapframe *tf = getHartTrapFrame();
+    // key_t 是 s32
+    int key = tf->a0;
+    u64 size = tf->a1;
+    int shmflg = tf->a2;
+
+    tf->a0 = shmAlloc(key, size, shmflg);
+}
+
+void syscallSHMCtrl()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = 0;
+}
+
+void syscallSHMAt()
+{
+    // void* shmaddr = void *shmat(int shmid, const void *shmaddr, int shmflg);
+    Trapframe *tf = getHartTrapFrame();
+    int shmid = tf->a0;
+    u64 shmaddr = tf->a1;
+    int shmflg = tf->a2;
+    tf->a0 = shmAt(shmid, shmaddr, shmflg);
+}
+
+void syscallSHMDt()
+{
+    Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
 }
