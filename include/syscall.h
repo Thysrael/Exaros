@@ -20,8 +20,10 @@
 #define SYSCALL_LINKAT 37
 #define SYSCALL_UMOUNT 39
 #define SYSCALL_MOUNT 40
-#define SYSCALL_ACCESS 48
 #define SYS_statfs 43
+#define SYSCALL_FTRUNCATE 46
+#define SYSCALL_ACCESS 48
+
 #define SYSCALL_CHDIR 49
 
 #define SYSCALL_FCHMOD_AT 53
@@ -36,7 +38,7 @@
 #define SYSCALL_READ_VECTOR 65
 #define SYSCALL_WRITE_VECTOR 66
 #define SYSCALL_PREAD 67
-// #define SYSCALL_PWRITE 68
+#define SYSCALL_PWRITE 68
 
 #define SYSCALL_SEND_FILE 71
 #define SYSCALL_SELECT 72
@@ -45,6 +47,7 @@
 #define SYSCALL_FSTATAT 79
 
 #define SYSCALL_FSTAT 80
+#define SYSCALL_SYNC 81
 #define SYSCALL_UTIMENSAT 88
 #define SYS_fsync 82
 
@@ -93,6 +96,11 @@
 #define SYSCALL_GET_THREAD_ID 178
 #define SYS_sysinfo 179
 #define SYSCALL_SHUTDOWN 210
+
+#define SYSCALL_SHM_GET 194
+#define SYSCALL_SHM_CTL 195
+#define SYSCALL_SHM_AT 196
+#define SYSCALL_SHM_DT 197
 
 #define SYSCALL_SOCKET 198
 #define SYSCALL_BIND 200
@@ -181,6 +189,7 @@ void syscallSetTimer(void);
 void syscallGetTheardId(void);
 void syscallSelect(void);
 void syscallPRead(void);
+void syscallPWrite();
 void syscallSendFile(void);
 
 void doNothing();
@@ -232,6 +241,12 @@ void syscallConnect();
 void syscallAccept();
 
 void syscallFchmodAt();
+void syscallSync();
+void syscallFtruncate();
+void syscallSHMGet();
+void syscallSHMCtrl();
+void syscallSHMAt();
+void syscallSHMDt();
 
 void syscallSchedSetscheduler();
 void syscallSchedGetscheduler();

@@ -46,7 +46,8 @@
 		"delay.h": "c",
 		"io.h": "c",
 		"futex.h": "c",
-		"syslog.h": "c"
+		"syslog.h": "c",
+		"shm.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

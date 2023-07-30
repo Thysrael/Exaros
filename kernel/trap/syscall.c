@@ -22,6 +22,7 @@
 #include <syslog.h>
 #include <sysinfo.h>
 #include <resource.h>
+#include <shm.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -84,6 +85,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SIGRETURN] syscallSigreturn,
     [SYSCALL_SEND_FILE] syscallSendFile,
     [SYSCALL_PREAD] syscallPRead,
+    [SYSCALL_PWRITE] syscallPWrite,
     [SYSCALL_SELECT] syscallSelect,
     [SYS_getresuid] syscallGetresuid,
     [SYS_getresgid] syscallGetresgid,
@@ -125,6 +127,13 @@ void (*syscallVector[])(void) = {
     [SYS_sched_getparam] syscallSchedGetparam,
     [SYS_sched_setaffinity] syscallSchedSetaffinity,
     [SYS_sched_getaffinity] syscallSchedGetaffinity,
+    [SYSCALL_SYNC] syscallSync,
+    [SYSCALL_FTRUNCATE] syscallFtruncate,
+    [SYSCALL_SHM_GET] syscallSHMGet,
+    [SYSCALL_SHM_CTL] syscallSHMCtrl,
+    [SYSCALL_SHM_AT] syscallSHMAt,
+    [SYSCALL_SHM_DT] syscallSHMDt,
+
     [MAX_SYSCALL] 0,
 };
 
@@ -259,7 +268,6 @@ void syscallWrite(void)
         return;
     }
 
-    QS_DEBUG("[syscall] write.\n", (char *)uva);
     tf->a0 = filewrite(f, true, uva, len);
 }
 
@@ -1126,9 +1134,11 @@ void syscallMapMemory()
     //     do_mmap(fd, start, len, perm, /*'type' currently not used */ flags, off);
     // // printf("mmap return value: %d\n", trapframe->a0);
     // return;
-
+    // printk("\n** mmap size is 0x%lx **\n", length);
     Process *p = myProcess();
     int alloc = (addr == NULL);
+    // printk("** alloc is %d **\n", alloc);
+    // 这个分支似乎永远不会执行
     if (alloc == 0)
     {
         tf->a0 = do_mmap(file, addr, length, perm, flags, offset);
@@ -1792,20 +1802,20 @@ void syscallSelect()
     {
         if (timeout)
         {
-            struct TimeSpec ts;
-            copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
-            if (ts.microSecond == 0 && ts.second == 0)
-            {
-                goto selectFinish;
-            }
+            // struct TimeSpec ts;
+            // copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+            // if (ts.microSecond == 0 && ts.second == 0)
+            // {
+            //     goto selectFinish;
+            // }
         }
-        tf->epc -= 4;
+        // tf->epc -= 4;
         yield();
     }
-selectFinish:
+    // selectFinish:
     copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
 
-    // printf("select end cnt %d\n",cnt);
+    printk("select end cnt %d\n", cnt);
     tf->a0 = cnt;
 }
 
@@ -1820,6 +1830,27 @@ void syscallPRead()
     }
     u32 off = file->off;
     tf->a0 = metaRead(file->meta, true, tf->a1, tf->a3, tf->a2);
+    file->off = off;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+void syscallPWrite()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd = tf->a0;
+    File *file = myProcess()->ofile[fd];
+    if (file == 0)
+    {
+        goto bad;
+    }
+    if (file->type != FD_ENTRY)
+    {
+        panic("Exaros doesn't support this function\n");
+    }
+    u32 off = file->off;
+    tf->a0 = metaWrite(file->meta, true, tf->a1, tf->a3, tf->a2);
     file->off = off;
     return;
 bad:
@@ -2639,4 +2670,84 @@ void syscallSchedGetaffinity()
     tf->a0 = sched_getaffinity(pid, cpusetsize, &cpuset);
     copyout(myProcess()->pgdir, addr, (char *)&cpuset, cpusetsize);
     return;
+}
+void syscallSync()
+{
+    Trapframe *tf = getHartTrapFrame();
+    asm volatile("fence iorw, iorw");
+    tf->a0 = 0;
+}
+
+void syscallFtruncate()
+{
+    Trapframe *tf = getHartTrapFrame();
+    File *f;
+    int fd = tf->a0;
+    int len = tf->a1;
+
+    if (fd < 0 || fd >= NOFILE || (f = myProcess()->ofile[fd]) == NULL)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    if (len < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    tf->a0 = fileTrunc(f, len);
+}
+
+void syscallSHMGet()
+{
+    // int shmid = shmget(key_t key, size_t size, int shmflg);
+    Trapframe *tf = getHartTrapFrame();
+    // key_t 是 s32
+    int key = tf->a0;
+    u64 size = tf->a1;
+    int shmflg = tf->a2;
+
+    tf->a0 = shmAlloc(key, size, shmflg);
+}
+
+void syscallSHMCtrl()
+{
+    Trapframe *tf = getHartTrapFrame();
+    if (tf->a0 == 114)
+    {
+        printk("syscall SHMCtrl");
+        long long *cp = (long long *)0xf00002000;
+        printk("flag is %ld\n", *cp);
+        long long userFlag;
+        copyin(myProcess()->pgdir, (char *)&userFlag, 0x3bfffff000, sizeof(long long));
+        printk("user flag is %ld\n", userFlag);
+    }
+    tf->a0 = 0;
+}
+
+void syscallSHMAt()
+{
+    // void* shmaddr = void *shmat(int shmid, const void *shmaddr, int shmflg);
+    Trapframe *tf = getHartTrapFrame();
+    int shmid = tf->a0;
+    u64 shmaddr = tf->a1;
+    int shmflg = tf->a2;
+    tf->a0 = shmAt(shmid, shmaddr, shmflg);
+    // char *src = "hello, world.\n";
+    // copyout(myProcess()->pgdir, tf->a0, src, 10);
+    // char *cp = (char *)SHM_BASE;
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     printk("%c", cp[i]);
+    // }
+    // panic("");
+}
+
+void syscallSHMDt()
+{
+    Trapframe *tf = getHartTrapFrame();
+    SHM_DEBUG("hello\n");
+    tf->a0 = 0;
 }

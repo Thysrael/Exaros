@@ -118,6 +118,7 @@ u32 rwClus(FileSystem *fs, u32 cluster, int write, int user, u64 data, u32 off, 
 int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc);
 int metaRead(DirMeta *meta, int userDst, u64 dst, u32 off, u32 n);
 int metaWrite(DirMeta *meta, int userSrc, u64 src, u32 off, u32 n);
+int metaResize(DirMeta *meta, u32 size);
 DirMeta *metaAlloc(DirMeta *parent, char *name, int attr);
 DirMeta *metaCreate(int fd, char *path, short type, int mode);
 void metaTrunc(DirMeta *meta);

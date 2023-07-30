@@ -404,6 +404,7 @@ int metaWrite(DirMeta *meta, int userSrc, u64 src, u32 off, u32 n)
         return -1;
     }
     FileSystem *fs = meta->fileSystem;
+    // 如果文件为空
     if (meta->firstClus == 0)
     {
         meta->curClus = meta->firstClus = meta->inode.item[0] = allocClus(fs);
@@ -434,6 +435,26 @@ int metaWrite(DirMeta *meta, int userSrc, u64 src, u32 off, u32 n)
         }
     }
     return tot;
+}
+
+/**
+ * @brief 将文件调整到 size 大小
+ *
+ * @param meta
+ * @param size
+ * @return int
+ */
+int metaResize(DirMeta *meta, u32 size)
+{
+    if (size == 0)
+    {
+        metaTrunc(meta);
+    }
+    else
+    {
+        panic("size is %d, OS don't support other trunc.\n");
+    }
+    return 0;
 }
 
 /**

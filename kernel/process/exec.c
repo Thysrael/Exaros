@@ -753,6 +753,7 @@ u64 exec(char *path, char **argv)
     Process *p = myProcess();
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
+    p->shmHeapTop = USER_SHM_HEAP_BOTTOM;
     if ((srcMeta = metaName(AT_FDCWD, path, true)) == 0)
     {
         printk("find file error, path: %s\n", path);
@@ -766,6 +767,14 @@ u64 exec(char *path, char **argv)
     if (isScriptFormat((u8 *)&elfHeader))
     {
         return loadScript(srcMeta, path, argv);
+    }
+    // TODO: 暂时对应那种 ./script.sh 的形式
+    if (!isElfFormat((u8 *)&elfHeader))
+    {
+        char *scriptArgv[4] = {"./busybox", "sh"};
+        scriptArgv[2] = path;
+        scriptArgv[3] = NULL;
+        return exec("/busybox", scriptArgv);
     }
     // 如果不是脚本，那么就是 elf 文件
     assert(isElfFormat((u8 *)&elfHeader));

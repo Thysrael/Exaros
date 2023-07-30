@@ -11,6 +11,7 @@
 // #define SYSCALL_DEBUG_
 // #define NET_DEBUG_
 // #define SOCKET_DEBUG_
+// #define SHM_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \
@@ -78,6 +79,16 @@
     } while (0)
 #else
 #define SOCKET_DEBUG(...)
+#endif
+
+#ifdef SHM_DEBUG_
+#define SHM_DEBUG(...)                                                     \
+    do {                                                                   \
+        printk("[SHM] at %s: %d in %s(): ", __FILE__, __LINE__, __func__); \
+        printk(__VA_ARGS__);                                               \
+    } while (0)
+#else
+#define SHM_DEBUG(...)
 #endif
 
 #endif
