@@ -10,8 +10,8 @@
 // #define LOAD_DEBUG_
 // #define SYSCALL_DEBUG_
 // #define NET_DEBUG_
-// #define SOCKET_DEBUG_
-#define SHM_DEBUG_
+#define SOCKET_DEBUG_
+// #define SHM_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \

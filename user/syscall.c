@@ -261,3 +261,13 @@ int rt_sigreturn()
 {
     return syscall(SYS_rt_sigreturn);
 }
+
+int shmget(int key, long long size, int shmflg)
+{
+    return syscall(SYS_shmget, key, size, shmflg);
+}
+
+uintptr_t shmat(int shmid, long long addr, int shmflg)
+{
+    return syscall(SYS_shmat, shmid, addr, shmflg);
+}

@@ -456,7 +456,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    CNX_DEBUG("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
+    printk("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
 
     // syscall_watetime 的范围值设置为 0
     if (th->awakeTime > 0)

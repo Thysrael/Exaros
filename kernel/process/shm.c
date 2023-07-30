@@ -71,8 +71,11 @@ u64 shmAt(int shmid, u64 shmaddr, int shmflg)
     // int cow;
     while (userCur < userEnd)
     {
-        SHM_DEBUG("map user va 0x%lx to kenerl va 0x%lx\n", userCur, kernelCur);
-        pageMap(p->pgdir, userCur, kernelCur, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT);
+        u64 *tmpPte;
+        Page *page = pageLookup(kernelPageDirectory, kernelCur, &tmpPte);
+        u64 pa = page2PA(page);
+        SHM_DEBUG("map user va 0x%lx to kenerl va 0x%lx, pa is 0x%lx\n", userCur, kernelCur, pa);
+        pageMap(p->pgdir, userCur, pa, PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT | PTE_USER_BIT);
         userCur += PAGE_SIZE;
         kernelCur += PAGE_SIZE;
     }

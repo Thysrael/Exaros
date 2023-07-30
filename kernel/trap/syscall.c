@@ -2628,6 +2628,7 @@ void syscallSHMGet()
 void syscallSHMCtrl()
 {
     Trapframe *tf = getHartTrapFrame();
+    SHM_DEBUG("hello\n");
     tf->a0 = 0;
 }
 
@@ -2639,10 +2640,19 @@ void syscallSHMAt()
     u64 shmaddr = tf->a1;
     int shmflg = tf->a2;
     tf->a0 = shmAt(shmid, shmaddr, shmflg);
+    // char *src = "hello, world.\n";
+    // copyout(myProcess()->pgdir, tf->a0, src, 10);
+    // char *cp = (char *)SHM_BASE;
+    // for (int i = 0; i < 10; i++)
+    // {
+    //     printk("%c", cp[i]);
+    // }
+    // panic("");
 }
 
 void syscallSHMDt()
 {
     Trapframe *tf = getHartTrapFrame();
+    SHM_DEBUG("hello\n");
     tf->a0 = 0;
 }
