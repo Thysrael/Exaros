@@ -38,7 +38,7 @@
 #define SYSCALL_READ_VECTOR 65
 #define SYSCALL_WRITE_VECTOR 66
 #define SYSCALL_PREAD 67
-// #define SYSCALL_PWRITE 68
+#define SYSCALL_PWRITE 68
 
 #define SYSCALL_SEND_FILE 71
 #define SYSCALL_SELECT 72
@@ -185,6 +185,7 @@ void syscallSetTimer(void);
 void syscallGetTheardId(void);
 void syscallSelect(void);
 void syscallPRead(void);
+void syscallPWrite();
 void syscallSendFile(void);
 
 void doNothing();

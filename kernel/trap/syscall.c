@@ -85,6 +85,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SIGRETURN] syscallSigreturn,
     [SYSCALL_SEND_FILE] syscallSendFile,
     [SYSCALL_PREAD] syscallPRead,
+    [SYSCALL_PWRITE] syscallPWrite,
     [SYSCALL_SELECT] syscallSelect,
     [SYS_getresuid] syscallGetresuid,
     [SYS_getresgid] syscallGetresgid,
@@ -1825,6 +1826,27 @@ void syscallPRead()
     }
     u32 off = file->off;
     tf->a0 = metaRead(file->meta, true, tf->a1, tf->a3, tf->a2);
+    file->off = off;
+    return;
+bad:
+    tf->a0 = -1;
+}
+
+void syscallPWrite()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd = tf->a0;
+    File *file = myProcess()->ofile[fd];
+    if (file == 0)
+    {
+        goto bad;
+    }
+    if (file->type != FD_ENTRY)
+    {
+        panic("Exaros doesn't support this function\n");
+    }
+    u32 off = file->off;
+    tf->a0 = metaWrite(file->meta, true, tf->a1, tf->a3, tf->a2);
     file->off = off;
     return;
 bad:
