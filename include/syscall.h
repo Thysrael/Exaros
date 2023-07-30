@@ -60,7 +60,11 @@
 #define SYSCALL_GET_TIME 113
 
 #define SYS_syslog 116
-
+#define SYS_sched_setscheduler 119
+#define SYS_sched_getscheduler 120
+#define SYS_sched_getparam 121
+#define SYS_sched_setaffinity 122
+#define SYS_sched_getaffinity 123
 #define SYSCALL_SCHED_YIELD 124
 #define SYSCALL_KILL 129
 #define SYSCALL_TKILL 130
@@ -228,6 +232,12 @@ void syscallConnect();
 void syscallAccept();
 
 void syscallFchmodAt();
+
+void syscallSchedSetscheduler();
+void syscallSchedGetscheduler();
+void syscallSchedGetparam();
+void syscallSchedSetaffinity();
+void syscallSchedGetaffinity();
 
 extern void (*syscallVector[])(void);
 

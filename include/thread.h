@@ -16,6 +16,7 @@
 #include <lock.h>
 #include <fs.h>
 #include <signal.h>
+#include <sched.h>
 
 typedef LIST_ENTRY(ThreadListEntry, Thread) ThreadListEntry;
 
@@ -34,7 +35,7 @@ typedef struct Thread
     u32 retValue;
     u64 clearChildTid;
     Process *process;
-
+    cpu_set_t cpuset;
     bool killed;                      // 信号 SIGKILL
     SignalSet blocked;                // 屏蔽的信号集合（事实上是阻塞）
     u64 setAlarm;
