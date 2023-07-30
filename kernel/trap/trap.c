@@ -123,7 +123,7 @@ int handleInterrupt()
         else
             yield();
 
-        setNextTimeoutInterval(readRealTime() * 2);
+        setNextTimeoutInterval(0xfffffff);
         // timerTick();
         // user timer interrupt
         return TIMER_INTERRUPT;
@@ -226,7 +226,7 @@ void userHandler()
             tf->epc += 4;
             // if (tf->a7 != 63 && tf->a7 != 64)
             // if (tf->a7 != 63)
-            // printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
+            //     printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
 
             if (syscallVector[tf->a7] == 0)
             {
