@@ -21,9 +21,9 @@ void setNextTimeout()
     SBI_CALL_1(SBI_SET_TIMER, readRealTime() + TIMER_INTERVAL);
 }
 
-void setNextTimeoutInterval(u64 interval)
+void setNextTimeoutInterval(u64 time)
 {
-    SBI_CALL_1(SBI_SET_TIMER, readRealTime() + interval);
+    SBI_CALL_1(SBI_SET_TIMER, time);
 }
 
 void timerTick()
@@ -37,9 +37,11 @@ void setTimer(IntervalTimer time)
 {
     timer = time;
     u64 interval = time.expiration.second * 1000000 + time.expiration.microSecond;
-    setNextTimeoutInterval(interval);
+    interval /= 20;
+    u64 realtime = readRealTime();
+    setNextTimeoutInterval(realtime + interval);
     Thread *t = myThread();
-    t->setAlarm = interval;
+    t->setAlarm = interval + realtime;
 }
 
 IntervalTimer getTimer()

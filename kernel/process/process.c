@@ -22,6 +22,7 @@
 #include <thread.h>
 #include <fs.h>
 #include <futex.h>
+#include <signal.h>
 
 Process processes[PROCESS_TOTAL_NUMBER];
 ProcessList freeProcesses, usedProcesses;
@@ -559,6 +560,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     }
     process = th->process;
     process->cwd = myprocess->cwd;
+    th->setAlarm = myThread()->setAlarm;
 
     for (SegmentMap *psm = myprocess->segmentMapHead; psm; psm = psm->next)
     {
@@ -597,6 +599,10 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     // {
     //     copyout(myprocess->pgdir, ctid, (char *)&process->processId, sizeof(u32));
     // }
+    // 拷贝 SignalAction
+    SignalAction *parentAction = getSignalHandler(myprocess);
+    SignalAction *newAction = getSignalHandler(process);
+    bcopy(parentAction, newAction, sizeof(SignalAction) * 128);
 
     u64 i,
         j, k;
@@ -650,6 +656,7 @@ int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
         return r;
     }
     Trapframe *trapframe = getHartTrapFrame();
+    thread->setAlarm = myThread()->setAlarm;
     memmove(&thread->trapframe, trapframe, sizeof(Trapframe));
     thread->trapframe.a0 = 0;
     thread->trapframe.tp = tls;

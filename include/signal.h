@@ -123,6 +123,7 @@ typedef struct SignalContext
     link;
 } SignalContext;
 
+SignalAction *getSignalHandler(Process *p);
 typedef LIST_HEAD(SignalContextList, SignalContext) SignalContextList;
 
 SignalContext *getFirstPendingSignal(Thread *thread);

@@ -46,6 +46,7 @@ void trapInit()
     printk("Trap init end.\n");
 }
 
+extern struct ThreadList usedThreads;
 /**
  * @brief 处理中断，返回中断类型；（EXTERNAL_TRAP，TIMER_INTERRUPT，UNKNOWN_DEVICE）
  * 这个函数处理的中断有：s级外部中断，s级时钟中断
@@ -56,6 +57,7 @@ int handleInterrupt()
 {
     u64 scause = readScause();
     u64 exceptionCode = scause & SCAUSE_EXCEPTION_CODE;
+    Thread *thread = NULL;
 
     assert(scause & SCAUSE_INTERRUPT);
     // printk("%lx\n", exceptionCode);
@@ -114,16 +116,24 @@ int handleInterrupt()
         // printk("external interrupt");
         return EXTERNAL_TRAP;
         break;
-    case INTERRUPT_STI: // s timer interrupt
-        if (myThread()->setAlarm)
+    case INTERRUPT_STI:; // s timer interrupt
+        setNextTimeoutInterval(readRealTime() + 0xffffffff);
+        int flag = myThread()->setAlarm;
+        LIST_FOREACH(thread, &usedThreads, link)
         {
-            tkill(myThread()->threadId, SIGALRM);
-            myThread()->setAlarm = 0;
+            u64 realtime = readRealTime();
+            // printk("th: %lx, alarm %d\n", thread->threadId, thread->setAlarm);
+            if (thread->setAlarm && thread->setAlarm <= realtime)
+            {
+                tkill(thread->threadId, SIGALRM);
+                thread->setAlarm = 0;
+                // printk("sendsigto: %lx\n", thread->threadId);
+            }
         }
-        else
+        if (!flag)
+        {
             yield();
-
-        setNextTimeoutInterval(0xfffffff);
+        }
         // timerTick();
         // user timer interrupt
         return TIMER_INTERRUPT;
@@ -226,7 +236,7 @@ void userHandler()
             tf->epc += 4;
             // if (tf->a7 != 63 && tf->a7 != 64)
             // if (tf->a7 != 63)
-            //     printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
+            // printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
 
             if (syscallVector[tf->a7] == 0)
             {
