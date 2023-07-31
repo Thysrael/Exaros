@@ -7,6 +7,22 @@
 char testContentToWrite[10] = "abcdefghi";
 char testContentToRead[10] = {0};
 
+char autoTestContent[] = "\\time-test\n  \
+./dhry2reg 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench DHRY2 test(lps): \"$0}'\n \
+\\busybox sh \\busybox_testcode.sh\n \
+\\busybox sh \\iozone_testcode.sh\n \
+\\busybox sh \\lua_testcode.sh\n \
+\\libc-bench\n \
+\\busybox sh \\libctest_testcode.sh\n \
+\\busybox sh \\unixbench_testcode.sh\n ";
+
+void buildScript()
+{
+    printk("building auto script.\n");
+    DirMeta *script = metaCreate(AT_FDCWD, "/auto.sh", T_FILE, O_CREATE | O_RDWR);
+    metaWrite(script, 0, (u64)autoTestContent, 0, sizeof(autoTestContent) + 1);
+}
+
 void testMeta()
 {
     printk("[testMeta] testing fat.......\n");

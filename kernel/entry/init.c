@@ -77,12 +77,12 @@ void main(u64 hartId)
     sdInit();
 #endif
     fileinit();
+
     macbInit();
     trapInit();
     plicinit();
     plicinithart();
     signalInit();
-
     // PROCESS_CREATE_PRIORITY(sh, 10);
     // PROCESS_CREATE_PRIORITY(processA, 1); // 凑数的进程，什么都不干
     // PROCESS_CREATE_PRIORITY(processB, 1);

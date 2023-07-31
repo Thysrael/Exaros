@@ -54,7 +54,8 @@ void initRootFileSystem()
     // test meta
     // void testMeta();
     // testMeta();
-
+    extern void buildScript();
+    buildScript();
     // 创建 dev 文件夹
     DirMeta *meta = metaCreate(AT_FDCWD, "/var/tmp/XXX", T_FILE, O_RDONLY);
     meta = metaCreate(AT_FDCWD, "/dev", T_DIR, O_RDONLY);
@@ -66,7 +67,7 @@ void initRootFileSystem()
     // meta = metaCreate(AT_FDCWD, "/dev/shm", T_DIR, O_RDONLY);   // share memory
     meta = metaCreate(AT_FDCWD, "/dev/null", T_CHAR, O_RDONLY); // share memory
     meta->dev = NONE;
-    meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY);       // share memory
+    meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY); // share memory
     meta = metaCreate(AT_FDCWD, "/dev/urandom", T_CHAR, O_RDONLY);
     // meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY);       // share memory
     meta = metaCreate(AT_FDCWD, "/dev/zero", T_CHAR, O_RDONLY);
