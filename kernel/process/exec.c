@@ -653,7 +653,7 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 
     // 拷贝环境变量
     // char *envVariable[] = {"PATH=/"};
-    char *envVariable[] = {"LD_LIBRARY_PATH=.", "PATH=/" /*, "LOOP_O=11", "TIMING_O=1", "ENOUGH=1"*/};
+    char *envVariable[] = {"LD_LIBRARY_PATH=.", "PATH=/", "UB_BINDIR=./" /*, "LOOP_O=11", "TIMING_O=1", "ENOUGH=1"*/};
 
     int envCount = sizeof(envVariable) / sizeof(char *);
     for (int i = 0; i < envCount; i++)

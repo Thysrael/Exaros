@@ -14,7 +14,7 @@ char *argvCyclic[] = {"./busybox", "sh", "cyclictest_testcode.sh", 0};
 char *argvUnix[] = {"./busybox", "sh", "unixbench_testcode.sh", 0};
 char *shell[] = {"./busybox", "sh", 0};
 char *timet[] = {"./time-test"};
-char *libc_bench[] = {"./busybox", "./libc-bench", 0};
+char *libc_bench[] = {"./libc-bench", 0};
 char *tmp[] = {"./busybox", "sh", "tmp.sh", 0};
 char *ababa[] = {"./busybox", "./iozone", "-a", "-r", "1k", "-s", "4m", 0};
 
@@ -30,7 +30,7 @@ void main()
 
     if (pid == 0)
     {
-        exec("./busybox", argvAuto);
+        exec("./busybox", shell);
         // exec("./time-test", timet);
     }
     else
