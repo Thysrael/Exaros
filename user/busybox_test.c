@@ -27,7 +27,7 @@ void main()
 
     if (pid == 0)
     {
-        exec("./busybox", argvLmbanch);
+        exec("./busybox", argvLua);
         // exec("./time-test", timet);
     }
     else

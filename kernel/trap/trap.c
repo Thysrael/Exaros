@@ -208,8 +208,8 @@ void userHandler()
     u64 *pte = NULL;
 
     writeStvec((u64)kernelTrap);
-    if (scause != 8)
-        printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx, threadid: %lx\n", scause, stval, readSepc(), readSip(), tf->sp, myThread()->threadId);
+    // if (scause != 8)
+    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx, threadid: %lx\n", scause, stval, readSepc(), readSip(), tf->sp, myThread()->threadId);
     // 判断中断或者异常，然后调用对应的处理函数
 
     // if (scause == 0xd)

@@ -1310,11 +1310,11 @@ void syscallExec()
     // 真正的执行
     // // 输出
 
-    printk("\npath: %s\n", path);
+    // printk("\npath: %s\n", path);
     for (int i = 0; i < NELEM(argv) && argv[i] != 0; i++)
     {
-        if (argv[i] > 0)
-            printk("%d : %s\n", i, argv[i]);
+        // if (argv[i] > 0)
+        //     printk("%d : %s\n", i, argv[i]);
         if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c' && argv[i][9] == 'a') // 跳过 pthread
         {
             myThread()->retValue = 0;
@@ -2176,7 +2176,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
