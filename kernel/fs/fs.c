@@ -67,6 +67,8 @@ void initRootFileSystem()
     // meta = metaCreate(AT_FDCWD, "/dev/shm", T_DIR, O_RDONLY);   // share memory
     meta = metaCreate(AT_FDCWD, "/dev/null", T_CHAR, O_RDONLY); // share memory
     meta->dev = NONE;
+    meta = metaCreate(AT_FDCWD, "/sort.src", T_CHAR, O_CREATE | O_RDWR);
+    metaWrite(meta, false, (u64) "3 2 1", 0, 6);
     meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY); // share memory
     meta = metaCreate(AT_FDCWD, "/dev/urandom", T_CHAR, O_RDONLY);
     // meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY);       // share memory
@@ -84,7 +86,7 @@ void initRootFileSystem()
     meta = metaCreate(AT_FDCWD, "/proc/sys", T_DIR, O_RDONLY);
     meta = metaCreate(AT_FDCWD, "/proc/sys/kernel", T_DIR, O_RDONLY);
     meta = metaCreate(AT_FDCWD, "/proc/sys/kernel/osrelease", T_CHAR, O_RDONLY);
-    // meta->dev = OSRELEASE;
+    meta->dev = OSRELEASE;
     meta = metaCreate(AT_FDCWD, "/proc/self", T_DIR, O_RDONLY);
     // if (do_linkat(AT_FDCWD, "/", AT_FDCWD, "/proc/self/exe") < 0)
     // {

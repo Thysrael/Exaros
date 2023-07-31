@@ -86,6 +86,7 @@
 #define SYS_setsid 157
 #define SYSCALL_GET_CPU_TIMES 153
 #define SYSCALL_UNAME 160
+#define SYSCALL_getrusage 165
 #define SYS_umask 166
 #define SYSCALL_GET_TIME_OF_DAY 169
 #define SYSCALL_GET_PID 172
@@ -255,6 +256,7 @@ void syscallSchedGetparam();
 void syscallSchedSetaffinity();
 void syscallSchedGetaffinity();
 void syscallNanosleep();
+void syscallGetrusage();
 
 extern void (*syscallVector[])(void);
 

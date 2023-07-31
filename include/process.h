@@ -204,6 +204,8 @@ typedef struct Process
     u32 pgid;
     u32 sid;
     SegmentMap *segmentMapHead; // 记录着这个进程的所有 segment 映射信息
+    int ktime;
+    int utime;
 } Process;
 
 // functions

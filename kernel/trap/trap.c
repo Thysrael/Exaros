@@ -132,6 +132,7 @@ int handleInterrupt()
         }
         if (!flag)
         {
+            myProcess()->utime++;
             yield();
         }
         // timerTick();
@@ -185,6 +186,7 @@ void kernelHandler()
         panic("kernel trap");
         break;
     case TIMER_INTERRUPT:
+        myProcess()->ktime++;
         yield();
         break;
     default:
@@ -209,7 +211,7 @@ void userHandler()
 
     writeStvec((u64)kernelTrap);
     // if (scause != 8)
-    //     printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx, threadid: %lx\n", scause, stval, readSepc(), readSip(), tf->sp, myThread()->threadId);
+    // printk("[userHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx, sp: %lx, threadid: %lx\n", scause, stval, readSepc(), readSip(), tf->sp, myThread()->threadId);
     // 判断中断或者异常，然后调用对应的处理函数
 
     // if (scause == 0xd)
@@ -224,6 +226,7 @@ void userHandler()
     if (scause & SCAUSE_INTERRUPT)
     {
         handleInterrupt();
+        myProcess()->utime++;
         yield();
     }
     else

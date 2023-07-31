@@ -279,9 +279,19 @@ static u64 loadScript(DirMeta *srcMeta, char *path, char **argv)
     if (strncmp(interp_path, "/bin/sh", 7) == 0)
     {
         // printk("some patch begin\n");
-        char *scriptArgv[4] = {"./busybox", "sh"};
-        scriptArgv[2] = path;
-        scriptArgv[3] = NULL;
+        char *scriptArgv[MAX_ARG] = {"./busybox", "sh"};
+        int script_argc = 2;
+        // 将原来的 argv 拷贝到 script_argv 中
+        while (*argv)
+        {
+            // printk("argv is %s\n", *argv);
+            scriptArgv[script_argc++] = *(argv++);
+        }
+        scriptArgv[script_argc] = NULL;
+        for (int i = 0; i < script_argc; i++)
+        {
+            printk("argv[%d] is %s\n", i, scriptArgv[i]);
+        }
         return exec("/busybox", scriptArgv);
     }
     if (strncmp(interp_path, "/bin/busybox", 12) == 0)
@@ -775,11 +785,13 @@ u64 exec(char *path, char **argv)
     // 如果是脚本，那么就按照脚本形式加载
     if (isScriptFormat((u8 *)&elfHeader))
     {
+        // printk("is this patch 1\n");
         return loadScript(srcMeta, path, argv);
     }
     // TODO: 暂时对应那种 ./script.sh 的形式
     if (!isElfFormat((u8 *)&elfHeader))
     {
+        // printk("is this patch 2?\n");
         char *scriptArgv[4] = {"./busybox", "sh"};
         scriptArgv[2] = path;
         scriptArgv[3] = NULL;

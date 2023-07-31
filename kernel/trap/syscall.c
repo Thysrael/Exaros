@@ -134,7 +134,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SHM_CTL] syscallSHMCtrl,
     [SYSCALL_SHM_AT] syscallSHMAt,
     [SYSCALL_SHM_DT] syscallSHMDt,
-
+    [SYSCALL_getrusage] syscallGetrusage,
     [MAX_SYSCALL] 0,
 };
 
@@ -245,7 +245,7 @@ void syscallRead(void)
         tf->a0 = -1;
         return;
     }
-
+    // printk("read fd is %d, len is %d\n", fd, len);
     tf->a0 = fileread(f, true, uva, len);
 }
 
@@ -398,7 +398,7 @@ void syscallOpenAt(void)
         tf->a0 = -1;
         return;
     }
-
+    printk("open path is %s\n", path);
     DirMeta *entryPoint;
     // 如果是创建一个文件，那么用 metaCreate
     if (flags & O_CREATE)
@@ -1034,6 +1034,7 @@ void syscallBrk()
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
+        printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1041,6 +1042,7 @@ void syscallBrk()
     {
         if (addr < p->brkHeapTop)
         {
+            printk("remove brk\n");
             u64 start = ALIGN_UP(addr, PAGE_SIZE); // 权限一致，需要新的页则直接申请
             u64 end = ALIGN_UP(p->brkHeapTop, PAGE_SIZE);
             while (start < end)
@@ -1049,14 +1051,14 @@ void syscallBrk()
                 start += PAGE_SIZE;
             }
             p->brkHeapTop = addr;
-            tf->a0 = 0;
+            tf->a0 = addr;
             return;
         }
         u64 start = ALIGN_UP(p->brkHeapTop, PAGE_SIZE); // 权限一致，需要新的页则直接申请
         u64 end = ALIGN_UP(addr, PAGE_SIZE);
         if (end > USER_BRK_HEAP_TOP)
         {
-            tf->a0 = -1;
+            tf->a0 = p->brkHeapTop;
             return;
         }
         while (start < end)
@@ -1068,12 +1070,12 @@ void syscallBrk()
             {
                 if (pageAlloc(&page) < 0)
                 {
-                    tf->a0 = -1;
+                    tf->a0 = p->brkHeapTop;
                     return;
                 }
                 if (pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT) < 0)
                 {
-                    tf->a0 = -1;
+                    tf->a0 = p->brkHeapTop;
                     return;
                 }
             }
@@ -1084,7 +1086,7 @@ void syscallBrk()
             start += PAGE_SIZE;
         }
         p->brkHeapTop = addr;
-        tf->a0 = 0;
+        tf->a0 = addr;
         return;
     }
 }
@@ -1548,9 +1550,9 @@ void syscallGetClockTime()
     Trapframe *tf = getHartTrapFrame();
     u64 time = r_time();
     TimeSpec ts;
-    ts.second = time / 1000000;
-    ts.microSecond = time % 1000000 * 1000; // todo
-    // printf("kernel time: %ld second: %ld ms: %ld\n", time, ts.second, ts.nanoSecond);
+    ts.second = time / 1000;
+    ts.microSecond = time % 1000; // todo
+    // printk("kernel time: %ld second: %ld ms: %ld\n", time, ts.second, ts.microSecond);
     copyout(myProcess()->pgdir, tf->a1, (char *)&ts, sizeof(TimeSpec));
     tf->a0 = 0;
 }
@@ -2760,5 +2762,73 @@ void syscallSHMDt()
 {
     Trapframe *tf = getHartTrapFrame();
     SHM_DEBUG("hello\n");
+    tf->a0 = 0;
+}
+
+#define RUSAGE_SELF 0
+#define RUSAGE_CHILDREN (-1)
+#define RUSAGE_THREAD 1
+struct timespec2
+{
+    long tv_sec;  // seconds
+    long tv_nsec; // nanoseconds
+};
+struct rusage
+{
+    struct timespec2 ru_utime; /* user CPU time used */
+    struct timespec2 ru_stime; /* system CPU time used */
+    long ru_maxrss;            /* maximum resident set size */
+    long ru_ixrss;             /* integral shared memory size */
+    long ru_idrss;             /* integral unshared data size */
+    long ru_isrss;             /* integral unshared stack size */
+    long ru_minflt;            /* page reclaims (soft page faults) */
+    long ru_majflt;            /* page faults (hard page faults) */
+    long ru_nswap;             /* swaps */
+    long ru_inblock;           /* block input operations */
+    long ru_oublock;           /* block output operations */
+    long ru_msgsnd;            /* IPC messages sent */
+    long ru_msgrcv;            /* IPC messages received */
+    long ru_nsignals;          /* signals received */
+    long ru_nvcsw;             /* voluntary context switches */
+    long ru_nivcsw;            /* involuntary context switches */
+};
+void syscallGetrusage()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int who;
+    u64 addr;
+    struct rusage rs;
+
+    if (argint(0, &who) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    if (argaddr(1, &addr) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    rs.ru_utime = (struct timespec2){myProcess()->utime, 0};
+    rs.ru_stime = (struct timespec2){myProcess()->ktime, 0};
+
+    switch (who)
+    {
+    case RUSAGE_SELF:
+    case RUSAGE_THREAD:
+        // TODO
+        rs.ru_nvcsw = 0;
+        rs.ru_nivcsw = 0;
+        break;
+    default:
+        break;
+    }
+    if (either_copyout(1, addr, &rs, sizeof(rs)) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
     tf->a0 = 0;
 }
