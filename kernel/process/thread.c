@@ -124,7 +124,7 @@ int mainThreadAlloc(Thread **new, u64 parentId)
     if (LIST_EMPTY(&freeThreads))
     {
         // releaseLock(&threadListLock);
-        panic("");
+        // panic("there's no freeThreads");
         *new = NULL;
         return -ESRCH;
     }
@@ -158,7 +158,7 @@ int threadAlloc(Thread **new, Process *process, u64 userSp)
     Thread *th;
     if (LIST_EMPTY(&freeThreads))
     {
-        panic("");
+        // panic("there's no freeThreads");
         *new = NULL;
         return -ESRCH;
     }
