@@ -267,6 +267,7 @@ int setupProcess(Process *p)
     p->parentId = 0;
     p->mmapHeapTop = USER_MMAP_HEAP_BOTTOM;
     p->brkHeapTop = USER_BRK_HEAP_BOTTOM;
+    p->shmHeapTop = USER_SHM_HEAP_BOTTOM;
     p->fileDescription.hard = p->fileDescription.soft = NOFILE;
 
     p->cwd = &(rootFileSystem->root);
@@ -456,7 +457,7 @@ void yield()
     count--;
     processTimeCount[hartId] = count;
     processBelongList[hartId] = point;
-    CNX_DEBUG("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
+    // printk("hartID %d yield thread %lx, %lx\n", hartId, th->threadId, th->trapframe.epc);
 
     // syscall_watetime 的范围值设置为 0
     if (th->awakeTime > 0)
@@ -581,6 +582,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     process->priority = myprocess->priority;
     process->brkHeapTop = myprocess->brkHeapTop;
     process->mmapHeapTop = myprocess->mmapHeapTop;
+    process->shmHeapTop = myprocess->shmHeapTop;
 
     memmove(&th->trapframe, trapframe, sizeof(Trapframe));
     th->trapframe.a0 = 0;
@@ -631,7 +633,8 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
                 {
                     continue;
                 }
-                if (pa2[k] & PTE_WRITE_BIT)
+
+                if (pa2[k] & PTE_WRITE_BIT && !(pa2[k] & PTE_SHM_BIT))
                 {
                     pa2[k] |= PTE_COW_BIT;
                     pa2[k] &= ~PTE_WRITE_BIT;

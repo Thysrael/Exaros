@@ -58,4 +58,7 @@ int kill(int pid, int sig);
 int tgkill(int tgid, int tid, int sig);
 int tkill(int tid, int sig);
 void sigreturn();
+
+int shmget(int key, long long size, int shmflg);
+uintptr_t shmat(int shmid, long long addr, int shmflg);
 #endif // __UNISTD_H__

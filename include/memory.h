@@ -22,6 +22,7 @@
 #define PTE_ACCESSED_BIT ((u64)1 << 6) /* 被访问位（读/写/取），恒 1 */
 #define PTE_DIRTY_BIT ((u64)1 << 7)    /* 被修改位（写），恒 1*/
 #define PTE_COW_BIT ((u64)1 << 8)      /* Copy on Write 位 */
+#define PTE_SHM_BIT ((u64)1 << 9)      /* share memory 位 */
 #define PTE_PERM_WIDTH (10)
 #define PTE2PT 512
 
