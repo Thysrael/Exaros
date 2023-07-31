@@ -222,7 +222,7 @@ int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
     return sc == NULL ? 0 : sc->signal;
 }
 
-extern struct ThreadList priSchedList[101];
+extern struct ThreadList priSchedList[140];
 int threadSignalSend(Thread *thread, int sig)
 {
     SignalContext *sc;
@@ -237,7 +237,6 @@ int threadSignalSend(Thread *thread, int sig)
             thread->state = RUNNABLE;
             int pri = 99 - thread->schedParam.schedPriority;
             LIST_INSERT_TAIL(&priSchedList[pri], thread, priSchedLink);
-            printk("insert: %lx\n", thread);
         }
 
         thread->killed = true;

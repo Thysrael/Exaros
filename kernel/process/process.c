@@ -340,7 +340,7 @@ int processAlloc(Process **new, u64 parentId)
 }
 
 extern struct ThreadList scheduleList[2];
-extern struct ThreadList priSchedList[101];
+extern struct ThreadList priSchedList[140];
 
 /**
  * @brief 给定一段二进制可执行文件，创建一个进程

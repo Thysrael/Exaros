@@ -50,7 +50,7 @@ void CPU_OR(cpu_set_t *destset,
     }
 }
 
-extern struct ThreadList priSchedList[101];
+extern struct ThreadList priSchedList[140];
 int sched_setscheduler(u64 pid, int policy, sched_param *param)
 {
     Thread *th;
