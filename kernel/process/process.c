@@ -108,7 +108,8 @@ void processDestory(Process *p)
                      :
                      : "r"(&sp)
                      : "memory");
-        yield();
+        // yield();
+        callYield();
     }
 }
 
@@ -339,6 +340,7 @@ int processAlloc(Process **new, u64 parentId)
 }
 
 extern struct ThreadList scheduleList[2];
+extern struct ThreadList priSchedList[101];
 
 /**
  * @brief 给定一段二进制可执行文件，创建一个进程
@@ -390,7 +392,14 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
     }
     th->trapframe.sp = sp;
 
-    LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
+    th->state = RUNNABLE;
+    th->schedPolicy = SCHED_OTHER;
+    th->schedParam.schedPriority = 0;
+    int pri = 99 - th->schedParam.schedPriority;
+    LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
+    // 父亲必然是 init 进程，暂时不进行调度，等待 init 主动进行调度
+
+    // LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
     printk("created a process: %x, epc: %lx\n", p->processId, th->trapframe.epc);
 }
 
@@ -469,6 +478,169 @@ void yield()
     futexClear(th);
     threadRun(th);
 }
+
+/**
+ * @brief priSchedList 选取一个进程进行调度
+ */
+void fifoSched()
+{
+    writeSie(readSie() & (~SIE_STIE));
+    intr_on();
+    Thread *th = NULL;
+    while (th == NULL || (th->awakeTime > r_time()))
+    {
+        for (u64 pri = 0; pri <= PRI_MAX - PRI_MIN; pri++)
+        {
+            if (!LIST_EMPTY(&priSchedList[pri]))
+            {
+                th = LIST_FIRST(&priSchedList[pri]);
+                if (th->killed)
+                {
+                    threadDestroy(th);
+                    th = NULL;
+                }
+                else { break; }
+            }
+        }
+    }
+    intr_off();
+    writeSie(readSie() | SIE_STIE);
+    LIST_REMOVE(th, priSchedLink);
+    if (th->awakeTime > 0)
+    {
+        getHartTrapFrame()->a0 = 0;
+        th->awakeTime = 0;
+    }
+    futexClear(th);
+    threadRun(th);
+}
+
+/**
+ * @brief 主动调用 yield 放弃 cpu
+ *
+ */
+void callYield()
+{
+    Thread *th = myThread();
+    if (th == NULL || th->state != RUNNING) { fifoSched(); } // Destory, Sleep
+    else
+    {
+        // 主动调用插到最后面
+        if (th->schedPolicy == SCHED_FIFO)
+        {
+            if (th->state == RUNNING)
+            {
+                th->state = RUNNABLE;
+                int pri = 99 - th->schedParam.schedPriority;
+                LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
+            }
+            else { panic(""); }
+        }
+        // 插到最后面
+        else if (th->schedPolicy == SCHED_OTHER)
+        {
+            if (th->state == RUNNING)
+            {
+                th->state = RUNNABLE;
+                int pri = 99 - th->schedParam.schedPriority;
+                LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
+            }
+            else { panic(""); }
+        }
+        else { panic("Unsupported schedPolicy: %d\n", th->schedPolicy); }
+        fifoSched();
+    }
+}
+
+/**
+ * @brief time interrrupt sched
+ */
+void timeYield()
+{
+    Thread *th = myThread();
+    if (th == NULL || th->state != RUNNING) { fifoSched(); } // Destory, Sleep
+    else
+    {
+        // 插到最前面
+        if (th->schedPolicy == SCHED_FIFO)
+        {
+            if (th->state == RUNNING)
+            {
+                th->state = RUNNABLE;
+                int pri = 99 - th->schedParam.schedPriority;
+                LIST_INSERT_HEAD(&priSchedList[pri], th, priSchedLink);
+            }
+            else { panic(""); }
+        }
+        // 插到最后面
+        else if (th->schedPolicy == SCHED_OTHER)
+        {
+            if (th->state == RUNNING)
+            {
+                th->state = RUNNABLE;
+                int pri = 99 - th->schedParam.schedPriority;
+                LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
+            }
+            else { panic(""); }
+        }
+        else { panic("Unsupported schedPolicy: %d\n", th->schedPolicy); }
+        fifoSched();
+    }
+}
+
+// /**
+//  * @brief 调整优先级时需要调度
+//  *
+//  * @param thread
+//  * @param oldPri
+//  */
+// void asdjnmasjnid(Thread *thread, int oldPri)
+// {
+//     Thread *mth = myThread();
+//     int newPri = thread->schedParam.schedPriority;
+//     if (th == thread)
+//     {
+//         // 必然是 RUNNING
+//         // 改变位置，需要重新调度
+//         if (newPri > oldPri)
+//         {
+//             thread->state = RUNNABLE;
+//             int pri = thread->schedParam.schedPriority - PRI_MIN;
+//             LIST_INSERT_TAIL(&priSchedList[pri], thread, priSchedLink);
+//             fifoSched();
+//         }
+//         else if (newPri < oldPri)
+//         {
+//             thread->state = RUNNABLE;
+//             int pri = thread->schedParam.schedPriority - PRI_MIN;
+//             LIST_INSERT_HEAD(&priSchedList[pri], thread, priSchedLink);
+//             fifoSched();
+//         }
+//     }
+//     else
+//     {
+//         // 需要重新调度
+//         if (thread->state == RUNNABLE)
+//         {
+//             mth->state = RUNNABLE;
+//             int pri = mth->schedParam.schedPriority - PRI_MIN;
+//             LIST_INSERT_HEAD(&priSchedList[pri], mth, priSchedLink);
+//             if (newPri > oldPri)
+//             {
+//                 LIST_REMOVE(thread, priSchedLink);
+//                 int pri = thread->schedParam.schedPriority - PRI_MIN;
+//                 LIST_INSERT_TAIL(&priSchedList[pri], thread, priSchedLink);
+//             }
+//             else if (newPri < oldPri)
+//             {
+//                 LIST_REMOVE(thread, priSchedLink);
+//                 int pri = thread->schedParam.schedPriority - PRI_MIN;
+//                 LIST_INSERT_HEAD(&priSchedList[pri], thread, priSchedLink);
+//             }
+//             fifoSched();
+//         }
+//     }
+// }
 
 // /**
 //  * @brief 获取的内核栈地址
@@ -555,10 +727,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     Trapframe *trapframe = getHartTrapFrame();
     Process *process, *myprocess = myProcess();
     int r = mainThreadAlloc(&th, myprocess->processId);
-    if (r < 0)
-    {
-        return r;
-    }
+    if (r < 0) { return r; }
     process = th->process;
     process->cwd = myprocess->cwd;
     th->setAlarm = myThread()->setAlarm;
@@ -606,33 +775,20 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     SignalAction *newAction = getSignalHandler(process);
     bcopy(parentAction, newAction, sizeof(SignalAction) * 128);
 
-    u64 i,
-        j, k;
+    u64 i, j, k;
     for (i = 0; i < 512; i++)
     {
-        if (!(myprocess->pgdir[i] & PTE_VALID_BIT))
-        {
-            continue;
-        }
+        if (!(myprocess->pgdir[i] & PTE_VALID_BIT)) { continue; }
         u64 *pa = (u64 *)PTE2PA(myprocess->pgdir[i]);
         for (j = 0; j < 512; j++)
         {
-            if (!(pa[j] & PTE_VALID_BIT))
-            {
-                continue;
-            }
+            if (!(pa[j] & PTE_VALID_BIT)) { continue; }
             u64 *pa2 = (u64 *)PTE2PA(pa[j]);
             for (k = 0; k < 512; k++)
             {
-                if (!(pa2[k] & PTE_VALID_BIT))
-                {
-                    continue;
-                }
+                if (!(pa2[k] & PTE_VALID_BIT)) { continue; }
                 u64 va = (i << 30) + (j << 21) + (k << 12);
-                if (va == TRAMPOLINE || va == TRAPFRAME)
-                {
-                    continue;
-                }
+                if (va == TRAMPOLINE || va == TRAPFRAME) { continue; }
 
                 if (pa2[k] & PTE_WRITE_BIT && !(pa2[k] & PTE_SHM_BIT))
                 {
@@ -644,37 +800,52 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
         }
     }
 
-    LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
+    Thread *mth = myThread();
+    th->state = RUNNABLE;
+    th->schedPolicy = mth->schedPolicy;
+    th->schedParam.schedPriority = mth->schedParam.schedPriority;
+    int pri = 99 - th->schedParam.schedPriority;
+    LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
+    // fork 的时候可直接插入
 
+    // LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
     return process->processId;
 }
 
 int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
 {
-    Thread *thread;
+    Thread *th;
     Process *current = myProcess();
-    int r = threadAlloc(&thread, current, stackVa);
+    int r = threadAlloc(&th, current, stackVa);
     if (r < 0)
     {
         return r;
     }
     Trapframe *trapframe = getHartTrapFrame();
-    thread->setAlarm = myThread()->setAlarm;
-    memmove(&thread->trapframe, trapframe, sizeof(Trapframe));
-    thread->trapframe.a0 = 0;
-    thread->trapframe.tp = tls;
-    thread->trapframe.kernelSp = getThreadTopSp(thread);
-    thread->trapframe.sp = stackVa;
+    th->setAlarm = myThread()->setAlarm;
+    memmove(&th->trapframe, trapframe, sizeof(Trapframe));
+    th->trapframe.a0 = 0;
+    th->trapframe.tp = tls;
+    th->trapframe.kernelSp = getThreadTopSp(th);
+    th->trapframe.sp = stackVa;
     if (ptid != 0)
     {
-        copyout(current->pgdir, ptid, (char *)&thread->threadId, sizeof(u32));
+        copyout(current->pgdir, ptid, (char *)&th->threadId, sizeof(u32));
     }
-    thread->clearChildTid = ctid;
+    th->clearChildTid = ctid;
+
+    Thread *mth = myThread();
+    th->state = RUNNABLE;
+    th->schedPolicy = mth->schedPolicy;
+    th->schedParam.schedPriority = mth->schedParam.schedPriority;
+    int pri = 99 - th->schedParam.schedPriority;
+    LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
+    // fork 的时候可直接插入
 
     // acquireLock(&scheduleListLock);
-    LIST_INSERT_TAIL(&scheduleList[0], thread, scheduleLink);
+    // LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
     // releaseLock(&scheduleListLock);
-    return thread->threadId;
+    return th->threadId;
 }
 
 /**

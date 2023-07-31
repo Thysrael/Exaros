@@ -23,10 +23,11 @@ typedef LIST_ENTRY(ThreadListEntry, Thread) ThreadListEntry;
 typedef struct Thread
 {
     Trapframe trapframe;
-    ThreadListEntry link;
     u64 awakeTime;
     u32 threadId;
-    ThreadListEntry scheduleLink;
+    ThreadListEntry link;         // free thread
+    ThreadListEntry scheduleLink; // yield(old)
+    ThreadListEntry priSchedLink; // yield(with priority)
     enum ProcessState state;
     struct Spinlock lock;
     u64 channel; // wait Object
@@ -35,7 +36,9 @@ typedef struct Thread
     u32 retValue;
     u64 clearChildTid;
     Process *process;
-    cpu_set_t cpuset;
+    cpu_set_t cpuset;                 // CPU 亲和集
+    int schedPolicy;                  // 调度策略
+    sched_param schedParam;           // 调度参数
     bool killed;                      // 信号 SIGKILL
     SignalSet blocked;                // 屏蔽的信号集合（事实上是阻塞）
     u64 setAlarm;

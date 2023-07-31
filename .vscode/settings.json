@@ -47,7 +47,9 @@
 		"io.h": "c",
 		"futex.h": "c",
 		"syslog.h": "c",
-		"shm.h": "c"
+		"shm.h": "c",
+		"lock.h": "c",
+		"sched.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

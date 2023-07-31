@@ -220,6 +220,7 @@ int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
     return sc == NULL ? 0 : sc->signal;
 }
 
+extern struct ThreadList priSchedList[101];
 int threadSignalSend(Thread *thread, int sig)
 {
     SignalContext *sc;
@@ -229,7 +230,14 @@ int threadSignalSend(Thread *thread, int sig)
     sc->signal = sig;
     if (sig == SIGKILL) // SIGKILL 直接修改 thread 状态
     {
-        thread->state = RUNNABLE;
+        if (thread->state != RUNNABLE)
+        {
+            thread->state = RUNNABLE;
+            int pri = 99 - thread->schedParam.schedPriority;
+            LIST_INSERT_TAIL(&priSchedList[pri], thread, priSchedLink);
+            printk("insert: %lx\n", thread);
+        }
+
         thread->killed = true;
     }
     // 最近的信号在最后面，从而保证先插入旧的到 handling
