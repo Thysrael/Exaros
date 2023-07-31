@@ -45,7 +45,8 @@ void (*syscallVector[])(void) = {
     [SYSCALL_OPENAT] syscallOpenAt,
     [SYSCALL_GET_CPU_TIMES] syscallGetCpuTimes,
     [SYSCALL_GET_TIME_OF_DAY] syscallGetTime,
-    [SYSCALL_SLEEP_TIME] syscallSleepTime,
+    // [SYSCALL_SLEEP_TIME] syscallSleepTime,
+    [SYS_nanosleep] syscallNanosleep,
     [SYSCALL_DUP3] syscallDupAndSet,
     [SYSCALL_CHDIR] syscallChangeDir,
     [SYSCALL_CWD] syscallGetWorkDir,
@@ -993,6 +994,16 @@ void syscallSleepTime()
     TimeSpec ts;
     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
     myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
+    kernelProcessCpuTimeEnd();
+    yield();
+}
+
+void syscallNanosleep()
+{
+    Trapframe *tf = getHartTrapFrame();
+    RealTimeSpec ts;
+    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(RealTimeSpec));
+    myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
     kernelProcessCpuTimeEnd();
     yield();
 }

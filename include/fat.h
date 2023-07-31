@@ -113,6 +113,11 @@ typedef struct TimeSpec
     u64 second;
     long microSecond;
 } TimeSpec;
+typedef struct RealTimeSpec
+{
+    u64 tv_sec;
+    long tv_nsec;
+} RealTimeSpec;
 int getSectorNumber(DirMeta *meta, int dataSectorNum);
 u32 rwClus(FileSystem *fs, u32 cluster, int write, int user, u64 data, u32 off, u32 n);
 int relocClus(FileSystem *fs, DirMeta *meta, u32 off, int alloc);

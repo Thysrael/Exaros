@@ -56,7 +56,8 @@
 #define SYSCALL_SET_TID_ADDRESS 96
 #define SYS_futex 98
 
-#define SYSCALL_SLEEP_TIME 101
+// #define SYSCALL_SLEEP_TIME 101
+#define SYS_nanosleep 101
 
 #define SYSCALL_SET_TIMER 103
 #define SYSCALL_SET_TIME 112
@@ -253,6 +254,7 @@ void syscallSchedGetscheduler();
 void syscallSchedGetparam();
 void syscallSchedSetaffinity();
 void syscallSchedGetaffinity();
+void syscallNanosleep();
 
 extern void (*syscallVector[])(void);
 
