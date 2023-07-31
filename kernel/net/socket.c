@@ -357,7 +357,7 @@ static Socket *remote_find_listening_socket(const SocketAddr *addr)
  */
 int accept(int sockfd, SocketAddr *addr)
 {
-    printk("accept pid: %d\n", myProcess()->processId);
+    // printk("accept pid: %d\n", myProcess()->processId);
     /* ----------- process on Remote Host --------- */
     File *f = myProcess()->ofile[sockfd];
     assert(f->type == FD_SOCKET);
@@ -367,7 +367,7 @@ int accept(int sockfd, SocketAddr *addr)
     {
         return -11; // EAGAIN /* Try again */
     }
-    printk("pending head is %d, pending tail is %d\n", local_sock->pending_h, local_sock->pending_t);
+    // printk("pending head is %d, pending tail is %d\n", local_sock->pending_h, local_sock->pending_t);
     *addr = local_sock->pending_queue[(local_sock->pending_h++) % PENDING_COUNT];
 
     Socket *new_sock;

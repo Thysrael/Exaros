@@ -296,7 +296,7 @@ u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
                 return -1;
             }
             LOAD_DEBUG("alloc a heap page for this.\n");
-            pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT);
+            pageInsert(p->pgdir, start, page, perm | PTE_USER_BIT | PTE_EXECUTE_BIT | PTE_ACCESSED_BIT);
         }
         // 如果查到了，那么就清空这片区域
         else
@@ -309,7 +309,7 @@ u64 do_mmap(struct File *fd, u64 start, u64 len, int perm, int flags, u64 off)
                 pa = page2PA(pageLookup(p->pgdir, start, &pte));
             }
             bzero((void *)pa, MIN(PAGE_SIZE, end - start));
-            *pte = PA2PTE(pa) | perm | PTE_USER_BIT | PTE_VALID_BIT | PTE_DIRTY_BIT;
+            *pte = PA2PTE(pa) | perm | PTE_USER_BIT | PTE_VALID_BIT | PTE_DIRTY_BIT | PTE_EXECUTE_BIT | PTE_ACCESSED_BIT;
             LOAD_DEBUG("clear a heap page for this, pa is 0x%lx\n", pa);
         }
 
