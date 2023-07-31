@@ -98,7 +98,7 @@ Socket *remote_find_peer_socket(const Socket *local_sock)
         if (sockets[i].used
             /* && sockets[i].addr.family == local_sock->target_addr.family */
             && sockets[i].addr.port == local_sock->target_addr.port
-            && sockets[i].target_addr.port == local_sock->addr.port)
+            /*&& sockets[i].target_addr.port == local_sock->addr.port*/)
         {
             return &sockets[i];
         }
@@ -129,6 +129,7 @@ void socketFree(Socket *s)
  */
 int createSocket(int family, int type, int protocal)
 {
+    SOCKET_DEBUG("\n");
     // printf("[%s] family %x type  %x protocal %x\n", __func__, family, type, protocal);
     // if (family != 2)
     // {
@@ -164,6 +165,7 @@ int createSocket(int family, int type, int protocal)
  */
 int bindSocket(int fd, SocketAddr *sa)
 {
+    SOCKET_DEBUG("\n");
     transSocketAddr(sa);
     File *f = myProcess()->ofile[fd];
     assert(f->type == FD_SOCKET);
@@ -184,6 +186,7 @@ int bindSocket(int fd, SocketAddr *sa)
  */
 int listen(int sockfd)
 {
+    SOCKET_DEBUG("\n");
     SOCKET_DEBUG("server tid is %d\n", myThread()->threadId);
     File *f = myProcess()->ofile[sockfd];
     if (f == NULL)
@@ -227,6 +230,7 @@ int getSocketName(int fd, u64 va)
  */
 int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest)
 {
+    SOCKET_DEBUG("\n");
     buf[len] = 0;
     // dest->addr = (127 << 24) + 1;
     // dest->port = 0x3241;
@@ -267,8 +271,9 @@ int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest)
  */
 int receiveFrom(Socket *s, u64 buf, u32 len, int flags, u64 srcAddr)
 {
+    SOCKET_DEBUG("\n");
     char *src = (char *)(getSocketBufferBase(s) + (s->head & (PAGE_SIZE - 1)));
-    // printf("[%s] sockid %d data %s\n", __func__, s - sockets, src);
+    // printk("[%s] sockid %d data %s\n", __func__, s - sockets, src);
     u32 num = MIN(len, (s->tail - s->head));
     if (num == 0)
     {
@@ -357,6 +362,7 @@ static Socket *remote_find_listening_socket(const SocketAddr *addr)
  */
 int accept(int sockfd, SocketAddr *addr)
 {
+    SOCKET_DEBUG("\n");
     // printk("accept pid: %d\n", myProcess()->processId);
     /* ----------- process on Remote Host --------- */
     File *f = myProcess()->ofile[sockfd];
@@ -416,6 +422,7 @@ static SocketAddr gen_local_socket_addr()
  */
 int connect(int sockfd, SocketAddr *addr)
 {
+    SOCKET_DEBUG("\n");
     transSocketAddr(addr);
     // addr->addr = (127 << 24) + 1;
     // addr->family = 2;

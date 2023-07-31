@@ -71,6 +71,7 @@ void initRootFileSystem()
     metaWrite(meta, false, (u64) "3 2 1", 0, 6);
     meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY); // share memory
     meta = metaCreate(AT_FDCWD, "/dev/urandom", T_CHAR, O_RDONLY);
+    meta->dev = ZERO;
     // meta = metaCreate(AT_FDCWD, "/tmp", T_DIR, O_RDONLY);       // share memory
     meta = metaCreate(AT_FDCWD, "/dev/zero", T_CHAR, O_RDONLY);
     meta->dev = ZERO;

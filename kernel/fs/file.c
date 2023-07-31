@@ -82,6 +82,10 @@ void fileclose(File *f)
     {
         pipeClose(ff.pipe, ff.writable);
     }
+    else if (ff.type == FD_SOCKET)
+    {
+        socketFree(ff.socket);
+    }
 }
 
 /**

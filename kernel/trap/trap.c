@@ -243,7 +243,7 @@ void userHandler()
 
             if (syscallVector[tf->a7] == 0)
             {
-                printk("ecall unrealized: %d\n", tf->a7);
+                // printk("ecall unrealized: %d\n", tf->a7);
             }
             else
             {

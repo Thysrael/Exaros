@@ -398,7 +398,7 @@ void syscallOpenAt(void)
         tf->a0 = -1;
         return;
     }
-    printk("open path is %s\n", path);
+    // printk("open path is %s\n", path);
     DirMeta *entryPoint;
     // 如果是创建一个文件，那么用 metaCreate
     if (flags & O_CREATE)
@@ -1034,7 +1034,7 @@ void syscallBrk()
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
-        printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
+        // printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1550,8 +1550,8 @@ void syscallGetClockTime()
     Trapframe *tf = getHartTrapFrame();
     u64 time = r_time();
     TimeSpec ts;
-    ts.second = time / 1000;
-    ts.microSecond = time % 1000; // todo
+    ts.second = time / 1000000;
+    ts.microSecond = time % 1000000 * 1000; // todo
     // printk("kernel time: %ld second: %ld ms: %ld\n", time, ts.second, ts.microSecond);
     copyout(myProcess()->pgdir, tf->a1, (char *)&ts, sizeof(TimeSpec));
     tf->a0 = 0;
@@ -2795,40 +2795,40 @@ struct rusage
 void syscallGetrusage()
 {
     Trapframe *tf = getHartTrapFrame();
-    int who;
-    u64 addr;
-    struct rusage rs;
+    // int who;
+    // u64 addr;
+    // struct rusage rs;
 
-    if (argint(0, &who) < 0)
-    {
-        tf->a0 = -1;
-        return;
-    }
+    // if (argint(0, &who) < 0)
+    // {
+    //     tf->a0 = -1;
+    //     return;
+    // }
 
-    if (argaddr(1, &addr) < 0)
-    {
-        tf->a0 = -1;
-        return;
-    }
+    // if (argaddr(1, &addr) < 0)
+    // {
+    //     tf->a0 = -1;
+    //     return;
+    // }
 
-    rs.ru_utime = (struct timespec2){myProcess()->utime, 0};
-    rs.ru_stime = (struct timespec2){myProcess()->ktime, 0};
+    // rs.ru_utime = (struct timespec2){myProcess()->utime, 0};
+    // rs.ru_stime = (struct timespec2){myProcess()->ktime, 0};
 
-    switch (who)
-    {
-    case RUSAGE_SELF:
-    case RUSAGE_THREAD:
-        // TODO
-        rs.ru_nvcsw = 0;
-        rs.ru_nivcsw = 0;
-        break;
-    default:
-        break;
-    }
-    if (either_copyout(1, addr, &rs, sizeof(rs)) < 0)
-    {
-        tf->a0 = -1;
-        return;
-    }
+    // switch (who)
+    // {
+    // case RUSAGE_SELF:
+    // case RUSAGE_THREAD:
+    //     // TODO
+    //     rs.ru_nvcsw = 0;
+    //     rs.ru_nivcsw = 0;
+    //     break;
+    // default:
+    //     break;
+    // }
+    // if (either_copyout(1, addr, &rs, sizeof(rs)) < 0)
+    // {
+    //     tf->a0 = -1;
+    //     return;
+    // }
     tf->a0 = 0;
 }
