@@ -133,7 +133,7 @@ int handleInterrupt()
         if (!flag)
         {
             myProcess()->utime++;
-            yield();
+            timeYield()
         }
         // timerTick();
         // user timer interrupt
@@ -187,7 +187,8 @@ void kernelHandler()
         break;
     case TIMER_INTERRUPT:
         myProcess()->ktime++;
-        yield();
+        // yield();
+        timeYield();
         break;
     default:
         break;
@@ -227,7 +228,8 @@ void userHandler()
     {
         handleInterrupt();
         myProcess()->utime++;
-        yield();
+        // yield();
+        timeYield();
     }
     else
     {
