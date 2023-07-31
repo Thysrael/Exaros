@@ -37,7 +37,7 @@ void futexWait(u64 addr, Thread *th, TimeSpec *ts)
     panic("No futex Resource!\n");
 }
 
-extern struct ThreadList priSchedList[101];
+extern struct ThreadList priSchedList[140];
 void futexWake(u64 addr, int n)
 {
     for (int i = 0; i < FUTEX_COUNT && n; i++)
@@ -49,7 +49,6 @@ void futexWake(u64 addr, int n)
                 futexQueue[i].thread->state = RUNNABLE;
                 int pri = 99 - futexQueue[i].thread->schedParam.schedPriority;
                 LIST_INSERT_TAIL(&priSchedList[pri], futexQueue[i].thread, priSchedLink);
-                printk("insert: %lx\n", futexQueue[i].thread);
             }
             futexQueue[i].thread->trapframe.a0 = 0; // set next yield accept!
             futexQueue[i].valid = false;
@@ -70,7 +69,6 @@ void futexRequeue(u64 addr, int n, u64 newAddr)
                 futexQueue[i].thread->state = RUNNABLE;
                 int pri = 99 - futexQueue[i].thread->schedParam.schedPriority;
                 LIST_INSERT_TAIL(&priSchedList[pri], futexQueue[i].thread, priSchedLink);
-                printk("insert: %lx\n", futexQueue[i].thread);
             }
             futexQueue[i].thread->trapframe.a0 = 0; // set next yield accept!
             futexQueue[i].valid = false;
