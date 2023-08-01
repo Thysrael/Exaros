@@ -25,7 +25,6 @@ all: $(modules)
 	$(OBJCOPY) -O binary $(exaros_elf) $(exaros_bin)
 	cp $(exaros_bin) os.bin
 
-
 $(modules):
 	$(MAKE) DEBUG=$(DEBUG) --directory=$@
 
