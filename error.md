@@ -3,8 +3,7 @@
 * busybox_testcode
   * OK
 * lua_testcode
-  * sem_init * N
-  * 没过后面好像都没了
+  * OK
 * libctest_testcode
   * pthread_cancel_point
   * pthread_cancel
