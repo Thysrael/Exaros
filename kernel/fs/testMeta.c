@@ -9,11 +9,12 @@ char testContentToRead[10] = {0};
 
 char autoTestContent[] = "\
 \\time-test\n\
-\\libc-bench\n\
 \\busybox sh \\busybox_testcode.sh\n\
 \\busybox sh \\lua_testcode.sh\n\
 \\busybox sh \\libctest_testcode.sh\n\
-\\busybox sh \\cyclictest_testcode.sh\n";
+\\busybox sh \\cyclictest_testcode.sh\n\
+\\busybox sh \\iozone_testcode.sh\n\
+";
 
 /*
 \\busybox sh \\iozone_testcode.sh";

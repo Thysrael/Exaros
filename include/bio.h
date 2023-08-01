@@ -12,7 +12,7 @@
 #include "types.h"
 
 #define BUFFER_SIZE 512
-#define NBUF 128
+#define NBUF 16
 
 typedef struct FileSystem FileSystem;
 /**
