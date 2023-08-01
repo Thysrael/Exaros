@@ -30,7 +30,7 @@ void main()
 
     if (pid == 0)
     {
-        exec("./busybox", argvAuto);
+        exec("./busybox", argvIOZone);
         // exec("./time-test", timet);
     }
     else
