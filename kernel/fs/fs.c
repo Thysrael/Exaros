@@ -49,11 +49,13 @@ void initRootFileSystem()
     file->writable = true;
 
     dirMetaInit();
+    printk("dirMetaInit END\n");
     // fatinit 用到了 dirmeta ，要先初始化 dirmeta
     fatInit(rootFileSystem);
+    printk("fatInit END\n");
     // test meta
-    // void testMeta();
-    // testMeta();
+    void testMeta();
+    testMeta();
     extern void buildScript();
     buildScript();
     // 创建 dev 文件夹

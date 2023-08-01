@@ -9,6 +9,7 @@
 #ifndef _DRIVER_H_
 #define _DRIVER_H_
 
+#include <arch.h>
 #include <types.h>
 #include <sbi.h>
 
@@ -18,14 +19,6 @@
  * @param c 待打印字符
  */
 void putchar(char c);
-// {
-//     register u64 a0 asm("a0") = (u64)c;
-//     register u64 a7 asm("a7") = (u64)SBI_CONSOLE_PUTCHAR;
-//     asm volatile("ecall"
-//                  : "+r"(a0)
-//                  : "r"(a7)
-//                  : "memory");
-// };
 
 /**
  * @brief 从控制台获取字符

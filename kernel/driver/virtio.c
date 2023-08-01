@@ -19,6 +19,7 @@ Disk disk;
  */
 void virtioDiskInit()
 {
+    printk("virtioDiskInit start...\n");
     printk("magic value: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_MAGIC_VALUE));
     printk("version: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_VERSION));
     printk("device id: %lx\n", *VIRTIO_ADDRESS(VIRTIO_MMIO_DEVICE_ID));
@@ -98,6 +99,7 @@ void virtioDiskInit()
     // tell device we're completely ready.
     status |= VIRTIO_CONFIG_S_DRIVER_OK;
     *VIRTIO_ADDRESS(VIRTIO_MMIO_STATUS) = status;
+    printk("virtioDiskInit end!!!\n");
 }
 
 /**

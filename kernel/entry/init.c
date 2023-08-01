@@ -6,6 +6,7 @@
  * @copyright Copyright (c) 2023
  */
 
+#include <arch.h>
 #include <types.h>
 #include <driver.h>
 #include <debug.h>
@@ -61,12 +62,18 @@ void main(u64 hartId)
     setTp(hartId);
     clearBSS();
     printk("Hello, Exaros!\n");
-    // printk(banner);
 
+    printk("consoleInit start...\n");
     consoleInit();
-    memoryInit();
+    printk("consoleInit end!!!\n");
 
+    printk("memoryInit start...\n");
+    memoryInit();
+    printk("memoryInit end!!!\n");
+
+    printk("processInit start...\n");
     processInit();
+    printk("processInit end!!!\n");
 
     // fs initialize
 
@@ -78,11 +85,17 @@ void main(u64 hartId)
 #endif
     fileinit();
 
-    // macbInit();
+#ifndef VIRT
+    macbInit();
+#endif
+    printk("Trap init start...\n");
     trapInit();
+    printk("Trap init end!!!\n");
+
     plicinit();
     plicinithart();
     signalInit();
+
     // PROCESS_CREATE_PRIORITY(sh, 10);
     // PROCESS_CREATE_PRIORITY(processA, 1); // 凑数的进程，什么都不干
     // PROCESS_CREATE_PRIORITY(processB, 1);

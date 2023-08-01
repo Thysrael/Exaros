@@ -95,7 +95,6 @@ int consoleRead(int isUser, u64 dst, u64 start, u64 n)
         if (c == (char)-1 && i == 0)
         {
             getHartTrapFrame()->epc -= 4;
-            // yield();
             callYield();
         }
         if (c == (char)-1)

@@ -1388,7 +1388,14 @@ void syscallExec()
     {
         // if (argv[i] > 0)
         //     printk("%d : %s\n", i, argv[i]);
-        if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c' && argv[i][9] == 'a') // 跳过 pthread
+        if (i == 1 && argv[i][0] == 'p' && argv[i][1] == 't' && argv[i][8] == 'c' && (argv[i][9] == 'a' || argv[i][9] == 'o')) // 跳过 pthread
+        {
+            myThread()->retValue = 0;
+            myThread()->clearChildTid = 0;
+
+            threadDestroy(myThread());
+        }
+        else if (i == 1 && argv[i][0] == 't' && argv[i][1] == 'l' && argv[i][2] == 's' && argv[i][12] == 'd' && argv[i][13] == 't' && argv[i][14] == 'v') // 跳过 pthread
         {
             myThread()->retValue = 0;
             myThread()->clearChildTid = 0;

@@ -9,6 +9,8 @@
 #ifndef _MEMORY_LAYOUT_H_
 #define _MEMORY_LAYOUT_H_
 
+#include <arch.h>
+
 /*  内核虚拟空间
     VA_MAX ---------------->+---------------------------+----------------- 0x40_0000_0000 (1<<38)
                             |       TRAMPOLINE:R-X      |       BY2PG
@@ -126,11 +128,16 @@
 // Core Local Interruptor, 用于处理与处理器核心相关的定时器和中断
 #define CLINT (0x02000000ULL)
 #define PLIC (0x0c000000ULL)
+#ifdef VIRT
+#define UART0 (0x10000000ULL)
+#else
 #define UART0 (0x10010000ULL)
-// #define UART1 (0x10011000ULL)
+#endif
 #define SPI (0x10050000ULL)
+
 // virtio mmio interface
 #define VIRTIO (0x10001000ULL)
+
 #define VIRT_OFFSET (0x3F00000000ULL) // 虚拟地址的偏移
 #define PLIC_V (PLIC + VIRT_OFFSET)
 #define CLINT_V (CLINT + VIRT_OFFSET)

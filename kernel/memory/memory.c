@@ -1,3 +1,4 @@
+#include <arch.h>
 #include <memory.h>
 #include <driver.h>
 #include <process.h>
@@ -24,11 +25,11 @@ extern u64 kernelPageDirectory[];
 void memoryInit()
 {
     freePageInit();
-    // printk("finish freePageInit\n");
+    printk("finish freePageInit\n");
     kernelPageInit();
-    // printk("finish kernelPageInit\n");
+    printk("finish kernelPageInit\n");
     pageStart();
-    // printk("finish pageStart\n");
+    printk("finish pageStart\n");
 }
 
 /**
@@ -73,31 +74,47 @@ void kernelPageInit()
     extern char kernelEnd[];
     // extern char trampoline[];
 
+#ifdef VIRT
+    kernelPageMap(kernelPageDirectory, CLINT_V, CLINT,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+#else
     // CLINT 	200_0000 ~ 200_C000
     for (i = 0; i < 0x100000; i += PAGE_SIZE)
     {
         kernelPageMap(kernelPageDirectory, CLINT_V + i, CLINT + i,
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
     }
+#endif
+
+#ifdef VIRT
+    for (i = 0; i < 0x400000; i += PAGE_SIZE)
+    {
+        kernelPageMap(kernelPageDirectory, PLIC_V + i, PLIC + i,
+                      PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+    }
+#else
     // PLIC
     for (i = 0; i < 0x4000; i += PAGE_SIZE)
     {
         kernelPageMap(kernelPageDirectory, PLIC_V + i, PLIC + i,
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
     }
-
     for (i = 0; i < 0x9000; i += PAGE_SIZE)
     {
         kernelPageMap(kernelPageDirectory, PLIC_V + 0x200000 + i, PLIC + 0x200000 + i,
                       PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
     }
+#endif
 
     kernelPageMap(kernelPageDirectory, UART0, UART0,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
-    // kernelPageMap(kernelPageDirectory, VIRTIO_V, VIRTIO,
-    //               PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+#ifdef VIRT
+    kernelPageMap(kernelPageDirectory, VIRTIO_V, VIRTIO,
+                  PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+#endif
 
+#ifndef VIRT
     kernelPageMap(kernelPageDirectory, PRCI_BASE, PRCI_BASE,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
 
@@ -109,6 +126,7 @@ void kernelPageInit()
 
     kernelPageMap(kernelPageDirectory, SPI, SPI,
                   PTE_READ_BIT | PTE_WRITE_BIT | PTE_ACCESSED_BIT | PTE_DIRTY_BIT);
+#endif
 
     // 内核代码
     va = pa = (u64)textStart;
@@ -569,7 +587,7 @@ int copyin(u64 *pgdir, char *dst, u64 va, u64 len)
     {
         pa = va2PA(pgdir, va, &cow); // 内核态获取用户虚拟地址对应物理地址
         if (!pa)
-        { // 不存在对应映射，申请新页
+        {                            // 不存在对应映射，申请新页
             passiveAlloc(pgdir, va);
             pa = va2PA(pgdir, va, &cow);
             // cow = 0;

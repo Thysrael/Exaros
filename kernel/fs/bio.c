@@ -1,3 +1,4 @@
+#include <arch.h>
 #include <bio.h>
 #include <types.h>
 #include <driver.h>
@@ -41,6 +42,7 @@ void binit(void)
             bcache[i].head.next = b;
         }
     }
+    printk("binit end!!!\n");
 }
 
 /**

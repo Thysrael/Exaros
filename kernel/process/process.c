@@ -53,8 +53,6 @@ Process *myProcess()
 extern u64 kernelPageDirectory[];
 void processInit()
 {
-    printk("ProcessInit start...\n");
-
     LIST_INIT(&freeProcesses);
     LIST_INIT(&usedProcesses);
 
@@ -65,7 +63,6 @@ void processInit()
     }
     threadInit();
     writeSscratch((u64)getHartTrapFrame());
-    printk("ProcessInit end!!!\n");
 }
 
 u32 generateProcessId(Process *p)

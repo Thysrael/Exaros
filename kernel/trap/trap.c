@@ -26,8 +26,6 @@ Trapframe *getHartTrapFrame()
  */
 void trapInit()
 {
-    printk("Trap init start...\n");
-
     // 1. 设置 stvec 寄存器到中断处理函数
     writeStvec((u64)kernelTrap);
 
@@ -42,8 +40,6 @@ void trapInit()
 
     // 初始化时钟（为了防止输出太多东西，可以暂时注释掉）
     // setNextTimeout();
-
-    printk("Trap init end.\n");
 }
 
 extern struct ThreadList usedThreads;
@@ -187,7 +183,6 @@ void kernelHandler()
         break;
     case TIMER_INTERRUPT:
         myProcess()->ktime++;
-        // yield();
         timeYield();
         break;
     default:
@@ -228,7 +223,6 @@ void userHandler()
     {
         handleInterrupt();
         myProcess()->utime++;
-        // yield();
         timeYield();
     }
     else
@@ -240,8 +234,7 @@ void userHandler()
             // printk("ecall\n");
             tf->epc += 4;
             // if (tf->a7 != 63 && tf->a7 != 64)
-            // if (tf->a7 != 63)
-            // printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
+            //     printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
 
             if (syscallVector[tf->a7] == 0)
             {

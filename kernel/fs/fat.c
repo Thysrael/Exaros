@@ -1333,12 +1333,13 @@ void loadDirMetas(FileSystem *fs, DirMeta *parent)
 int fatInit(FileSystem *fs)
 {
     QS_DEBUG("[FAT32 init] fat init begin\n");
+    printk("read start.\n");
     Buf *b = fs->read(fs, 0);
+    printk("read end.\n");
     if (b == 0)
     {
         panic("");
     }
-
     if (strncmp((char const *)(b->data + 82), "FAT32", 5))
     {
         panic("not FAT32 volume");
