@@ -487,7 +487,7 @@ void fifoSched()
     writeSie(readSie() & (~SIE_STIE));
     intr_on();
     Thread *th = NULL;
-    while (th == NULL || (th->awakeTime > r_time()))
+    while (th == NULL)
     {
         for (u64 pri = 0; pri <= PRI_MAX - PRI_MIN; pri++)
         {
@@ -497,6 +497,13 @@ void fifoSched()
                 if (th->killed)
                 {
                     threadDestroy(th);
+                    th = NULL;
+                }
+                else if (th->awakeTime > r_time())
+                {
+                    LIST_REMOVE(th, priSchedLink);
+                    int pri = 99 - th->schedParam.schedPriority;
+                    LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
                     th = NULL;
                 }
                 else { break; }
