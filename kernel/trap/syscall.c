@@ -23,6 +23,7 @@
 #include <sysinfo.h>
 #include <resource.h>
 #include <shm.h>
+#include <clock.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -135,6 +136,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SHM_AT] syscallSHMAt,
     [SYSCALL_SHM_DT] syscallSHMDt,
     [SYSCALL_getrusage] syscallGetrusage,
+    [SYS_clock_nanosleep] syscallClockNanosleep,
     [MAX_SYSCALL] 0,
 };
 
@@ -988,15 +990,15 @@ void syscallGetTime()
  * @brief 进程 sleep 一段时间
  *
  */
-void syscallSleepTime()
-{
-    Trapframe *tf = getHartTrapFrame();
-    TimeSpec ts;
-    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
-    myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
-    kernelProcessCpuTimeEnd();
-    yield();
-}
+// void syscallSleepTime()
+// {
+//     Trapframe *tf = getHartTrapFrame();
+//     TimeSpec ts;
+//     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
+//     myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
+//     kernelProcessCpuTimeEnd();
+//     yield();
+// }
 
 void syscallNanosleep()
 {
@@ -1005,6 +1007,7 @@ void syscallNanosleep()
     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(RealTimeSpec));
     myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
     kernelProcessCpuTimeEnd();
+    tf->a0 = 0;
     yield();
 }
 
@@ -2180,7 +2183,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
@@ -2833,4 +2836,45 @@ void syscallGetrusage()
     //     return;
     // }
     tf->a0 = 0;
+}
+
+/* 虚假的 clock_nanosleep */
+void syscallClockNanosleep()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int clock = tf->a0;
+    int flags = tf->a1;
+    u64 ts_addr = tf->a2;
+    // u64 remain_addr = tf->a2;
+    RealTimeSpec ts;
+    if (clock != CLOCK_REALTIME)
+    {
+        // printk("unsupported clock %d\n", clock);
+        // tf->a0 = -1;
+    }
+    copyin(myProcess()->pgdir, (char *)&ts, ts_addr, sizeof(RealTimeSpec));
+    if (flags == 0)
+    {
+        myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+        kernelProcessCpuTimeEnd();
+        tf->a0 = 0;
+        yield();
+    }
+    else if (flags == 1)
+    {
+        if (r_time() > ts.tv_sec * 1000000 + ts.tv_nsec / 1000)
+        {
+            tf->a0 = 0;
+            return;
+        }
+        myThread()->awakeTime = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
+        kernelProcessCpuTimeEnd();
+        tf->a0 = 0;
+        yield();
+    }
+    else
+    {
+        printk("unsupported flag\n");
+        tf->a0 = -1;
+    }
 }

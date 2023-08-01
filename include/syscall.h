@@ -62,7 +62,7 @@
 #define SYSCALL_SET_TIMER 103
 #define SYSCALL_SET_TIME 112
 #define SYSCALL_GET_TIME 113
-
+#define SYS_clock_nanosleep 115
 #define SYS_syslog 116
 #define SYS_sched_setscheduler 119
 #define SYS_sched_getscheduler 120
@@ -257,6 +257,8 @@ void syscallSchedSetaffinity();
 void syscallSchedGetaffinity();
 void syscallNanosleep();
 void syscallGetrusage();
+
+void syscallClockNanosleep();
 
 extern void (*syscallVector[])(void);
 
