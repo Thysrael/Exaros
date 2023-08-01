@@ -265,7 +265,7 @@ int kill(int pid, int sig)
             break;
         }
     }
-    return ret;
+    return ret == -ESRCH ? 0 : ret;
 }
 
 /**
