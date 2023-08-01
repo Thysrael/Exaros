@@ -990,15 +990,15 @@ void syscallGetTime()
  * @brief 进程 sleep 一段时间
  *
  */
-void syscallSleepTime()
-{
-    Trapframe *tf = getHartTrapFrame();
-    TimeSpec ts;
-    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
-    myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
-    kernelProcessCpuTimeEnd();
-    yield();
-}
+// void syscallSleepTime()
+// {
+//     Trapframe *tf = getHartTrapFrame();
+//     TimeSpec ts;
+//     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
+//     myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
+//     kernelProcessCpuTimeEnd();
+//     yield();
+// }
 
 void syscallNanosleep()
 {
@@ -1007,6 +1007,7 @@ void syscallNanosleep()
     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(RealTimeSpec));
     myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
     kernelProcessCpuTimeEnd();
+    tf->a0 = 0;
     yield();
 }
 
@@ -2846,24 +2847,32 @@ void syscallClockNanosleep()
     RealTimeSpec ts;
     if (clock != CLOCK_REALTIME)
     {
-        printk("unsupported clock %d\n", clock);
+        // printk("unsupported clock %d\n", clock);
+        // tf->a0 = -1;
     }
     copyin(myProcess()->pgdir, (char *)&ts, ts_addr, sizeof(RealTimeSpec));
     if (flags == 0)
     {
         myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
         kernelProcessCpuTimeEnd();
+        tf->a0 = 0;
         yield();
     }
     else if (flags == 1)
     {
-        if (r_time() > ts.tv_sec * 1000000 + ts.tv_nsec / 1000) { return; }
+        if (r_time() > ts.tv_sec * 1000000 + ts.tv_nsec / 1000)
+        {
+            tf->a0 = 0;
+            return;
+        }
         myThread()->awakeTime = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
         kernelProcessCpuTimeEnd();
+        tf->a0 = 0;
         yield();
     }
     else
     {
         printk("unsupported flag\n");
+        tf->a0 = -1;
     }
 }
