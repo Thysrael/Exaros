@@ -8,3 +8,4 @@ kernel-qemu
 /user/target/*
 *.b.c
 sdcard.img
+os.bin

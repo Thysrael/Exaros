@@ -8,6 +8,7 @@
 #include <segment.h>
 #include <debug.h>
 #include <macb.h>
+#include <trap.h>
 
 extern char kernelEnd[];
 Page pages[PAGE_NUM];
@@ -540,7 +541,8 @@ u64 passiveAlloc(u64 *pgdir, u64 badAddr)
         }
         if (pp == NULL)
         {
-            panic("can't find the lazy segment, badAddr is 0x%lx\n", badAddr);
+            Trapframe *tf = getHartTrapFrame();
+            panic("can't find the lazy segment, badAddr is 0x%lx, epc: 0x%lx, scause: 0x%lx, a7: 0x%lx\n", badAddr, tf->epc, readScause(), tf->a7);
         }
         pageInsert(pgdir, badAddr, pp, PTE_USER_BIT | perm);
     }

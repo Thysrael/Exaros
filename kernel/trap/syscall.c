@@ -1025,6 +1025,7 @@ void syscallBrk()
         tf->a0 = -1;
         return;
     }
+    // printk("syscallBrk arg addr is 0x%lx\n", addr);
     Process *p = myProcess();
     // if (addr != 0)
     // {
@@ -1034,7 +1035,7 @@ void syscallBrk()
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
-        // printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
+        printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1058,6 +1059,7 @@ void syscallBrk()
         u64 end = ALIGN_UP(addr, PAGE_SIZE);
         if (end > USER_BRK_HEAP_TOP)
         {
+            // printk("end is 0x%lx, USER_BRK_HEAP_TOP is 0x%lx\n", end, USER_BRK_HEAP_BOTTOM);
             tf->a0 = p->brkHeapTop;
             return;
         }

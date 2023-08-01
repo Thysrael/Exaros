@@ -23,6 +23,7 @@ all: $(modules)
 	$(LD) -o $(exaros_elf) -T $(linkscript) $(LDFLAGS) $(objects)
 	$(OBJDUMP) -alDS $(exaros_elf) > $(exaros_sys)
 	$(OBJCOPY) -O binary $(exaros_elf) $(exaros_bin)
+	cp $(exaros_bin) os.bin
 
 
 $(modules):

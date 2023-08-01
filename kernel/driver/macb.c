@@ -903,7 +903,7 @@ static void macb_start()
     msdelay(90);
 }
 
-void macbInit()
+__attribute__((unused)) void macbInit()
 {
     printk("macb init begin.\n");
     sifive_prci_set_rate();
