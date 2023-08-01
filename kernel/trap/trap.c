@@ -133,7 +133,7 @@ int handleInterrupt()
         if (!flag)
         {
             myProcess()->utime++;
-            timeYield()
+            timeYield();
         }
         // timerTick();
         // user timer interrupt
