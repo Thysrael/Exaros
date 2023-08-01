@@ -940,7 +940,8 @@ void syscallGetParentProcessId()
 
 void syscallYield()
 {
-    yield();
+    // yield();
+    callYield();
 }
 
 // 销毁进程
@@ -1050,10 +1051,10 @@ void syscallGetTime()
     tf->a0 = 0;
 }
 
-/**
- * @brief 进程 sleep 一段时间
- *
- */
+// /**
+//  * @brief 进程 sleep 一段时间
+//  *
+//  */
 // void syscallSleepTime()
 // {
 //     Trapframe *tf = getHartTrapFrame();
@@ -1061,18 +1062,19 @@ void syscallGetTime()
 //     copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
 //     myThread()->awakeTime = r_time() + ts.second * 1000000 + ts.microSecond;
 //     kernelProcessCpuTimeEnd();
-//     yield();
+//     // yield();
+//     callYield();
 // }
 
 void syscallNanosleep()
 {
     Trapframe *tf = getHartTrapFrame();
     RealTimeSpec ts;
-    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(RealTimeSpec));
+    copyin(myProcess()->pgdir, (char *)&ts, tf->a0, sizeof(TimeSpec));
     myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
     kernelProcessCpuTimeEnd();
     tf->a0 = 0;
-    yield();
+    callYield();
 }
 
 /**
@@ -1924,7 +1926,8 @@ void syscallSelect()
         }
         // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
         // tf->epc -= 4;
-        yield();
+        // yield();
+        callYield();
     }
     // selectFinish:
     // 原来只在这里有 copyout，是错误的，这里应该冗余了
@@ -2813,7 +2816,11 @@ void syscallSchedGetscheduler()
 void syscallSchedGetparam()
 {
     Trapframe *tf = getHartTrapFrame();
-    tf->a0 = 0;
+    u64 pid = tf->a0;
+    u64 addr = tf->a1;
+    sched_param param;
+    tf->a0 = sched_getparam(pid, &param);
+    copyout(myProcess()->pgdir, addr, (char *)&param, sizeof(sched_param));
     return;
 }
 
@@ -3009,7 +3016,7 @@ void syscallClockNanosleep()
         myThread()->awakeTime = r_time() + ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
         kernelProcessCpuTimeEnd();
         tf->a0 = 0;
-        yield();
+        callYield();
     }
     else if (flags == 1)
     {
@@ -3021,7 +3028,7 @@ void syscallClockNanosleep()
         myThread()->awakeTime = ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
         kernelProcessCpuTimeEnd();
         tf->a0 = 0;
-        yield();
+        callYield();
     }
     else
     {
