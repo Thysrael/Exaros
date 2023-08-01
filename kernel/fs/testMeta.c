@@ -7,12 +7,17 @@
 char testContentToWrite[10] = "abcdefghi";
 char testContentToRead[10] = {0};
 
-char autoTestContent[] = "\\time-test\n  \
+char autoTestContent[] = "\
+\\time-test\n\
 \\libc-bench\n\
-\\busybox sh \\busybox_testcode.sh\n \
-\\busybox sh \\lua_testcode.sh\n \
+\\busybox sh \\busybox_testcode.sh\n\
+\\busybox sh \\lua_testcode.sh\n\
 \\busybox sh \\libctest_testcode.sh\n\
+\\busybox sh \\cyclictest_testcode.sh\n";
+
+/*
 \\busybox sh \\iozone_testcode.sh";
+*/
 
 char unixContent[] = "./dhry2reg 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench DHRY2 test(lps): \"$0}'\n\
 ./whetstone-double 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+.[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+.[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench WHETSTONE test(MFLOPS): \"$0}' \n\
