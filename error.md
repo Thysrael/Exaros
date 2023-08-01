@@ -5,13 +5,21 @@
 * lua_testcode
   * OK
 * libctest_testcode
+  * OK
   * pthread_cancel_point
   * pthread_cancel
   * tls_get_new_dtv
 * libc-bench
-  * putcgetc
-    * virtio 会挂
+  * OK
 * cyclictest_testcode
   * OK
-* unixContent
+* unixbench_testcode
   * execl 结束后下一个会挂
+* iozone_testcode
+  * 放弃
+* lmbench_testcode
+  * 放弃
+* netperf_testcode
+  * 放弃
+* iperf_testcode
+  * 放弃

@@ -379,7 +379,6 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
         panic("copyout error");
     }
 
-    printk("str = 0x%lx\n", sp);
     u64 ustack[3] = {1, sp, 0};
     sp -= 3 * sizeof(u64);
     sp -= sp % 16;

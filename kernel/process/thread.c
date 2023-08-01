@@ -263,11 +263,8 @@ void threadRun(Thread *th)
             // 是因为 process run最开始如果是 (currentProcess[getTp()]) ，就要把 harttrapframe 拷贝到 process->tf
             // 但是第一个进程在 run 的时候 harttf 里面根本没有东西，就会导致用  0 覆盖
             memmove(trapframe, &(currentThread[hartid]->trapframe), sizeof(Trapframe));
-            printk("initRootFileSystem start...\n");
             initRootFileSystem();
-            printk("initRootFileSystem end...\n");
             th->process->cwd = &(rootFileSystem->root);
-            printk("end init fs in first thread\n");
         }
 
         // 切换页表
