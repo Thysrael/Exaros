@@ -1707,6 +1707,18 @@ typedef struct
     u64 bits[2];
 } FdSet;
 
+/**
+ * @brief 在一段指定的时间内，监听用户感兴趣的文件描述符上可读、可写和异常 fd 集合
+ *
+ * @param nfd 文件描述符的个数
+ * @param readset 查询的是否可读 fd 集合，同时也是返回值，返回确实可读的 fd 集合，若为 NULL，则表示不查询
+ * @param writeset 查询的是否可写 fd 集合，同时也是返回值，返回确实可写的 fd 集合，若为 NULL，则表示不查询
+ * @param exceptset 查询的是否异常 fd 集合，同时也是返回值，返回确实异常的 fd 集合，若为 NULL，则表示不查询
+ * @param timeout 超时时间，如果一直没有“就绪”的 fd，那么就会等待 timeout 的时间，然后返回 0，如果有就绪的，那么立刻返回。若为 NULL，则无限期等待
+ *
+ * @return 执行失败返回 -1，超时返回 0，否则返回已经就绪的 fd 的个数
+ *
+ */
 void syscallSelect()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -1715,6 +1727,7 @@ void syscallSelect()
     // assert(nfd <= 128);
     u64 read = tf->a1, write = tf->a2, except = tf->a3, timeout = tf->a4;
     // assert(timeout != 0);
+    // cnt 是已经就绪的 fd 的个数
     int cnt = 0;
     struct File *file = NULL;
     // printf("[%s] \n", __func__);
@@ -1731,7 +1744,7 @@ void syscallSelect()
             u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
             if (!cur)
                 continue;
-            // printf("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            // printk("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
             file = myProcess()->ofile[i];
             if (!file)
                 continue;
@@ -1740,7 +1753,7 @@ void syscallSelect()
             switch (file->type)
             {
             case FD_PIPE:
-                // printf("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
+                // printk("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
                 if (file->pipe->nread == file->pipe->nwrite)
                 {
                     ready_to_read = 0;
@@ -1782,13 +1795,17 @@ void syscallSelect()
             }
             else
             {
+                // printk("fd %d not ready\n", i);
                 if (i < 64)
                     readSet_ready.bits[0] &= ~cur;
                 else
                     readSet_ready.bits[1] &= ~cur;
             }
         }
+        // 修改了这里
+        copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
     }
+    // 这里默认写是永远就绪的，应该是不太对的，比如说对于管道，如果 buffer 满了，那么就是不能写的了
     if (write)
     {
         FdSet writeSet;
@@ -1807,6 +1824,8 @@ void syscallSelect()
         copyout(myProcess()->pgdir, write, (char *)&write,
                 sizeof(FdSet));
     }
+
+    // 这个默认没有异常
     if (except)
     {
         // FdSet set;
@@ -1816,8 +1835,15 @@ void syscallSelect()
         // memset(&set, 0, sizeof(FdSet));
         // copyout(myProcess()->pgdir, except, (char*)&set, sizeof(FdSet));
     }
+
+    // 说明还没有可以处理的文件描述符，那么需要考虑等待
     if (cnt == 0)
     {
+        // TODO: 按照原先的写法，这里说的是只要 timeout != NULL（有限期限），那么除非 timeout == 0，否则都当成无限期处理
+        // 所以会一直等待（利用 yield 和 epc -= 4）
+        // 有没有可能将 timeout != 0 的情况真正实现
+        // 或者退而求其次，将 timeout != 0 的情况视为 timeout == 0，这样可能可以过点
+        // 或许可以参考 AVX 的实现，我懒得找了
         if (timeout)
         {
             // struct TimeSpec ts;
@@ -1827,10 +1853,12 @@ void syscallSelect()
             //     goto selectFinish;
             // }
         }
+        // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
         // tf->epc -= 4;
         yield();
     }
     // selectFinish:
+    // 原来只在这里有 copyout，是错误的，这里应该冗余了
     copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
 
     printk("select end cnt %d\n", cnt);
@@ -2183,7 +2211,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
