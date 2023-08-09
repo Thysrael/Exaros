@@ -935,6 +935,7 @@ void syscallWait()
 
 void syscallExit()
 {
+    // printk("syscall exit begin\n");
     Trapframe *trapframe = getHartTrapFrame();
     Thread *th;
     int ret, ec = trapframe->a0;
@@ -947,6 +948,7 @@ void syscallExit()
 
     // 为啥要 << 8?
     th->retValue = (ec << 8); // todo
+    // printk("will thread destory\n");
     threadDestroy(th);
     // will not reach here
     panic("sycall exit error");

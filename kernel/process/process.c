@@ -645,7 +645,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     }
 
     LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
-
+    asm volatile("fence.i");
     return process->processId;
 }
 
@@ -674,6 +674,7 @@ int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     // acquireLock(&scheduleListLock);
     LIST_INSERT_TAIL(&scheduleList[0], thread, scheduleLink);
     // releaseLock(&scheduleListLock);
+    asm volatile("fence.i");
     return thread->threadId;
 }
 
