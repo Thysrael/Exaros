@@ -33,13 +33,18 @@ char unixContent[] = "./fstime -w -t 20 -b 256 -m 500 | ./busybox grep -o \"WRIT
 ./syscall 10 exec | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk \'{print \"Unixbench EXEC test(lps): \"$0}\'\n\
 \\libc-bench";
 
+char libc[] = "./libc-bench \n";
+
 void buildScript()
 {
     printk("building auto script.\n");
     DirMeta *script = metaCreate(AT_FDCWD, "/auto.sh", T_FILE, O_CREATE | O_RDWR);
-    metaWrite(script, false, (u64)autoTestContent, 0, sizeof(autoTestContent));
-    metaWrite(script, false, (u64)unixContent, sizeof(autoTestContent), sizeof(unixContent));
+    // metaWrite(script, false, (u64)autoTestContent, 0, sizeof(autoTestContent));
+    // metaWrite(script, false, (u64)unixContent, sizeof(autoTestContent), sizeof(unixContent));
+
     // metaWrite(script, false, (u64)unixContent, 0, sizeof(unixContent));
+
+    metaWrite(script, false, (u64)libc, 0, sizeof(libc));
 }
 
 void testMeta()
