@@ -2584,9 +2584,15 @@ void syscallUtimensat()
             tf->a0 = -EBADF;
             return;
         }
-        if ((de = metaName(dirFd, path, true)) == NULL)
+        // if ((de = metaName(dirFd, path, true)) == NULL)
+        // {
+        //     tf->a0 = -ENOTDIR;
+        //     return;
+        // }
+        if ((i64)(de = metaNamePatch(dirFd, path, true)) < 0)
         {
-            tf->a0 = -ENOTDIR;
+            // printk("eno: %ld\n", (u64)de);
+            tf->a0 = (u64)de;
             return;
         }
     }

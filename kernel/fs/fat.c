@@ -1035,6 +1035,74 @@ static DirMeta *lookupPath(int fd, char *path, int parent, char *name, bool jump
     return cur;
 }
 
+static DirMeta *lookupPathPatch(int fd, char *path, int parent, char *name, bool jump)
+{
+    DirMeta *cur, *next;
+    // 如果 path 并不是根目录且不是当前目录，则应该是打开的某个目录文件
+    if (*path != '/' && fd != AT_FDCWD && fd >= 0 && fd < NOFILE)
+    {
+        if (myProcess()->ofile[fd] == 0)
+        {
+            return (DirMeta *)-ENOENT;
+        }
+        cur = myProcess()->ofile[fd]->meta;
+    }
+    // 是绝对路径，则 cur 是根目录
+    else if (*path == '/')
+    {
+        extern FileSystem *rootFileSystem;
+        cur = &rootFileSystem->root;
+    }
+    // 是相对路径，cur 是当前路径
+    else if (*path != '\0' && fd == AT_FDCWD)
+    {
+        cur = myProcess()->cwd;
+        // printk("xdlj: %lx\n", myProcess()->cwd);
+    }
+    else
+    {
+        return (DirMeta *)-ENOENT;
+    }
+
+    while ((path = skipelem(path, name)) != 0)
+    {
+        // printk("cur:: %lx", (u64)cur); // 68?
+        cur = jumpToLinkDirMeta(cur);
+        if (!(cur->attribute & ATTR_DIRECTORY))
+        {
+            return (DirMeta *)-ENOTDIR;
+        }
+        // 这里更新了 cur 为挂载 meta，但是我没有弄明白为啥
+        if (cur->head != NULL)
+        {
+            DirMeta *mountDirMeta = &cur->head->root;
+            cur = mountDirMeta;
+        }
+        // 搜完了？奥，可能是搜到目录就可以停止了
+        if (parent && *path == '\0')
+        {
+            return cur;
+        }
+        // 这里更新 cur，通过向下一级目录遍历的方式
+        if ((next = dirlookup(cur, name)) == 0)
+        {
+            return (DirMeta *)-ENOENT;
+        }
+        cur = next;
+    }
+
+    if (jump)
+    {
+        cur = jumpToLinkDirMeta(cur);
+    }
+    // 异常情况，parent 正确返回位置在上面
+    if (parent)
+    {
+        return (DirMeta *)-ENOENT;
+    }
+    return cur;
+}
+
 /**
  * @brief 根据 fs path 来查询对应的文件 meta
  *
@@ -1047,6 +1115,20 @@ DirMeta *metaName(int fd, char *path, bool jump)
 {
     char name[FAT32_MAX_FILENAME + 1];
     return lookupPath(fd, path, 0, name, jump);
+}
+
+/**
+ * @brief metaName 更合理的版本，原来 metaName 失败情况会返回 NULL，但是不能确实是 NOTENT 还是 NOTDIR，所以无法确定具体的错误
+ *
+ * @param fd 需要用到的文件描述符
+ * @param path 待查找的文件的路径
+ * @param jump 对于查找到的链接文件，是否找到其目标文件
+ * @return DirMeta* 查找到的文件 meta，失败后返回 -ENOTENT 或 -NOTDIR
+ */
+DirMeta *metaNamePatch(int fd, char *path, bool jump)
+{
+    char name[FAT32_MAX_FILENAME + 1];
+    return lookupPathPatch(fd, path, 0, name, jump);
 }
 
 /**
