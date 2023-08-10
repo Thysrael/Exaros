@@ -1793,6 +1793,7 @@ void syscallSelect()
     int nfd = tf->a0;
     // assert(nfd <= 128);
     u64 read = tf->a1, write = tf->a2, except = tf->a3, timeout = tf->a4;
+    // printk("read: %lx, write: %lx, execept: %lx, timeout: %lx\n", read, write, except, timeout);
     // assert(timeout != 0);
     // cnt 是已经就绪的 fd 的个数
     int cnt = 0;
@@ -1919,6 +1920,7 @@ void syscallSelect()
             // {
             //     goto selectFinish;
             // }
+            copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
         }
         // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
         // tf->epc -= 4;
@@ -1926,9 +1928,8 @@ void syscallSelect()
     }
     // selectFinish:
     // 原来只在这里有 copyout，是错误的，这里应该冗余了
-    copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
 
-    printk("select end cnt %d\n", cnt);
+    // printk("select end cnt %d\n", cnt);
     tf->a0 = cnt;
 }
 
@@ -2278,7 +2279,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
@@ -2689,9 +2690,15 @@ void syscallUtimensat()
             tf->a0 = -EBADF;
             return;
         }
-        if ((de = metaName(dirFd, path, true)) == NULL)
+        // if ((de = metaName(dirFd, path, true)) == NULL)
+        // {
+        //     tf->a0 = -ENOTDIR;
+        //     return;
+        // }
+        if ((i64)(de = metaNamePatch(dirFd, path, true)) < 0)
         {
-            tf->a0 = -ENOTDIR;
+            // printk("eno: %ld\n", (u64)de);
+            tf->a0 = (u64)de;
             return;
         }
     }
