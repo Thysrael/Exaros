@@ -1477,7 +1477,7 @@ void syscallGetFileStateAt(void)
     DirMeta *entryPoint = metaName(dirfd, path, true);
     if (entryPoint == NULL)
     {
-        tf->a0 = -1;
+        tf->a0 = -ENOENT;
         return;
     }
 
