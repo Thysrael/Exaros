@@ -13,6 +13,7 @@
 #include "dirmeta.h"
 #include "pipe.h"
 #include "socket.h"
+#include "tmpfile.h"
 
 #define NDEV 4
 #define DEV_SD 0
@@ -41,16 +42,18 @@ typedef struct File
         FD_PIPE,
         FD_ENTRY,
         FD_DEVICE,
-        FD_SOCKET
+        FD_SOCKET,
+        FD_TMPFILE
     } type;
     int ref; // reference count
     char readable;
     char writable;
-    Pipe *pipe;    // FD_PIPE
-    DirMeta *meta; // FD_ENTRY, 用于存储文件的信息
-    u32 off;       // FD_ENTRY
-    short major;   // FD_DEVICE
-    Socket *socket;
+    Pipe *pipe;        // FD_PIPE
+    DirMeta *meta;     // FD_ENTRY, 用于存储文件的信息
+    u32 off;           // FD_ENTRY，读取文件的偏移
+    short major;       // FD_DEVICE
+    Socket *socket;    // FD_SOCKET
+    Tmpfile *tmpfile;  // FD_TMPFILE
     DirMeta *curChild; // current child for getDirmeta
 } File;
 

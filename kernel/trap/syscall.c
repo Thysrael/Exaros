@@ -24,6 +24,7 @@
 #include <resource.h>
 #include <shm.h>
 #include <clock.h>
+#include <tmpfile.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -247,7 +248,7 @@ void syscallRead(void)
         tf->a0 = -1;
         return;
     }
-    // printk("read fd is %d, len is %d\n", fd, len);
+    // printk("[read] read fd is %d, len is %d\n", fd, len);
     tf->a0 = fileread(f, true, uva, len);
 }
 
@@ -377,6 +378,62 @@ void syscallGetDirent()
     return;
 }
 
+static void tmpfileOpenAt()
+{
+    TMPF_DEBUG("It's tmpfile.\n");
+    Trapframe *tf = getHartTrapFrame();
+    int flags = tf->a2;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    Tmpfile *entryPoint;
+    // 创建一个文件
+    if (flags & O_CREATE)
+    {
+        tmpfileAlloc(path, &entryPoint);
+    }
+    // 否则是打开文件
+    else
+    {
+        // 按照名字查找文件
+        if ((entryPoint = tmpfileName(path)) == NULL)
+        {
+            tf->a0 = -ENOENT; /*must be -ENOENT */
+            goto bad;
+        }
+    }
+
+    File *file;
+    int fd;
+    // 分配出一个 file 和一个 fd
+    if ((file = filealloc()) == NULL || (fd = fdalloc(file)) < 0)
+    {
+        // 分配失败 fd，但是没有分配失败 file 的情况
+        if (file)
+        {
+            fileclose(file);
+        }
+        tf->a0 = -24;
+        goto bad;
+    }
+
+    file->type = FD_TMPFILE;
+    file->tmpfile = entryPoint;
+    // 设置初始偏移量
+    file->tmpfile->offset = (flags & O_APPEND) ? entryPoint->fileSize : 0;
+    file->off = 0; // 我们不使用这个偏移量
+    file->readable = !(flags & O_WRONLY);
+    file->writable = (flags & O_WRONLY) || (flags & O_RDWR);
+
+    tf->a0 = fd;
+bad:
+    return;
+}
+
 /**
  * @brief 在指定目录打开或者创建文件，最终是生成一个 File
  *
@@ -400,7 +457,12 @@ void syscallOpenAt(void)
         tf->a0 = -1;
         return;
     }
-    // printk("open path is %s\n", path);
+    // printk("[syscall openat] open path is %s\n", path);
+    if (strncmp(path, "/tmp/tmpfile", 12) == 0)
+    {
+        tmpfileOpenAt();
+        return;
+    }
     DirMeta *entryPoint;
     // 如果是创建一个文件，那么用 metaCreate
     if (flags & O_CREATE)
@@ -1040,7 +1102,7 @@ void syscallBrk()
     // printk("adjust addr: %lx\n", addr);
     if (addr == 0)
     {
-        printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
+        // printk("ask brk, addr is 0x%lx\n", p->brkHeapTop);
         tf->a0 = p->brkHeapTop;
         return;
     }
@@ -1493,7 +1555,8 @@ void syscallWriteVector()
     {
         goto bad;
     }
-
+    // static u64 call_cnt = 0;
+    // printk("[write vector] fd is %d, cnt is %d, time is %lu\n", fd, cnt, call_cnt++);
     struct Iovec vec[IOVMAX];
     struct Process *p = myProcess();
 
@@ -1505,6 +1568,7 @@ void syscallWriteVector()
     u64 len = 0;
     for (int i = 0; i < cnt; i++)
     {
+        // printk("\t[write vector] i: %d, len: %d\n", i, vec[i].iovLen);
         if (vec[i].iovLen > 0)
             len += filewrite(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
     }
@@ -1531,7 +1595,7 @@ void syscallReadVector()
     {
         goto bad;
     }
-
+    // printk("[read vector] fd is %d, cnt is %d\n", fd, cnt);
     struct Iovec vec[IOVMAX];
     struct Process *p = myProcess();
 
@@ -1543,6 +1607,7 @@ void syscallReadVector()
     u64 len = 0;
     for (int i = 0; i < cnt; i++)
     {
+        // printk("\t[read vector] i: %d, len: %d\n", i, vec[i].iovLen);
         len += fileread(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
     }
     tf->a0 = len;
@@ -2510,6 +2575,16 @@ void syscallAccept()
     // printk("syscall accept end.\n");
 }
 
+/**
+ * @brief 使用 lseek 系统调用可以改变文件的当前文件偏移量（current file offset，cfo）
+ * @param fd 文件描述符
+ * @param offset 特定的偏移量，可正可负
+ * @param mode SEEK_SET，文件偏移量将被设置为 offset
+ *             SEEK_CUR，文件偏移量将被设置为 cfo 加上 offset
+ *             SEEK_END，文件偏移量将被设置为文件长度加上 offset
+ *
+ * @return 改变后的 cfo
+ */
 void syscallLseek()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -2530,7 +2605,15 @@ void syscallLseek()
     case SEEK_SET:
         break;
     case SEEK_CUR:
-        off += file->off;
+        if (file->type == FD_TMPFILE)
+        {
+            off += file->tmpfile->offset;
+        }
+        // 对应的是 FD_ENTRY 的情况
+        else
+        {
+            off += file->off;
+        }
         break;
     case SEEK_END:
         if (file->type == FD_ENTRY)
@@ -2540,6 +2623,11 @@ void syscallLseek()
         else if (file->type == FD_PIPE)
         {
             off += file->pipe->nwrite % PIPESIZE;
+        }
+        else if (file->type == FD_TMPFILE)
+        {
+            off += file->tmpfile->fileSize;
+            TMPF_DEBUG("lseek the offset at the end %d\n", off);
         }
         else
         {
@@ -2557,6 +2645,10 @@ void syscallLseek()
     //     }
     // }
     file->off = off;
+    if (file->type == FD_TMPFILE)
+    {
+        file->tmpfile->offset = off;
+    }
     // if (file->type != FD_ENTRY) {
     //     file->off = off;
     // } else {
@@ -2566,6 +2658,17 @@ void syscallLseek()
     return;
 bad:
     tf->a0 = -1;
+}
+
+void tmpfileUtimensat(Tmpfile *tmpfile)
+{
+    Trapframe *tf = getHartTrapFrame();
+    if (tf->a2)
+    {
+        TimeSpec ts[2];
+        copyin(myProcess()->pgdir, (char *)ts, tf->a2, sizeof(ts));
+        tmpfileSetTime(tmpfile, ts);
+    }
 }
 
 void syscallUtimensat()
@@ -2601,7 +2704,18 @@ void syscallUtimensat()
             return;
         }
         de = f->meta;
+        if (f->type == FD_TMPFILE)
+        {
+            TMPF_DEBUG("tmpfile utimensat\n");
+            // FIXME: 这是一种特殊情况，并没有很好的考虑所有的特殊情况，比如前面的那一种
+            // 关闭 tmpfile 不是很困难，只需要在 open 的时候避免 tmfile 的生成即可
+            tmpfileUtimensat(f->tmpfile);
+            tf->a0 = 0;
+            return;
+        }
     }
+
+    // 用于设置时间
     if (tf->a2)
     {
         TimeSpec ts[2];
