@@ -120,7 +120,8 @@ void bwrite(Buf *b)
 #ifdef VIRT
     virtioDiskRW(b, 1);
 #else
-    sdWrite(b->data, b->blockno, 1);
+    // 也就是根本不写回
+    // sdWrite(b->data, b->blockno, 1);
 #endif
 }
 

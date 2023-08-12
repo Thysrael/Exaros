@@ -1914,6 +1914,8 @@ void syscallSelect()
         // 有没有可能将 timeout != 0 的情况真正实现
         // 或者退而求其次，将 timeout != 0 的情况视为 timeout == 0，这样可能可以过点
         // 或许可以参考 AVX 的实现，我懒得找了
+
+        // 这里最后似乎处理成了所有的 timeout == 0 了
         if (timeout)
         {
             // struct TimeSpec ts;
@@ -1922,7 +1924,7 @@ void syscallSelect()
             // {
             //     goto selectFinish;
             // }
-            copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+            // copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
         }
         // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
         // tf->epc -= 4;
@@ -2282,7 +2284,7 @@ void syscallMprotect()
         if (page == NULL)
         {
             passiveAlloc(myProcess()->pgdir, start);
-            page = pageLookup(myProcess()->pgdir, start, &pte);                   // CHL_CHANGED
+            page = pageLookup(myProcess()->pgdir, start, &pte); // CHL_CHANGED
         }
         *pte = (*pte & ~(PTE_READ_BIT | PTE_WRITE_BIT | PTE_EXECUTE_BIT)) | perm; // CHL_CHANGED
         // else
