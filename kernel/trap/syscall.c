@@ -1476,6 +1476,8 @@ void syscallGetFileStateAt(void)
         return;
     }
     // printf("path: %s\n", path);
+    // FIXME: 其实这里还有一定的 bug，因为 tmpfile 是不能用 meta 方法的，
+    // 但是因为 tmpfile 的名字随机，所以一般也不用路径索引
     DirMeta *entryPoint = metaName(dirfd, path, true);
     if (entryPoint == NULL)
     {
