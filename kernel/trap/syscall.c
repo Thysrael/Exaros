@@ -24,6 +24,7 @@
 #include <resource.h>
 #include <shm.h>
 #include <clock.h>
+#include <tmpfile.h>
 
 void (*syscallVector[])(void) = {
     [SYSCALL_PUTCHAR] syscallPutchar,
@@ -247,7 +248,7 @@ void syscallRead(void)
         tf->a0 = -1;
         return;
     }
-    // printk("read fd is %d, len is %d\n", fd, len);
+    // printk("[read] read fd is %d, len is %d\n", fd, len);
     tf->a0 = fileread(f, true, uva, len);
 }
 
@@ -377,6 +378,62 @@ void syscallGetDirent()
     return;
 }
 
+static void tmpfileOpenAt()
+{
+    TMPF_DEBUG("It's tmpfile.\n");
+    Trapframe *tf = getHartTrapFrame();
+    int flags = tf->a2;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    Tmpfile *entryPoint;
+    // 创建一个文件
+    if (flags & O_CREATE)
+    {
+        tmpfileAlloc(path, &entryPoint);
+    }
+    // 否则是打开文件
+    else
+    {
+        // 按照名字查找文件
+        if ((entryPoint = tmpfileName(path)) == NULL)
+        {
+            tf->a0 = -ENOENT; /*must be -ENOENT */
+            goto bad;
+        }
+    }
+
+    File *file;
+    int fd;
+    // 分配出一个 file 和一个 fd
+    if ((file = filealloc()) == NULL || (fd = fdalloc(file)) < 0)
+    {
+        // 分配失败 fd，但是没有分配失败 file 的情况
+        if (file)
+        {
+            fileclose(file);
+        }
+        tf->a0 = -24;
+        goto bad;
+    }
+
+    file->type = FD_TMPFILE;
+    file->tmpfile = entryPoint;
+    // 设置初始偏移量
+    file->tmpfile->offset = (flags & O_APPEND) ? entryPoint->fileSize : 0;
+    file->off = 0; // 我们不使用这个偏移量
+    file->readable = !(flags & O_WRONLY);
+    file->writable = (flags & O_WRONLY) || (flags & O_RDWR);
+
+    tf->a0 = fd;
+bad:
+    return;
+}
+
 /**
  * @brief 在指定目录打开或者创建文件，最终是生成一个 File
  *
@@ -400,7 +457,12 @@ void syscallOpenAt(void)
         tf->a0 = -1;
         return;
     }
-    // printk("open path is %s\n", path);
+    // printk("[syscall openat] open path is %s\n", path);
+    if (strncmp(path, "/tmp/tmpfile", 12) == 0)
+    {
+        tmpfileOpenAt();
+        return;
+    }
     DirMeta *entryPoint;
     // 如果是创建一个文件，那么用 metaCreate
     if (flags & O_CREATE)
@@ -936,6 +998,7 @@ void syscallWait()
 
 void syscallExit()
 {
+    // printk("syscall exit begin\n");
     Trapframe *trapframe = getHartTrapFrame();
     Thread *th;
     int ret, ec = trapframe->a0;
@@ -948,6 +1011,7 @@ void syscallExit()
 
     // 为啥要 << 8?
     th->retValue = (ec << 8); // todo
+    // printk("will thread destory\n");
     threadDestroy(th);
     // will not reach here
     panic("sycall exit error");
@@ -1030,6 +1094,7 @@ void syscallBrk()
         tf->a0 = -1;
         return;
     }
+    // printk("syscallBrk arg addr is 0x%lx\n", addr);
     Process *p = myProcess();
     // if (addr != 0)
     // {
@@ -1063,6 +1128,7 @@ void syscallBrk()
         u64 end = ALIGN_UP(addr, PAGE_SIZE);
         if (end > USER_BRK_HEAP_TOP)
         {
+            // printk("end is 0x%lx, USER_BRK_HEAP_TOP is 0x%lx\n", end, USER_BRK_HEAP_BOTTOM);
             tf->a0 = p->brkHeapTop;
             return;
         }
@@ -1413,7 +1479,7 @@ void syscallGetFileStateAt(void)
     DirMeta *entryPoint = metaName(dirfd, path, true);
     if (entryPoint == NULL)
     {
-        tf->a0 = -1;
+        tf->a0 = -ENOENT;
         return;
     }
 
@@ -1491,7 +1557,8 @@ void syscallWriteVector()
     {
         goto bad;
     }
-
+    // static u64 call_cnt = 0;
+    // printk("[write vector] fd is %d, cnt is %d, time is %lu\n", fd, cnt, call_cnt++);
     struct Iovec vec[IOVMAX];
     struct Process *p = myProcess();
 
@@ -1503,6 +1570,7 @@ void syscallWriteVector()
     u64 len = 0;
     for (int i = 0; i < cnt; i++)
     {
+        // printk("\t[write vector] i: %d, len: %d\n", i, vec[i].iovLen);
         if (vec[i].iovLen > 0)
             len += filewrite(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
     }
@@ -1529,7 +1597,7 @@ void syscallReadVector()
     {
         goto bad;
     }
-
+    // printk("[read vector] fd is %d, cnt is %d\n", fd, cnt);
     struct Iovec vec[IOVMAX];
     struct Process *p = myProcess();
 
@@ -1541,6 +1609,7 @@ void syscallReadVector()
     u64 len = 0;
     for (int i = 0; i < cnt; i++)
     {
+        // printk("\t[read vector] i: %d, len: %d\n", i, vec[i].iovLen);
         len += fileread(f, true, (u64)vec[i].iovBase, vec[i].iovLen);
     }
     tf->a0 = len;
@@ -1707,6 +1776,18 @@ typedef struct
     u64 bits[2];
 } FdSet;
 
+/**
+ * @brief 在一段指定的时间内，监听用户感兴趣的文件描述符上可读、可写和异常 fd 集合
+ *
+ * @param nfd 文件描述符的个数
+ * @param readset 查询的是否可读 fd 集合，同时也是返回值，返回确实可读的 fd 集合，若为 NULL，则表示不查询
+ * @param writeset 查询的是否可写 fd 集合，同时也是返回值，返回确实可写的 fd 集合，若为 NULL，则表示不查询
+ * @param exceptset 查询的是否异常 fd 集合，同时也是返回值，返回确实异常的 fd 集合，若为 NULL，则表示不查询
+ * @param timeout 超时时间，如果一直没有“就绪”的 fd，那么就会等待 timeout 的时间，然后返回 0，如果有就绪的，那么立刻返回。若为 NULL，则无限期等待
+ *
+ * @return 执行失败返回 -1，超时返回 0，否则返回已经就绪的 fd 的个数
+ *
+ */
 void syscallSelect()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -1714,7 +1795,9 @@ void syscallSelect()
     int nfd = tf->a0;
     // assert(nfd <= 128);
     u64 read = tf->a1, write = tf->a2, except = tf->a3, timeout = tf->a4;
+    // printk("read: %lx, write: %lx, execept: %lx, timeout: %lx\n", read, write, except, timeout);
     // assert(timeout != 0);
+    // cnt 是已经就绪的 fd 的个数
     int cnt = 0;
     struct File *file = NULL;
     // printf("[%s] \n", __func__);
@@ -1731,7 +1814,7 @@ void syscallSelect()
             u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
             if (!cur)
                 continue;
-            // printf("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            // printk("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
             file = myProcess()->ofile[i];
             if (!file)
                 continue;
@@ -1740,7 +1823,7 @@ void syscallSelect()
             switch (file->type)
             {
             case FD_PIPE:
-                // printf("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
+                // printk("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
                 if (file->pipe->nread == file->pipe->nwrite)
                 {
                     ready_to_read = 0;
@@ -1782,13 +1865,17 @@ void syscallSelect()
             }
             else
             {
+                // printk("fd %d not ready\n", i);
                 if (i < 64)
                     readSet_ready.bits[0] &= ~cur;
                 else
                     readSet_ready.bits[1] &= ~cur;
             }
         }
+        // 修改了这里
+        copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
     }
+    // 这里默认写是永远就绪的，应该是不太对的，比如说对于管道，如果 buffer 满了，那么就是不能写的了
     if (write)
     {
         FdSet writeSet;
@@ -1807,6 +1894,8 @@ void syscallSelect()
         copyout(myProcess()->pgdir, write, (char *)&write,
                 sizeof(FdSet));
     }
+
+    // 这个默认没有异常
     if (except)
     {
         // FdSet set;
@@ -1816,8 +1905,15 @@ void syscallSelect()
         // memset(&set, 0, sizeof(FdSet));
         // copyout(myProcess()->pgdir, except, (char*)&set, sizeof(FdSet));
     }
+
+    // 说明还没有可以处理的文件描述符，那么需要考虑等待
     if (cnt == 0)
     {
+        // TODO: 按照原先的写法，这里说的是只要 timeout != NULL（有限期限），那么除非 timeout == 0，否则都当成无限期处理
+        // 所以会一直等待（利用 yield 和 epc -= 4）
+        // 有没有可能将 timeout != 0 的情况真正实现
+        // 或者退而求其次，将 timeout != 0 的情况视为 timeout == 0，这样可能可以过点
+        // 或许可以参考 AVX 的实现，我懒得找了
         if (timeout)
         {
             // struct TimeSpec ts;
@@ -1826,15 +1922,17 @@ void syscallSelect()
             // {
             //     goto selectFinish;
             // }
+            copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
         }
+        // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
         // tf->epc -= 4;
         // yield();
         callYield();
     }
     // selectFinish:
-    copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+    // 原来只在这里有 copyout，是错误的，这里应该冗余了
 
-    printk("select end cnt %d\n", cnt);
+    // printk("select end cnt %d\n", cnt);
     tf->a0 = cnt;
 }
 
@@ -2481,6 +2579,16 @@ void syscallAccept()
     // printk("syscall accept end.\n");
 }
 
+/**
+ * @brief 使用 lseek 系统调用可以改变文件的当前文件偏移量（current file offset，cfo）
+ * @param fd 文件描述符
+ * @param offset 特定的偏移量，可正可负
+ * @param mode SEEK_SET，文件偏移量将被设置为 offset
+ *             SEEK_CUR，文件偏移量将被设置为 cfo 加上 offset
+ *             SEEK_END，文件偏移量将被设置为文件长度加上 offset
+ *
+ * @return 改变后的 cfo
+ */
 void syscallLseek()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -2501,7 +2609,15 @@ void syscallLseek()
     case SEEK_SET:
         break;
     case SEEK_CUR:
-        off += file->off;
+        if (file->type == FD_TMPFILE)
+        {
+            off += file->tmpfile->offset;
+        }
+        // 对应的是 FD_ENTRY 的情况
+        else
+        {
+            off += file->off;
+        }
         break;
     case SEEK_END:
         if (file->type == FD_ENTRY)
@@ -2511,6 +2627,11 @@ void syscallLseek()
         else if (file->type == FD_PIPE)
         {
             off += file->pipe->nwrite % PIPESIZE;
+        }
+        else if (file->type == FD_TMPFILE)
+        {
+            off += file->tmpfile->fileSize;
+            TMPF_DEBUG("lseek the offset at the end %d\n", off);
         }
         else
         {
@@ -2528,6 +2649,10 @@ void syscallLseek()
     //     }
     // }
     file->off = off;
+    if (file->type == FD_TMPFILE)
+    {
+        file->tmpfile->offset = off;
+    }
     // if (file->type != FD_ENTRY) {
     //     file->off = off;
     // } else {
@@ -2537,6 +2662,17 @@ void syscallLseek()
     return;
 bad:
     tf->a0 = -1;
+}
+
+void tmpfileUtimensat(Tmpfile *tmpfile)
+{
+    Trapframe *tf = getHartTrapFrame();
+    if (tf->a2)
+    {
+        TimeSpec ts[2];
+        copyin(myProcess()->pgdir, (char *)ts, tf->a2, sizeof(ts));
+        tmpfileSetTime(tmpfile, ts);
+    }
 }
 
 void syscallUtimensat()
@@ -2557,9 +2693,15 @@ void syscallUtimensat()
             tf->a0 = -EBADF;
             return;
         }
-        if ((de = metaName(dirFd, path, true)) == NULL)
+        // if ((de = metaName(dirFd, path, true)) == NULL)
+        // {
+        //     tf->a0 = -ENOTDIR;
+        //     return;
+        // }
+        if ((i64)(de = metaNamePatch(dirFd, path, true)) < 0)
         {
-            tf->a0 = -ENOTDIR;
+            // printk("eno: %ld\n", (u64)de);
+            tf->a0 = (u64)de;
             return;
         }
     }
@@ -2572,7 +2714,18 @@ void syscallUtimensat()
             return;
         }
         de = f->meta;
+        if (f->type == FD_TMPFILE)
+        {
+            TMPF_DEBUG("tmpfile utimensat\n");
+            // FIXME: 这是一种特殊情况，并没有很好的考虑所有的特殊情况，比如前面的那一种
+            // 关闭 tmpfile 不是很困难，只需要在 open 的时候避免 tmfile 的生成即可
+            tmpfileUtimensat(f->tmpfile);
+            tf->a0 = 0;
+            return;
+        }
     }
+
+    // 用于设置时间
     if (tf->a2)
     {
         TimeSpec ts[2];

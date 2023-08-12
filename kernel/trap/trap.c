@@ -154,7 +154,7 @@ void kernelHandler()
     u64 sepc = readSepc();
     u64 sstatus = readSstatus();
 
-    printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
+    // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
     // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
 
     // Trapframe *trapframe = getHartTrapFrame();

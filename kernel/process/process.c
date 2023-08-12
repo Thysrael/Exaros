@@ -815,6 +815,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
     // fork 的时候可直接插入
 
+    asm volatile("fence.i");
     // LIST_INSERT_TAIL(&scheduleList[0], th, scheduleLink);
     return process->processId;
 }

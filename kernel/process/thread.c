@@ -312,6 +312,7 @@ void threadSetup(Thread *th)
     LIST_INIT(&th->pendingSignal);
     LIST_INIT(&th->handlingSignal);
 
+    th->clearChildTid = 0;
     Page *page;
 
     /* 申线程内核栈 */

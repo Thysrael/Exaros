@@ -12,6 +12,7 @@
 // #define NET_DEBUG_
 // #define SOCKET_DEBUG_
 // #define SHM_DEBUG_
+// #define TMPF_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \
@@ -89,6 +90,16 @@
     } while (0)
 #else
 #define SHM_DEBUG(...)
+#endif
+
+#ifdef TMPF_DEBUG_
+#define TMPF_DEBUG(...)                                                     \
+    do {                                                                    \
+        printk("[TMPF] at %s: %d in %s(): ", __FILE__, __LINE__, __func__); \
+        printk(__VA_ARGS__);                                                \
+    } while (0)
+#else
+#define TMPF_DEBUG(...)
 #endif
 
 #endif

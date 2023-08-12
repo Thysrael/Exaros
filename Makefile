@@ -57,7 +57,7 @@ clean:
 			$(MAKE) --directory=$$module clean;		\
 		done;										\
 	rm -rf *.o *~ $(target_dir)
-	rm $(exaros_bin)
+	rm $(exaros_bin) os.bin
 
 run: 
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS)

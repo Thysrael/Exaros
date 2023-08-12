@@ -107,7 +107,8 @@ SignalAction *getSignalHandler(Process *p)
 
 void SignalActionDefault(Thread *thread, int signal)
 {
-    printk("GET SIGNAL: %d\n", signal);
+    printk("GET SIGNAL: %d, %lx\n", signal, getHartTrapFrame()->epc);
+
     // switch (signal)
     // {
     // case SIGTSTP:
@@ -139,7 +140,8 @@ void handleSignal()
         SignalAction *sa = getSignalHandler(thread->process) + (sc->signal - 1);
         if (sa->sa_handler == NULL)
         {
-            SignalActionDefault(thread, sc->signal);
+            // SignalActionDefault(thread, sc->signal);
+            signalContextFree(sc);
             continue;
         }
         Trapframe *tf = getHartTrapFrame();
