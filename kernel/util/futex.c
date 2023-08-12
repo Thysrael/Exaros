@@ -25,22 +25,31 @@ void futexWait(u64 addr, Thread *th, TimeSpec *ts)
             }
             else
             {
+                if (th->state == RUNNABLE)
+                    LIST_REMOVE(th, priSchedLink);
                 th->state = SLEEPING;
             }
-            yield();
+            // yield();
+            callYield();
             // not reach here!!!
         }
     }
     panic("No futex Resource!\n");
 }
 
+extern struct ThreadList priSchedList[140];
 void futexWake(u64 addr, int n)
 {
     for (int i = 0; i < FUTEX_COUNT && n; i++)
     {
         if (futexQueue[i].valid && futexQueue[i].addr == addr)
         {
-            futexQueue[i].thread->state = RUNNABLE;
+            if (futexQueue[i].thread->state != RUNNABLE)
+            {
+                futexQueue[i].thread->state = RUNNABLE;
+                int pri = 99 - futexQueue[i].thread->schedParam.schedPriority;
+                LIST_INSERT_TAIL(&priSchedList[pri], futexQueue[i].thread, priSchedLink);
+            }
             futexQueue[i].thread->trapframe.a0 = 0; // set next yield accept!
             futexQueue[i].valid = false;
             n--;
@@ -55,7 +64,12 @@ void futexRequeue(u64 addr, int n, u64 newAddr)
     {
         if (futexQueue[i].valid && futexQueue[i].addr == addr)
         {
-            futexQueue[i].thread->state = RUNNABLE;
+            if (futexQueue[i].thread->state != RUNNABLE)
+            {
+                futexQueue[i].thread->state = RUNNABLE;
+                int pri = 99 - futexQueue[i].thread->schedParam.schedPriority;
+                LIST_INSERT_TAIL(&priSchedList[pri], futexQueue[i].thread, priSchedLink);
+            }
             futexQueue[i].thread->trapframe.a0 = 0; // set next yield accept!
             futexQueue[i].valid = false;
             n--;

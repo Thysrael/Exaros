@@ -94,7 +94,8 @@ void main(u64 hartId)
     // 时钟中断的开关，在比赛中没有必要开启时钟中断
     // setNextTimeout();
 
-    yield();
+    callYield();
+    // yield();
     while (1)
         ;
 }

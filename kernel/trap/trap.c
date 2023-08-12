@@ -133,7 +133,7 @@ int handleInterrupt()
         if (!flag)
         {
             myProcess()->utime++;
-            yield();
+            timeYield();
         }
         // timerTick();
         // user timer interrupt
@@ -154,7 +154,7 @@ void kernelHandler()
     u64 sepc = readSepc();
     u64 sstatus = readSstatus();
 
-    printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
+    // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
     // printk("[kernelHandler] scause: %lx, stval: %lx, sepc: %lx, sip: %lx\n", readScause(), readStval(), readSepc(), readSip());
 
     // Trapframe *trapframe = getHartTrapFrame();
@@ -187,7 +187,8 @@ void kernelHandler()
         break;
     case TIMER_INTERRUPT:
         myProcess()->ktime++;
-        yield();
+        // yield();
+        timeYield();
         break;
     default:
         break;
@@ -227,7 +228,8 @@ void userHandler()
     {
         handleInterrupt();
         myProcess()->utime++;
-        yield();
+        // yield();
+        timeYield();
     }
     else
     {

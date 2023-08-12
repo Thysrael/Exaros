@@ -137,7 +137,7 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
 /**
  * @brief
  * 1. 将当前进程改为 RUNNABLE，并插入调度列表末尾
- * 2. 交替访问两个调度队列，直到找到一个 RURNNABLE 的进程
+ * 2. 交替访问两个调度队列，直到找到一个 RUNNABLE 的进程
  */
 void yield()
 {

@@ -86,6 +86,10 @@ void fileclose(File *f)
     {
         socketFree(ff.socket);
     }
+    else if (ff.type == FD_TMPFILE)
+    {
+        tmpfileClose(ff.tmpfile);
+    }
 }
 
 /**
@@ -103,6 +107,13 @@ int filestat(File *f, u64 addr)
     if (f->type == FD_ENTRY)
     {
         metaStat(f->meta, &st);
+        if (copyout(p->pgdir, addr, (char *)&st, sizeof(st)) < 0)
+            return -1;
+        return 0;
+    }
+    else if (f->type == FD_TMPFILE)
+    {
+        tmpfileStat(f->tmpfile, &st);
         if (copyout(p->pgdir, addr, (char *)&st, sizeof(st)) < 0)
             return -1;
         return 0;
@@ -142,6 +153,9 @@ int fileread(File *f, bool isUser, u64 addr, int n)
         break;
     case FD_SOCKET:
         r = socket_read(f->socket, isUser, addr, n);
+        break;
+    case FD_TMPFILE:
+        r = tmpfileRead(f->tmpfile, isUser, addr, n);
         break;
     default:
         panic("fileread not implement.\n");
@@ -208,6 +222,10 @@ int filewrite(File *f, bool isUser, u64 addr, int n)
     else if (f->type == FD_SOCKET)
     {
         ret = socket_write(f->socket, isUser, addr, n);
+    }
+    else if (f->type == FD_TMPFILE)
+    {
+        ret = tmpfileWrite(f->tmpfile, isUser, addr, n);
     }
     else
     {

@@ -27,7 +27,8 @@ sleepSave:
     sd a6, -176(sp)
     sd a7, -184(sp)
     add sp, sp, -184
-    jal yield
+    jal callYield
+    # jal yield
 
     .globl sleepRec
     .align 4

@@ -21,6 +21,7 @@ Thread threads[PROCESS_TOTAL_NUMBER];
 
 struct ThreadList freeThreads, usedThreads;
 struct ThreadList scheduleList[2];
+struct ThreadList priSchedList[140];
 Thread *currentThread[CORE_NUM] = {0};
 struct Spinlock threadListLock, scheduleListLock, threadIdLock;
 
@@ -63,6 +64,7 @@ void threadFree(Thread *th)
         p->retValue = th->retValue;
         processFree(p);
     }
+    if (th->state == RUNNABLE) { LIST_REMOVE(th, priSchedLink); }
     th->state = UNUSED;
     LIST_REMOVE(th, link);
     LIST_INSERT_HEAD(&freeThreads, th, link); // test pipe
@@ -91,6 +93,10 @@ void threadInit()
     LIST_INIT(&usedThreads);
     LIST_INIT(&scheduleList[0]);
     LIST_INIT(&scheduleList[1]);
+    for (int pri = 0; pri <= PRI_MAX - PRI_MIN; ++pri)
+    {
+        LIST_INIT(&priSchedList[pri]);
+    }
 
     int i;
     for (i = PROCESS_TOTAL_NUMBER - 1; i >= 0; i--)
@@ -286,7 +292,7 @@ void threadDestroy(Thread *th)
                      :
                      : "r"(&sp)
                      : "memory");
-        yield();
+        callYield();
     }
 }
 
@@ -299,11 +305,14 @@ void threadSetup(Thread *th)
     th->awakeTime = 0;
     CPU_ZERO(&th->cpuset);
     CPU_SET(0, &th->cpuset);
+    th->schedPolicy = SCHED_OTHER;
+    th->schedParam.schedPriority = 0;
     th->killed = false;
     signalSetEmpty(&th->blocked);
     LIST_INIT(&th->pendingSignal);
     LIST_INIT(&th->handlingSignal);
 
+    th->clearChildTid = 0;
     Page *page;
 
     /* 申线程内核栈 */
@@ -341,8 +350,7 @@ void sleep(void *channel, Spinlock *lk)
     acquireLock(&(th->lock));
     releaseLock(lk);
     th->channel = (u64)channel;
-    th->state = SLEEPING;
-
+    th->state = SLEEPING; // 必然是 running -> sleeping
     th->reason = 1;
     releaseLock(&(th->lock));
 
@@ -373,14 +381,16 @@ void sleep(void *channel, Spinlock *lk)
 void wakeup(void *channel)
 {
     // 遍历所有使用过的进程，找到 process->channel = channel 的
-    Thread *thread = NULL;
-    LIST_FOREACH(thread, &usedThreads, link)
+    Thread *th = NULL;
+    LIST_FOREACH(th, &usedThreads, link)
     {
-        acquireLock(&thread->lock);
-        if (thread->state == SLEEPING && thread->channel == (u64)channel)
+        acquireLock(&th->lock);
+        if (th->state == SLEEPING && th->channel == (u64)channel)
         {
-            thread->state = RUNNABLE;
+            th->state = RUNNABLE;
+            int pri = 99 - th->schedParam.schedPriority;
+            LIST_INSERT_TAIL(&priSchedList[pri], th, priSchedLink);
         }
-        releaseLock(&thread->lock);
+        releaseLock(&th->lock);
     }
 }

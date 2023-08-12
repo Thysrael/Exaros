@@ -230,5 +230,7 @@ int clone(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid);
 int wait(int targetProcessId, u64 addr);
 u64 exec(char *path, char **argv);
 void kernelProcessCpuTimeEnd();
+void callYield();
+void timeYield();
 
 #endif

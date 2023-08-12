@@ -50,43 +50,53 @@ void CPU_OR(cpu_set_t *destset,
     }
 }
 
-/* 仅仅检查参数而不真正的修改 */
+extern struct ThreadList priSchedList[140];
 int sched_setscheduler(u64 pid, int policy, sched_param *param)
 {
-    Thread *thread;
-    if (tid2Thread(pid, &thread, 0) < 0) { return -ESRCH; }
-    if (policy != SCHED_OTHER)
+    Thread *th;
+    if (tid2Thread(pid, &th, 0) < 0) { return -ESRCH; }
+    if (policy == SCHED_OTHER && param->schedPriority != 0)
     {
-        printk("sched_setscheduler unsupported policy: %d\n", policy); // for test
-        return 0;                                                      // for test
         return -EINVAL;
     }
-    if (policy == SCHED_OTHER && param->sched_priority != 0)
+    th->schedPolicy = policy;
+    th->schedParam.schedPriority = param->schedPriority;
+    if (th->state == RUNNABLE)
     {
-        return -EINVAL;
+        LIST_REMOVE(th, priSchedLink);
+        int pri = 99 - th->schedParam.schedPriority;
+        LIST_INSERT_HEAD(&priSchedList[pri], th, priSchedLink);
     }
     return 0;
 }
 
 int sched_getscheduler(u64 pid)
 {
-    Thread *thread;
-    if (tid2Thread(pid, &thread, 0) < 0) { return -ESRCH; }
+    Thread *th;
+    if (tid2Thread(pid, &th, 0) < 0) { return -ESRCH; }
+    return th->schedPolicy;
+}
+
+int sched_getparam(u64 pid, sched_param *param)
+{
+    Thread *th;
+    if (tid2Thread(pid, &th, 0) < 0) { return -ESRCH; }
+    bcopy(&th->schedParam, param, sizeof(sched_param));
     return 0;
 }
 
 int sched_setaffinity(u32 pid, u64 cpusetsize, cpu_set_t *mask)
 {
-    Thread *thread;
-    if (tid2Thread(pid, &thread, 0) < 0) { return -ESRCH; }
-    bcopy(mask, &thread->cpuset, cpusetsize);
+    Thread *th;
+    if (tid2Thread(pid, &th, 0) < 0) { return -ESRCH; }
+    bcopy(mask, &th->cpuset, cpusetsize);
     return 0;
 }
 
 int sched_getaffinity(u32 pid, u64 cpusetsize, cpu_set_t *mask)
 {
-    Thread *thread;
-    if (tid2Thread(pid, &thread, 0) < 0) { return -ESRCH; }
-    bcopy(&thread->cpuset, mask, cpusetsize);
+    Thread *th;
+    if (tid2Thread(pid, &th, 0) < 0) { return -ESRCH; }
+    bcopy(&th->cpuset, mask, cpusetsize);
     return 0;
 }

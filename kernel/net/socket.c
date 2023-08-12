@@ -244,7 +244,8 @@ int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest)
     if (num == 0)
     {
         getHartTrapFrame()->epc -= 4;
-        yield();
+        // yield();
+        callYield();
     }
 
     // 分成两个部分，如果可以直接放在这一页，那么就放，如果不能，那么就往前放（循环的思想）
@@ -278,7 +279,8 @@ int receiveFrom(Socket *s, u64 buf, u32 len, int flags, u64 srcAddr)
     if (num == 0)
     {
         getHartTrapFrame()->epc -= 4;
-        yield();
+        // yield();
+        callYield();
     }
     int len1 = MIN(num, PAGE_SIZE - (s->head & (PAGE_SIZE - 1)));
     copyout(myProcess()->pgdir, buf, src, len1);

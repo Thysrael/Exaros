@@ -37,8 +37,11 @@
     SOCKET_BUFFER_BASE ---> +---------------------------+----------------- 0x0F_4000_0000 (KERNEL_PROCESS_SIGNAL_BASE - 1 << 30)
                             |      Shared Memory        |
     SHM_BASE -------------> +---------------------------+----------------- 0x0F_0000_0000 (SOCKET_BUFFER_BASE - 1 << 30)
+                            |      tmpfile buffer       |
+    TMPFILE_BUFFER_BASE --> +---------------------------+----------------- 0x0E_C000_0000 (SHM_BASE - 1 << 30)
                             |                           |
                             |            ...            |
+                            |                           |
     PHYSICAL_MEMORY_END --->+---------------------------+----------------- 0x8800_0000
                             |       Free memory:RW-     |
                             |  初始化的时候插入 freelist  |
@@ -109,7 +112,7 @@
 // 用于分配给用户程序的内存
 // 修改内存大小的时候需要同时修改 qemu -m 参数
 #define PHYSICAL_MEMORY_BASE (0x80000000ULL)
-#define PHYSICAL_MEMORY_SIZE (0x200000000ULL)
+#define PHYSICAL_MEMORY_SIZE (0x20000000ULL)
 #define PHYSICAL_MEMORY_END (PHYSICAL_MEMORY_BASE + PHYSICAL_MEMORY_SIZE)
 
 /**
@@ -190,7 +193,7 @@
 #define KERNEL_PROCESS_SIGNAL_BASE (FILE_SYSTEM_CLUSTER_BITMAP_BASE - (1UL << 30))
 #define SOCKET_BUFFER_BASE (KERNEL_PROCESS_SIGNAL_BASE - (1UL << 30))
 #define SHM_BASE (SOCKET_BUFFER_BASE - (1UL << 30))
-
+#define TMPFILE_BUFFER_BASE (SHM_BASE - (1UL << 30))
 // #define USER_HEAP_TOP
 // #define USER_HEAP_BOTTOM
 #endif

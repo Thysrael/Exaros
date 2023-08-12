@@ -25,7 +25,6 @@ all: $(modules)
 	$(OBJCOPY) -O binary $(exaros_elf) $(exaros_bin)
 	cp $(exaros_bin) os.bin
 
-
 $(modules):
 	$(MAKE) DEBUG=$(DEBUG) --directory=$@
 
@@ -58,7 +57,7 @@ clean:
 			$(MAKE) --directory=$$module clean;		\
 		done;										\
 	rm -rf *.o *~ $(target_dir)
-	rm $(exaros_bin)
+	rm $(exaros_bin) os.bin
 
 run: 
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS)

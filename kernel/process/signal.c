@@ -107,7 +107,8 @@ SignalAction *getSignalHandler(Process *p)
 
 void SignalActionDefault(Thread *thread, int signal)
 {
-    printk("GET SIGNAL: %d\n", signal);
+    printk("GET SIGNAL: %d, %lx\n", signal, getHartTrapFrame()->epc);
+
     // switch (signal)
     // {
     // case SIGTSTP:
@@ -139,7 +140,8 @@ void handleSignal()
         SignalAction *sa = getSignalHandler(thread->process) + (sc->signal - 1);
         if (sa->sa_handler == NULL)
         {
-            SignalActionDefault(thread, sc->signal);
+            // SignalActionDefault(thread, sc->signal);
+            signalContextFree(sc);
             continue;
         }
         Trapframe *tf = getHartTrapFrame();
@@ -220,6 +222,7 @@ int rt_sigtimedwait(SignalSet *which, SignalInfo *info, TimeSpec *ts)
     return sc == NULL ? 0 : sc->signal;
 }
 
+extern struct ThreadList priSchedList[140];
 int threadSignalSend(Thread *thread, int sig)
 {
     SignalContext *sc;
@@ -229,7 +232,13 @@ int threadSignalSend(Thread *thread, int sig)
     sc->signal = sig;
     if (sig == SIGKILL) // SIGKILL 直接修改 thread 状态
     {
-        thread->state = RUNNABLE;
+        if (thread->state != RUNNABLE)
+        {
+            thread->state = RUNNABLE;
+            int pri = 99 - thread->schedParam.schedPriority;
+            LIST_INSERT_TAIL(&priSchedList[pri], thread, priSchedLink);
+        }
+
         thread->killed = true;
     }
     // 最近的信号在最后面，从而保证先插入旧的到 handling
@@ -258,7 +267,7 @@ int kill(int pid, int sig)
             break;
         }
     }
-    return ret;
+    return ret == -ESRCH ? 0 : ret;
 }
 
 /**
