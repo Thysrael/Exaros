@@ -235,7 +235,7 @@ void print_prompt()
     // }
     // use "\033[" to change color
     // printf("ThyShell \033[0;32m%s\033[0m $ ", path);
-    printf("$ \033[32m%s\033[0m ", path);
+    printf("\033[32m\[%s]\033[0m $ ", path);
     // free(path);
 }
 

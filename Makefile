@@ -35,9 +35,9 @@ fat: $(user_dir)
 		dd if=/dev/zero of=$(fs_img) bs=8M count=8; fi
 	mkfs.vfat -F 32 $(fs_img)
 	@sudo mount $(fs_img) $(mnt_path)
-	@sudo cp -r user/target/* $(mnt_path)/
-	@sudo cp -r testcase/* $(mnt_path)/
-	@sudo cp -r test/target/* $(mnt_path)/
+	@sudo cp -rL root/* $(mnt_path)/
+	@sudo mkdir $(mnt_path)/bin
+	@sudo cp -rL user/target/* $(mnt_path)/bin
 	@sudo umount $(mnt_path)
 
 umount:
