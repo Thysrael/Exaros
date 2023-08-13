@@ -221,7 +221,7 @@ void print_head()
 
 void print_prompt()
 {
-    static char cwd_buf[32];
+    static char cwd_buf[260];
     char *path = getcwd(cwd_buf, sizeof(cwd_buf));
     // const char *home = getenv("HOME");
     // abbreviate home path
