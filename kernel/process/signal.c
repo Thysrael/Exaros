@@ -105,27 +105,94 @@ SignalAction *getSignalHandler(Process *p)
                             + (u64)(p - processes) * PAGE_SIZE);
 }
 
+void Term()
+{
+    Thread *thread = myThread();
+    threadDestroy(thread);
+}
+
+void Ign()
+{
+}
+
+void Core()
+{
+    printk("[signal] NO Core!\n");
+    Term();
+}
+
+void Stop()
+{
+    printk("[signal] NO Stop!\n");
+}
+
+void Cont()
+{
+    printk("[signal] NO Cont!\n");
+}
+
 void SignalActionDefault(Thread *thread, int signal)
 {
-    printk("GET SIGNAL: %d, %lx\n", signal, getHartTrapFrame()->epc);
+    // printk("GET SIGNAL: %d, %lx\n", signal, getHartTrapFrame()->epc);
 
-    // switch (signal)
-    // {
-    // case SIGTSTP:
-    // case SIGTTIN:
-    // case SIGTTOU:
-    // case SIGSTOP:
-    // case SIGQUIT:
-    // case SIGILL:
-    // case SIGTRAP:
-    // case SIGABRT:
-    // case SIGFPE:
-    // case SIGSEGV:
-    // case SIGBUS:
-    // case SIGSYS:
-    // case SIGXCPU:
-    // case SIGXFSZ:
-    // }
+    switch (signal + 1)
+    {
+    case SIGABRT:
+    case SIGBUS:
+    case SIGFPE:
+    case SIGILL:
+    // case SIGIOT:
+    case SIGQUIT:
+    case SIGSEGV:
+    case SIGSYS:
+    case SIGTRAP:
+    // case SIGUNUSED:
+    case SIGXCPU:
+    case SIGXFSZ: {
+        Core();
+        break;
+    }
+    case SIGALRM:
+    // case SIGEMT:
+    case SIGHUP:
+    case SIGINT:
+    case SIGIO:
+    case SIGKILL:
+    // case SIGLOST:
+    case SIGPIPE:
+    // case SIGPOLL:
+    case SIGPROF:
+    case SIGPWR:
+    case SIGSTKFLT:
+    case SIGTERM:
+    case SIGUSR1:
+    case SIGUSR2:
+    case SIGVTALRM: {
+        Term();
+        break;
+    }
+    case SIGCHLD:
+    // case SIGCLD:
+    case SIGURG:
+    case SIGWINCH: {
+        Ign();
+        break;
+    }
+    case SIGSTOP:
+    case SIGTSTP:
+    case SIGTTIN:
+    case SIGTTOU: {
+        Stop();
+        break;
+    }
+    case SIGCONT: {
+        Cont();
+        break;
+    }
+    default: {
+        printk("No default signal action for sig(%d)\n", signal);
+    }
+    }
 }
 
 void handleSignal()
@@ -140,7 +207,7 @@ void handleSignal()
         SignalAction *sa = getSignalHandler(thread->process) + (sc->signal - 1);
         if (sa->sa_handler == NULL)
         {
-            // SignalActionDefault(thread, sc->signal);
+            SignalActionDefault(thread, sc->signal);
             signalContextFree(sc);
             continue;
         }
@@ -267,7 +334,8 @@ int kill(int pid, int sig)
             break;
         }
     }
-    return ret == -ESRCH ? 0 : ret;
+    // return ret;
+    return ret == -ESRCH ? 0 : ret; // 为了通过 cyclic 测试
 }
 
 /**
