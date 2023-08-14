@@ -1816,7 +1816,7 @@ void syscallSelect()
             u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
             if (!cur)
                 continue;
-            // printk("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            // printk("[select] selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
             file = myProcess()->ofile[i];
             if (!file)
                 continue;
@@ -1884,6 +1884,7 @@ void syscallSelect()
         copyin(myProcess()->pgdir, (char *)&writeSet, write, sizeof(FdSet));
         for (int i = 0; i < nfd; i++)
         {
+            // printk("[select] selecting write fd %d type %d\n", i, myProcess()->ofile[i]->type);
             if (i >= 64)
             {
                 cnt += !!((1UL << (i - 64)) & writeSet.bits[1]);
@@ -1931,6 +1932,7 @@ void syscallSelect()
         // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
         // tf->epc -= 4;
         // yield();
+        tf->a0 = 0;
         callYield();
     }
     // selectFinish:
@@ -2481,16 +2483,29 @@ void syscallPrlimit64()
     tf->a0 = 0;
 }
 
+/**
+ * @brief 创建一个 socket，需要确定 socket 的类型，进行不同的初始化，并分配一个 fd 去描述它
+ * @param domain address family 协议簇，似乎更应该是 protocol family，有 AF_NET, AF_NET6 等
+ * @param type socket 的类型
+ * @param protocal 协议的类型
+ *
+ * @return socket 对应的文件描述符
+ */
 void syscallSocket()
 {
-    // printk("syscall socket begin.\n");
     Trapframe *tf = getHartTrapFrame();
     int domain = tf->a0, type = tf->a1, protocal = tf->a2;
     tf->a0 = createSocket(domain, type, protocal);
-    // printf("[%s] socket at fd = %d\n",__func__, tf->a0);
-    // printk("syscall socket end.\n");
 }
 
+/**
+ * @brief 为 socket 绑定一个地址，也就是设置源地址的意思，一般用于服务器端
+ * @param sockfd socket 描述符
+ * @param addr socket addr，如果其中的 port == 0，则表示需要自行分配
+ * @param addrlen addr 的长度，因为 ipv4 和 ipv6 不同
+ *
+ * @return 0 success
+ */
 void syscallBind()
 {
     // printk("syscall bind begin.\n");
@@ -2503,20 +2518,36 @@ void syscallBind()
     // printk("syscall bind end.\n");
 }
 
+/**
+ * @brief 获得指定 socket 的地址
+ * @param sockfd socket 描述符
+ * @param name 目的地址
+ * @param namelen 地址长度
+ *
+ * @return 0 success
+ */
 void syscallGetSocketName()
 {
-    // printk("syscall get socket name begin.\n");
+    printk("syscall get socket name begin.\n");
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = getSocketName(tf->a0, tf->a1);
-    // printk("syscall get socket name end.\n");
+    printk("syscall get socket name end.\n");
 }
 
+/**
+ * @brief 设置 socekt 的功能
+ * @param socketfd socket 描述符
+ * @param level 被设置的选项的级别，如果想要在套接字级别上设置选项，就必须把 level 设置为 SOL_SOCKET
+ * @param option_name 指定准备设置的选项，option_name 可以有哪些取值，这取决于 level
+ * @param optval 选项值
+ * @param optlen optval 的长度
+ */
 void syscallSetSocketOption()
 {
-    // printk("syscall set socket option begin.\n");
+    printk("syscall set socket option begin.\n");
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = 0;
-    // printk("syscall set socket option end.\n");
+    printk("syscall set socket option end.\n");
 }
 
 void syscallFchmodAt()
@@ -2527,6 +2558,16 @@ void syscallFchmodAt()
     // printk("syscall FchmodAt end.\n");
 }
 
+/**
+ * @brief 发送信息
+ * @param socketfd 发送方 socket fd
+ * @param data 发送的数据 buffer
+ * @param size 发送的数据的大小
+ * @param flags 发送的控制 flag，不太重要？
+ * @param to 接收方的地址，是 socketAddr 的形式
+ * @param tolen 地址长度
+ *
+ */
 void syscallSendTo()
 {
     // printk("syscall sentTo begin.\n");
@@ -2541,6 +2582,16 @@ void syscallSendTo()
     // printk("syscall sentTo end.\n");
 }
 
+/**
+ * @brief 接收信息
+ * @param fd socket 描述符
+ * @param data 接收数据 buffer
+ * @param size 接收数据大小
+ * @param flags 没用
+ * @param from 发送方地址
+ * @param fromlen 发送方地址长度
+ * @return int 0 success
+ */
 void syscallReceiveFrom()
 {
     // printk("syscall receiveFrom begin.\n");
@@ -2549,6 +2600,11 @@ void syscallReceiveFrom()
     // printk("syscall receiveFrom end.\n");
 }
 
+/**
+ * @brief 使用主动连接套接口变为被连接套接口，使得一个进程可以接受其它进程的请求，从而成为一个服务器进程
+ * @param sockfd 要变成服务器 socket 的 fd
+ *
+ */
 void syscallListen()
 {
     // printk("syscall listen begin.\n");
@@ -2559,6 +2615,13 @@ void syscallListen()
     // printk("syscall listen end.\n");
 }
 
+/**
+ * @brief 客户端用于和服务器套接字建立连接
+ * @param sockfd 客户端 fd
+ * @param serv_addr 服务器套接字地址
+ * @param addrlen server_addr 长度
+ *
+ */
 void syscallConnect()
 {
     // printk("syscall connect begin.\n");
@@ -2572,6 +2635,12 @@ void syscallConnect()
     // printk("syscall connect end.\n");
 }
 
+/**
+ * @brief 服务器套接字接受客户端的请求，并给客户端生成一个新的套接字用于通信
+ * @param sockfd 服务器套接字
+ * @param addr 返回值，用于返回服务器端要处理的客户端地址
+ *
+ */
 void syscallAccept()
 {
     // printk("syscall accept begin.\n");

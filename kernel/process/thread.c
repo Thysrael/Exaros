@@ -112,6 +112,7 @@ u32 generateThreadId(Thread *th)
     static u32 nextId = 0;
     // 高位是按顺序分配的编码，低位是进程控制块的序号
     u32 threadId = ((++nextId) << (1 + LOG_PROCESS_NUM)) | (u32)(th - threads);
+    printk("generate thread id 0x%lx\n", threadId);
     return threadId;
 }
 
@@ -230,7 +231,7 @@ void threadRun(Thread *th)
 {
     static int first = 1;
     Trapframe *trapframe = getHartTrapFrame();
-
+    // printk("now tid: 0x%lx\n", th->threadId);
     // 保存当前进程的 trapfreme 到进程结构体中
     if (currentThread[getTp()])
     {

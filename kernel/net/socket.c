@@ -24,6 +24,11 @@ static inline u32 htonl(u32 host)
     return ((host & 0x000000ff) << 24) | ((host & 0x0000ff00) << 8) | ((host & 0x00ff0000) >> 8) | ((host & 0xff000000) >> 24);
 }
 
+/**
+ * @brief 改变 socket addr 中的 IP 和 port
+ *
+ * @param sa socket addr
+ */
 static void transSocketAddr(SocketAddr *sa)
 {
     sa->addr = htonl(sa->addr);
@@ -43,7 +48,7 @@ inline u64 getSocketBufferBase(Socket *s)
 }
 
 /**
- * @brief 遍历 socket 数组，找到空闲的 socket，分配 buffer
+ * @brief 遍历 socket 数组，找到空闲的 socket，分配 buffer，每个 buffer 4K
  *
  * @param s 返回值，返回分配好的 Socket
  * @return int
@@ -77,18 +82,13 @@ int socketAlloc(Socket **s)
 }
 
 /**
- * @brief 遍历 socket 数组，找到 target socket，基本上满足符合的条件。
- * 可能就是因为这个函数，导致其成为了只能 localhost 的原因，因为它只在本地的 socket 中进行搜索。
+ * @brief 遍历 socket 数组，找到 peer socket
  *
  * @param local_sock 源 socket
  * @return Socket* 目的 socket
  */
 Socket *remote_find_peer_socket(const Socket *local_sock)
 {
-    // SocketAddr targetSa = local_sock->target_addr;
-    // SocketAddr sourceSa = local_sock->addr;
-    // SOCKET_DEBUG("source addr: 0x%x, port: 0x%x\n", sourceSa.addr, sourceSa.port);
-    // SOCKET_DEBUG("target addr: 0x%x, port: 0x%x\n", targetSa.addr, targetSa.port);
     for (int i = 0; i < SOCKET_COUNT; ++i)
     {
         if (sockets[i].used)
@@ -96,9 +96,9 @@ Socket *remote_find_peer_socket(const Socket *local_sock)
             SOCKET_DEBUG("id: %d, ip: 0x%x, family: %d, port: 0x%x, target port: 0x%x\n", i, sockets[i].addr.addr, sockets[i].addr.family, sockets[i].addr.port, sockets[i].target_addr.port);
         }
         if (sockets[i].used
-            /* && sockets[i].addr.family == local_sock->target_addr.family */
+            && sockets[i].addr.family == local_sock->target_addr.family
             && sockets[i].addr.port == local_sock->target_addr.port
-            /*&& sockets[i].target_addr.port == local_sock->addr.port*/)
+            && sockets[i].target_addr.port == local_sock->addr.port)
         {
             return &sockets[i];
         }
@@ -108,7 +108,7 @@ Socket *remote_find_peer_socket(const Socket *local_sock)
 }
 
 /**
- * @brief 释放 socket，本质是将其的 used 置为 false
+ * @brief 释放 socket，本质是将其的 used 置为 false，并释放 buffer
  *
  * @param s 待释放的 socket
  */
@@ -129,22 +129,70 @@ void socketFree(Socket *s)
  */
 int createSocket(int family, int type, int protocal)
 {
-    SOCKET_DEBUG("\n");
-    // printf("[%s] family %x type  %x protocal %x\n", __func__, family, type, protocal);
-    // if (family != 2)
-    // {
-    //     printk("family != 2\n");
-    //     return -1; // ANET_ERR
-    // }
-    family = 2;
-    assert(family == 2);
+    printk("socket() begin\n");
+    switch (family)
+    {
+    case AF_INET:
+        printk("family: AF_INET\n");
+        break;
+    case AF_INET6:
+        printk("family: AF_INET6\n");
+        printk("not supoort it\n");
+        return -97;
+        break;
+    case AF_UNSPEC:
+        printk("family: AF_UNSPEC\n");
+        printk("not supoort it\n");
+        return -1;
+        break;
+    case AF_LOCAL:
+        printk("family: AF_LOCAL\n");
+        printk("not supoort it\n");
+        return -1;
+        break;
+    default:
+        printk("unknow family: %d\n", family);
+        printk("not supoort it\n");
+        return -1;
+        break;
+    }
+
+    switch (type)
+    {
+    case SOCK_RAW:
+        printk("socket type is raw\n");
+        break;
+    case SOCK_DGRAM:
+        printk("socket type is dgram\n");
+        break;
+    case SOCK_STREAM:
+        printk("socket type is stream\n");
+        break;
+    default:
+        printk("unknown type %d\n", type);
+        return -1;
+    }
+
+    switch (protocal)
+    {
+    case PROTO_ICMP:
+        printk("protocal is icmp\n");
+        break;
+    case PROTO_IP:
+        printk("protocal is ip\n");
+        break;
+    case PROTO_TCP:
+        printk("protocal is tcp\n");
+    case PROTO_UDP:
+        printk("protocal is udp\n");
+    default:
+        printk("unknow protocal %d\n", protocal);
+        return -1;
+    }
     File *f = filealloc();
     Socket *s;
     // 分配一个 socket
-    if (socketAlloc(&s) < 0)
-    {
-        panic("");
-    }
+    socketAlloc(&s);
     s->addr.family = family;
     s->pending_h = s->pending_t = 0;
     s->listening = 0;
@@ -165,16 +213,16 @@ int createSocket(int family, int type, int protocal)
  */
 int bindSocket(int fd, SocketAddr *sa)
 {
-    SOCKET_DEBUG("\n");
+    printk("bind begin\n");
     transSocketAddr(sa);
     File *f = myProcess()->ofile[fd];
     assert(f->type == FD_SOCKET);
     Socket *s = f->socket;
-    // assert(s->addr.family == sa->family);
-    // assert(sa->addr == 0 || (sa->addr >> 24) == 127);
+    assert(s->addr.family == sa->family);
     s->addr.addr = sa->addr;
     s->addr.port = sa->port;
-    SOCKET_DEBUG("addr: 0x%x, family: 0x%x, port: 0x%x\n", sa->addr, sa->family, sa->port);
+    printk("addr: 0x%x, family: 0x%x, port: 0x%x\n", sa->addr, sa->family, sa->port);
+    printk("bind end\n");
     return 0;
 }
 
@@ -186,7 +234,7 @@ int bindSocket(int fd, SocketAddr *sa)
  */
 int listen(int sockfd)
 {
-    SOCKET_DEBUG("\n");
+    printk("listen begin\n");
     SOCKET_DEBUG("server tid is %d\n", myThread()->threadId);
     File *f = myProcess()->ofile[sockfd];
     if (f == NULL)
@@ -196,6 +244,7 @@ int listen(int sockfd)
     if (!sock)
         assert(0);
     sock->listening = 1;
+    printk("listen end\n");
     // SocketAddr *sa = &sock->addr;
     // SOCKET_DEBUG("addr: 0x%x, family: 0x%x, port: 0x%x\n", sa->addr, sa->family, sa->port);
     return 0;
@@ -230,12 +279,8 @@ int getSocketName(int fd, u64 va)
  */
 int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest)
 {
-    SOCKET_DEBUG("\n");
+    printk("send to begin\n");
     buf[len] = 0;
-    // dest->addr = (127 << 24) + 1;
-    // dest->port = 0x3241;
-    // sock->target_addr.addr = (127 << 24) + 1;
-    // sock->target_addr.port = 0x3241;
     int i = remote_find_peer_socket(sock) - sockets;
     // printf("[%s] sockid %d addr 0x%x port 0x%x data %s\n",   __func__, i , dest->addr, dest->port, buf);
     char *dst = (char *)(getSocketBufferBase(&sockets[i]) + (sockets[i].tail & (PAGE_SIZE - 1)));
@@ -257,6 +302,7 @@ int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest)
     }
     // 这里不需要取模吗？其实好像是因为前面计算的时候已经取过模了 `& (PAGE_SIZE - 1)`
     sockets[i].tail += num;
+    printk("send to end\n");
     return num;
 }
 
@@ -272,10 +318,11 @@ int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest)
  */
 int receiveFrom(Socket *s, u64 buf, u32 len, int flags, u64 srcAddr)
 {
-    SOCKET_DEBUG("\n");
+    printk("receive from begin\n");
     char *src = (char *)(getSocketBufferBase(s) + (s->head & (PAGE_SIZE - 1)));
     // printk("[%s] sockid %d data %s\n", __func__, s - sockets, src);
     u32 num = MIN(len, (s->tail - s->head));
+    // 无法接收信息，所以就将 epc -= 4，期待下次重新执行
     if (num == 0)
     {
         getHartTrapFrame()->epc -= 4;
@@ -290,6 +337,7 @@ int receiveFrom(Socket *s, u64 buf, u32 len, int flags, u64 srcAddr)
                 num - len1);
     }
     s->head += num;
+    printk("receive from end\n");
     // printf("[%s] sockid %d num %d\n", __func__, s - sockets, num);
     return num;
 }
@@ -344,7 +392,7 @@ static Socket *remote_find_listening_socket(const SocketAddr *addr)
             SOCKET_DEBUG("id %d, ip: 0x%x, family: %d, port: 0x%x, target port: 0x%x\n", i, sockets[i].addr.addr, sockets[i].addr.family, sockets[i].addr.port, sockets[i].target_addr.port);
         }
         if (sockets[i].used
-            /* && sockets[i].addr.family == addr->family */
+            && sockets[i].addr.family == addr->family
             && sockets[i].addr.port == addr->port
             && sockets[i].listening)
         {
@@ -364,23 +412,26 @@ static Socket *remote_find_listening_socket(const SocketAddr *addr)
  */
 int accept(int sockfd, SocketAddr *addr)
 {
-    SOCKET_DEBUG("\n");
+    printk("accept begin\n");
     // printk("accept pid: %d\n", myProcess()->processId);
     /* ----------- process on Remote Host --------- */
     File *f = myProcess()->ofile[sockfd];
     assert(f->type == FD_SOCKET);
-    Socket *local_sock = f->socket;
+    Socket *server_sock = f->socket;
     // pending 队列为空，说明没有要处理的事项
-    if (local_sock->pending_h == local_sock->pending_t)
+    if (server_sock->pending_h == server_sock->pending_t)
     {
+        printk("no pending\n");
+        printk("accept end\n");
         return -11; // EAGAIN /* Try again */
     }
     // printk("pending head is %d, pending tail is %d\n", local_sock->pending_h, local_sock->pending_t);
-    *addr = local_sock->pending_queue[(local_sock->pending_h++) % PENDING_COUNT];
-
+    // 此时的 addr 就是给 server 发送 connect() 请求的 client
+    *addr = server_sock->pending_queue[(server_sock->pending_h++) % PENDING_COUNT];
+    // 需要再给 client 分配一个 socket
     Socket *new_sock;
     socketAlloc(&new_sock);
-    new_sock->addr = local_sock->addr;
+    new_sock->addr = server_sock->addr;
     new_sock->target_addr = *addr;
 
     File *new_f = filealloc();
@@ -389,14 +440,14 @@ int accept(int sockfd, SocketAddr *addr)
     new_f->type = FD_SOCKET;
     new_f->readable = new_f->writable = true;
     // 唤醒客户端的 socket
-    // Socket *peer_sock = remote_find_peer_socket(new_sock);
+    Socket *peer_sock = remote_find_peer_socket(new_sock);
     // SOCKET_DEBUG("peer addr: 0x%x, port: 0x%x\n", peer_sock->addr.addr, peer_sock->addr.port);
-
-    // wakeup(peer_sock);
+    // 唤醒 peer_sock
+    wakeup(peer_sock);
     // printf("[%s] wake up client\n", __func__);
 
     /* ----------- process on Remote Host --------- */
-
+    printk("accept end\n");
     return fdalloc(new_f);
 }
 
@@ -409,7 +460,7 @@ static SocketAddr gen_local_socket_addr()
     static int local_addr = (127 << 24) + 1; // "127.0.0.1"
     static int local_port = 0x2710;
     SocketAddr addr;
-    addr.family = 2;
+    addr.family = AF_INET;
     addr.addr = local_addr;
     addr.port = local_port++;
     return addr;
@@ -424,19 +475,14 @@ static SocketAddr gen_local_socket_addr()
  */
 int connect(int sockfd, SocketAddr *addr)
 {
-    SOCKET_DEBUG("\n");
+    printk("connect begin\n");
     transSocketAddr(addr);
-    // addr->addr = (127 << 24) + 1;
-    // addr->family = 2;
-    if (addr->port == 0xffff)
-    {
-        addr->port = 12865;
-    }
+    printk("connect target is %d, %d\n", addr->addr, addr->port);
     File *f = myProcess()->ofile[sockfd];
     assert(f->type == FD_SOCKET);
 
     Socket *local_sock = f->socket;
-    // 产生一个本地端口
+    // 产生一个客户端端口，这是因为客户端是不用 bind 的
     local_sock->addr = gen_local_socket_addr();
     local_sock->target_addr = *addr;
 
@@ -461,13 +507,14 @@ int connect(int sockfd, SocketAddr *addr)
     // wakeup(target_socket);
 
     // Wait for server to accept the connection request.
+    // 也就是等待 accept 函数的执行
     acquireLock(&local_sock->lock);
-    SOCKET_DEBUG("I am sleeping, tid is %d\n", myThread()->threadId);
-    // sleep(local_sock, &local_sock->lock);
-    SOCKET_DEBUG("I wake up\n");
+    printk("I am sleeping, tid is 0x%lx\n", myThread()->threadId);
+    sleep(local_sock, &local_sock->lock);
+    printk("I wake up\n");
     releaseLock(&local_sock->lock);
 
     /* ----------- process on Remote Host --------- */
-
+    printk("connect end\n");
     return 0;
 }

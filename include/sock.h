@@ -1,48 +1,7 @@
-#ifndef _SOCKET_H_
-#define _SOCKET_H_
+#ifndef _SOCK_H_
+#define _SOCK_H_
 
-#include "types.h"
-#include "lock.h"
-
-typedef struct Process Process;
-
-#define SOCKET_COUNT 128
-#define PENDING_COUNT 128
-
-typedef struct
-{
-    u16 family;
-    u16 port;
-    u32 addr;
-    char zero[8];
-} SocketAddr;
-
-typedef struct Socket
-{
-    bool used; // socket 已经被占用了
-    Process *process;
-    SocketAddr addr;                         // 本地地址
-    SocketAddr target_addr;                  // 远端地址
-    u64 head;                                // head 也是在 buffer 中的偏移量
-    u64 tail;                                // tail is equal or greater than head，在 buffer 中的偏移量
-    SocketAddr pending_queue[PENDING_COUNT]; // socketAddr 的集合，发挥了一个像 ring 一样的作用
-    int pending_h, pending_t;
-    struct Spinlock lock;
-    int listening;
-} Socket;
-
-Socket *remote_find_peer_socket(const Socket *local_sock);
-int createSocket(int domain, int type, int protocal);
-int bindSocket(int fd, SocketAddr *sa);
-int getSocketName(int fd, u64 va);
-int sendTo(Socket *sock, char *buf, u32 len, int flags, SocketAddr *dest);
-int receiveFrom(Socket *s, u64 buf, u32 len, int flags, u64 srcAddr);
-void socketFree(Socket *s);
-int accept(int sockfd, SocketAddr *addr);
-int connect(int sockfd, SocketAddr *addr);
-int socket_read(Socket *sock, bool isUser, u64 addr, int n);
-int socket_write(Socket *sock, bool isUser, u64 addr, int n);
-int listen(int sockfd);
+#include <types.h>
 
 /**
  * @brief address family, 对应的 socket 中的 domain 参数
@@ -96,4 +55,40 @@ enum
     SO_TCP_NODELAY = 0x2008,
     SO_TCP_QUICKACK = 0x2010
 };
+
+typedef enum SockType
+{
+    SOCK_TYPE_NONE = 0,
+    SOCK_TYPE_PKT, // 似乎是过时，不要用
+    SOCK_TYPE_RAW, // 可以收 ICMP
+    SOCK_TYPE_TCP,
+    SOCK_TYPE_UDP,
+    SOCK_TYPE_NUM, // 最后这个不是 socket 的种类，而是 socket 的数量（神秘的 C 语言）
+} SockType;
+
+typedef struct Socket
+{
+    SockType type; // socket 类型
+    int sndtimeo;  // 发送超时
+    int rcvtimeo;  // 接收超时
+
+} Socket;
+
+/**
+ * @brief 严格意义上讲，这是 socke_addr_in 结构体，
+ * 普通的 SockeAddr 是 2 个字节的 family，后面是 14 字节的数据，需要根据 family 的结构判断后面的结构。
+ * 因为我们只支持 ipv4，所以就可以使用这个了。ipv6 的
+ *
+ */
+typedef struct
+{
+    u16 family;   // 与 socket() 中的 domain 保持一致
+    u16 port;     // 端口号
+    u32 addr;     // IP 地址
+    char zero[8]; // 补零
+} __attribute__((packed)) SocketAddr;
+
+int sockRead(Socket *sock, bool isUser, u64 addr, int n);
+int sockWrite(Socket *sock, bool isUser, u64 addr, int n);
+
 #endif
