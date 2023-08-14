@@ -13,7 +13,7 @@ exaros_sys	:= 	$(target_dir)/exaros_sys.txt
 modules := 	$(kernel_dir) $(user_dir)
 objects := $(kernel_dir)/*/*.o $(user_dir)/*.x
 
-mnt_path 	:=	/mnt
+mnt_path 	:=	mnt
 fs_img	:=	sdcard.img
 
 .PHONY: all clean $(modules) $(user_dir) run fat virt 
@@ -32,7 +32,7 @@ $(modules):
 fat: $(user_dir)
 	if [ ! -f "$(fs_img)" ]; then \
 		echo "making fs image..."; \
-		dd if=/dev/zero of=$(fs_img) bs=8M count=32; fi
+		dd if=/dev/zero of=$(fs_img) bs=8M count=64; fi
 	mkfs.vfat -F 32 $(fs_img)
 	@sudo mount $(fs_img) $(mnt_path)
 	@sudo cp -rL root/* $(mnt_path)/

@@ -9,3 +9,4 @@ kernel-qemu
 *.b.c
 sdcard.img
 os.bin
+root/*
