@@ -498,6 +498,7 @@ int connect(int sockfd, SocketAddr *addr)
     }
     if (target_socket->pending_t - target_socket->pending_h == PENDING_COUNT)
     {
+        printk("Connect Count Reach Limit.");
         return -1; // Connect Count Reach Limit.
     }
     // 在 pending_queue 中加入 local

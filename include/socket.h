@@ -25,7 +25,7 @@ typedef struct Socket
     SocketAddr target_addr;                  // 远端地址
     u64 head;                                // head 也是在 buffer 中的偏移量
     u64 tail;                                // tail is equal or greater than head，在 buffer 中的偏移量
-    SocketAddr pending_queue[PENDING_COUNT]; // socketAddr 的集合，发挥了一个像 ring 一样的作用
+    SocketAddr pending_queue[PENDING_COUNT]; // socketAddr 的集合，发挥了一个像 ring 一样的作用，似乎只被用于的 accept-connect 过程
     int pending_h, pending_t;
     struct Spinlock lock;
     int listening;

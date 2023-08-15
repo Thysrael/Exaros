@@ -1874,8 +1874,6 @@ void syscallSelect()
                     readSet_ready.bits[1] &= ~cur;
             }
         }
-        // 修改了这里
-        copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
     }
     // 这里默认写是永远就绪的，应该是不太对的，比如说对于管道，如果 buffer 满了，那么就是不能写的了
     if (write)
@@ -1894,8 +1892,7 @@ void syscallSelect()
                 cnt += !!((1UL << (i)) & writeSet.bits[0]);
             }
         }
-        copyout(myProcess()->pgdir, write, (char *)&write,
-                sizeof(FdSet));
+        copyout(myProcess()->pgdir, write, (char *)&write, sizeof(FdSet));
     }
 
     // 这个默认没有异常
@@ -1921,25 +1918,57 @@ void syscallSelect()
         // 这里最后似乎处理成了所有的 timeout == 0 了
         if (timeout)
         {
-            // struct TimeSpec ts;
-            // copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
-            // if (ts.microSecond == 0 && ts.second == 0)
-            // {
-            //     goto selectFinish;
-            // }
+            struct TimeSpec ts;
+            copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+            // 需要立刻结束
+            if (ts.microSecond == 0 && ts.second == 0)
+            {
+                printk("directly return\n");
+                goto selectFinished;
+            }
+            // 需要判断是否结束
+            else
+            {
+                static int times = 10;
+                if (times)
+                {
+                    times--;
+                    printk("still need return %d times\n", times);
+                    tf->epc -= 4;
+                    callYield();
+                }
+                else
+                {
+                    printk("times == 0, return\n");
+                    times = 10;
+                    goto selectFinished;
+                }
+            }
             // copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
         }
-        // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
-        // tf->epc -= 4;
-        // yield();
-        tf->a0 = 0;
-        callYield();
+        // 对应 timeout == NULL，需要无限期等待
+        else
+        {
+            // printk("timeout == NULL, need wait pernamently\n");
+            tf->epc -= 4;
+            callYield();
+        }
     }
-    // selectFinish:
-    // 原来只在这里有 copyout，是错误的，这里应该冗余了
+    // cnt != 0，此时可以返回
+    else
+    {
+        // 修改了这里
+        goto selectFinished;
+    }
+    return;
+selectFinished:
+    if (read)
+    {
+        copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+    }
 
-    // printk("select end cnt %d\n", cnt);
     tf->a0 = cnt;
+    return;
 }
 
 void syscallPRead()
