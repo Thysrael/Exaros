@@ -8,6 +8,7 @@ char testContentToWrite[10] = "abcdefghi";
 char testContentToRead[10] = {0};
 
 char autoTestContent[] = "time-test\n  \
+busybox sh libctest_testcode.sh\n\
 ";
 
 char unixContent[] = "\
@@ -81,7 +82,7 @@ void buildScript()
     // metaWrite(script, false, (u64)unixContent, sizeof(autoTestContent), sizeof(unixContent));
 
     metaWrite(script, false, (u64)autoTestContent, 0, sizeof(autoTestContent));
-    metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
+    // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
 
     // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
 

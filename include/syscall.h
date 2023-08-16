@@ -113,6 +113,7 @@
 #define SYSCALL_SEND_TO 206
 #define SYSCALL_RECEIVE_FROM 207
 #define SYSCALL_SET_SOCKET_OPTION 208
+#define SYSCALL_GET_SOCKET_OPTION 209
 
 #define SYSCALL_BRK 214
 
@@ -236,6 +237,7 @@ void syscallSocket();
 void syscallBind();
 void syscallGetSocketName();
 void syscallSetSocketOption();
+void syscallGetSocketOption();
 void syscallSendTo();
 void syscallReceiveFrom();
 void syscallListen();

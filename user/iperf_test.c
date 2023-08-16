@@ -5,7 +5,7 @@
 char *client = "./iperf3";
 char *server = "./iperf3";
 char *clientArgv[] = {
-    "./iperf3"
+    "./iperf3",
     "-c",
     "127.0.0.1",
     "-p",
@@ -17,6 +17,8 @@ char *clientArgv[] = {
     "-u",
     "-b",
     "1000G",
+    "-d",
+    0,
 };
 
 char *serverArgv[] = {
@@ -24,6 +26,8 @@ char *serverArgv[] = {
     "-s",
     "-p",
     "5001",
+    "-d",
+    0,
 };
 
 int main()
@@ -37,10 +41,12 @@ int main()
     {
         // printf("%d\n", i);
         // printf("pid0\n");
+        printf("client\n");
         execve(client, clientArgv, NULL);
     }
     else
     {
+        printf("server\n");
         execve(server, serverArgv, NULL);
     }
 

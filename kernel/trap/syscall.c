@@ -120,6 +120,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SEND_TO] syscallSendTo,
     [SYSCALL_RECEIVE_FROM] syscallReceiveFrom,
     [SYSCALL_SET_SOCKET_OPTION] syscallSetSocketOption,
+    [SYSCALL_GET_SOCKET_OPTION] syscallGetSocketOption,
     [SYSCALL_ACCESS] syscallAccess,
     [SYSCALL_LSEEK] syscallLseek,
     [SYSCALL_UTIMENSAT] syscallUtimensat,
@@ -1816,7 +1817,7 @@ void syscallSelect()
             u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
             if (!cur)
                 continue;
-            // printk("[select] selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            printk("[select] tid: 0x%lx, selecting read fd %d type %d\n", myThread()->threadId, i, myProcess()->ofile[i]->type);
             file = myProcess()->ofile[i];
             if (!file)
                 continue;
@@ -1837,13 +1838,21 @@ void syscallSelect()
                 break;
             case FD_SOCKET:
                 // printf("socketid %d head %d tail %d\n", file->socket-sockets, file->socket->head, file->socket->tail);
-                if (file->socket->used != 0 && file->socket->head == file->socket->tail && (!file->socket->listening || (file->socket->listening && file->socket->pending_h == file->socket->pending_t)))
+                if (file->socket->used != 0
+                    && file->socket->head == file->socket->tail
+                    && (!file->socket->listening
+                        || (file->socket->listening && file->socket->pending_h == file->socket->pending_t)))
                 {
                     ready_to_read = 0;
+                    printk("file->socket->used != 0: %d\n", (file->socket->used != 0));
+                    printk("file->socket->head == file->socket->tail: %d\n", file->socket->head == file->socket->tail);
+                    printk("file->socket->pending_h == file->socket->pending_t: %d\n", file->socket->pending_h == file->socket->pending_t);
+                    printk("not ready\n");
                 }
                 else
                 {
                     ready_to_read = 1;
+                    printk("ready\n");
                 }
                 break;
             case FD_DEVICE:
@@ -1923,24 +1932,25 @@ void syscallSelect()
             // 需要立刻结束
             if (ts.microSecond == 0 && ts.second == 0)
             {
-                printk("directly return\n");
+                printk("[select] directly return\n");
                 goto selectFinished;
             }
             // 需要判断是否结束
             else
             {
-                static int times = 10;
+#define SELECT_WAIT_TIMES 10
+                static int times = SELECT_WAIT_TIMES;
                 if (times)
                 {
                     times--;
-                    printk("still need return %d times\n", times);
+                    printk("[select] still need return %d times\n", times);
                     tf->epc -= 4;
                     callYield();
                 }
                 else
                 {
-                    printk("times == 0, return\n");
-                    times = 10;
+                    printk("[select] times == 0, return\n");
+                    times = SELECT_WAIT_TIMES;
                     goto selectFinished;
                 }
             }
@@ -1949,7 +1959,7 @@ void syscallSelect()
         // 对应 timeout == NULL，需要无限期等待
         else
         {
-            // printk("timeout == NULL, need wait pernamently\n");
+            printk("[select] timeout == NULL, need wait pernamently\n");
             tf->epc -= 4;
             callYield();
         }
@@ -1962,6 +1972,7 @@ void syscallSelect()
     }
     return;
 selectFinished:
+    printk("[select] tid: 0x%lx, select finished, cnt is %d\n", myThread()->threadId, cnt);
     if (read)
     {
         copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
@@ -2579,6 +2590,14 @@ void syscallSetSocketOption()
     printk("syscall set socket option end.\n");
 }
 
+void syscallGetSocketOption()
+{
+    printk("syscall get socket option begin.\n");
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = getSocketOption(tf->a0, tf->a1, tf->a2, (int *)tf->a3, tf->a4);
+    printk("syscall get socket option end.\n");
+}
+
 void syscallFchmodAt()
 {
     // printk("syscall FchmodAt begin.\n");
@@ -2658,7 +2677,10 @@ void syscallConnect()
     int sockfd = tf->a0;
     SocketAddr sa;
     // printk("address is 0x%lx, addr len is %d, %x\n", tf->a1, tf->a2, sa.port);
-    copyin(myProcess()->pgdir, (char *)&sa, tf->a1, tf->a2);
+    printk("copyin begin\n");
+    printk("tf->a2: %d\n", tf->a2);
+    copyin(myProcess()->pgdir, (char *)&sa, tf->a1, sizeof(sa));
+    printk("copyin end\n");
     // printk("address is 0x%lx, addr len is %d, %x\n", tf->a1, tf->a2, sa.port);
     tf->a0 = connect(sockfd, &sa);
     // printk("syscall connect end.\n");
