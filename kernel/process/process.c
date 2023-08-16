@@ -737,7 +737,7 @@ int processFork(u32 flags, u64 stackVa, u64 ptid, u64 tls, u64 ctid)
     if (r < 0) { return r; }
     process = th->process;
     process->cwd = myprocess->cwd;
-    th->setAlarm = myThread()->setAlarm;
+    // th->setAlarm = myThread()->setAlarm;
 
     for (SegmentMap *psm = myprocess->segmentMapHead; psm; psm = psm->next)
     {
@@ -830,7 +830,7 @@ int threadFork(u64 stackVa, u64 ptid, u64 tls, u64 ctid)
         return r;
     }
     Trapframe *trapframe = getHartTrapFrame();
-    th->setAlarm = myThread()->setAlarm;
+    // th->setAlarm = myThread()->setAlarm;
     memmove(&th->trapframe, trapframe, sizeof(Trapframe));
     th->trapframe.a0 = 0;
     th->trapframe.tp = tls;
