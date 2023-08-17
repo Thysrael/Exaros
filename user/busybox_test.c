@@ -13,8 +13,8 @@ char *argvLmbanch[] = {"./busybox", "sh", "lmbench_testcode.sh", 0};
 char *argvCyclic[] = {"./busybox", "sh", "cyclictest_testcode.sh", 0};
 char *argvUnix[] = {"./busybox", "sh", "unixbench_testcode.sh", 0};
 char *shell[] = {"./busybox", "sh", 0};
-char *timet[] = {"./time-test"};
-char *libc_bench[] = {"./libc-bench", 0};
+char *argvTime[] = {"./time-test", 0};
+char *argvLibcBench[] = {"./libc-bench", 0};
 char *tmp[] = {"./busybox", "sh", "tmp.sh", 0};
 char *ababa[] = {"./busybox", "./iozone", "-a", "-r", "1k", "-s", "4m", 0};
 
@@ -26,8 +26,19 @@ void main()
     dup(0);         // stdout
     dup(0);         // stderr
     printf("busybox test begin.\n");
-    int pid = fork();
+    int pid;
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./time-test", argvTime);
+    }
+    else
+    {
+        wait(0);
+        // exec("./time-test", timet);
+    }
 
+    pid = fork();
     if (pid == 0)
     {
         exec("./busybox", argvAuto);
@@ -37,6 +48,66 @@ void main()
     {
         wait(0);
         // exec("./time-test", timet);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvBusybox);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvLua);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvLibc);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./libc-bench", argvLibcBench);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvCyclic);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvIOZone);
+    }
+    else
+    {
+        wait(0);
     }
 
     exit(0);

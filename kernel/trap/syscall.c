@@ -1788,6 +1788,188 @@ typedef struct
  * @return 执行失败返回 -1，超时返回 0，否则返回已经就绪的 fd 的个数
  *
  */
+// void syscallSelect()
+// {
+//     Trapframe *tf = getHartTrapFrame();
+//     // printf("thread %lx get in select, epc: %lx\n", myThread()->id, tf->epc);
+//     int nfd = tf->a0;
+//     // assert(nfd <= 128);
+//     u64 read = tf->a1, write = tf->a2, except = tf->a3, timeout = tf->a4;
+//     // printk("read: %lx, write: %lx, execept: %lx, timeout: %lx\n", read, write, except, timeout);
+//     // assert(timeout != 0);
+//     // cnt 是已经就绪的 fd 的个数
+//     int cnt = 0;
+//     struct File *file = NULL;
+//     // printf("[%s] \n", __func__);
+
+//     FdSet readSet_ready;
+//     if (read)
+//     {
+//         FdSet readSet;
+//         copyin(myProcess()->pgdir, (char *)&readSet, read, sizeof(FdSet));
+//         readSet_ready = readSet;
+//         for (int i = 0; i < nfd; i++)
+//         {
+//             file = NULL;
+//             u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
+//             if (!cur)
+//                 continue;
+//             // printk("[select] selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+//             file = myProcess()->ofile[i];
+//             if (!file)
+//                 continue;
+
+//             int ready_to_read = 1;
+//             switch (file->type)
+//             {
+//             case FD_PIPE:
+//                 // printk("[select] pipe:%lx nread: %d nwrite: %d\n", file->pipe, file->pipe->nread, file->pipe->nwrite);
+//                 if (file->pipe->nread == file->pipe->nwrite)
+//                 {
+//                     ready_to_read = 0;
+//                 }
+//                 else
+//                 {
+//                     ready_to_read = 1;
+//                 }
+//                 break;
+//             case FD_SOCKET:
+//                 // printf("socketid %d head %d tail %d\n", file->socket-sockets, file->socket->head, file->socket->tail);
+//                 if (file->socket->used != 0 && file->socket->head == file->socket->tail && (!file->socket->listening || (file->socket->listening && file->socket->pending_h == file->socket->pending_t)))
+//                 {
+//                     ready_to_read = 0;
+//                 }
+//                 else
+//                 {
+//                     ready_to_read = 1;
+//                 }
+//                 break;
+//             case FD_DEVICE:
+//                 if (hasChar())
+//                 {
+//                     ready_to_read = 1;
+//                 }
+//                 else
+//                 {
+//                     ready_to_read = 0;
+//                 }
+//                 break;
+//             default:
+//                 ready_to_read = 1;
+//                 break;
+//             }
+
+//             if (ready_to_read)
+//             {
+//                 ++cnt;
+//             }
+//             else
+//             {
+//                 // printk("fd %d not ready\n", i);
+//                 if (i < 64)
+//                     readSet_ready.bits[0] &= ~cur;
+//                 else
+//                     readSet_ready.bits[1] &= ~cur;
+//             }
+//         }
+//     }
+//     // 这里默认写是永远就绪的，应该是不太对的，比如说对于管道，如果 buffer 满了，那么就是不能写的了
+//     if (write)
+//     {
+//         FdSet writeSet;
+//         copyin(myProcess()->pgdir, (char *)&writeSet, write, sizeof(FdSet));
+//         for (int i = 0; i < nfd; i++)
+//         {
+//             // printk("[select] selecting write fd %d type %d\n", i, myProcess()->ofile[i]->type);
+//             if (i >= 64)
+//             {
+//                 cnt += !!((1UL << (i - 64)) & writeSet.bits[1]);
+//             }
+//             else
+//             {
+//                 cnt += !!((1UL << (i)) & writeSet.bits[0]);
+//             }
+//         }
+//         copyout(myProcess()->pgdir, write, (char *)&write, sizeof(FdSet));
+//     }
+
+//     // 这个默认没有异常
+//     if (except)
+//     {
+//         // FdSet set;
+//         // copyin(myProcess()->pgdir, (char*)&set, except, sizeof(FdSet));
+//         u8 zero = 0;
+//         memsetOut(myProcess()->pgdir, except, zero, nfd);
+//         // memset(&set, 0, sizeof(FdSet));
+//         // copyout(myProcess()->pgdir, except, (char*)&set, sizeof(FdSet));
+//     }
+
+//     // 说明还没有可以处理的文件描述符，那么需要考虑等待
+//     if (cnt == 0)
+//     {
+//         // TODO: 按照原先的写法，这里说的是只要 timeout != NULL（有限期限），那么除非 timeout == 0，否则都当成无限期处理
+//         // 所以会一直等待（利用 yield 和 epc -= 4）
+//         // 有没有可能将 timeout != 0 的情况真正实现
+//         // 或者退而求其次，将 timeout != 0 的情况视为 timeout == 0，这样可能可以过点
+//         // 或许可以参考 AVX 的实现，我懒得找了
+
+//         // 这里最后似乎处理成了所有的 timeout == 0 了
+//         if (timeout)
+//         {
+//             struct TimeSpec ts;
+//             copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+//             // 需要立刻结束
+//             if (ts.microSecond == 0 && ts.second == 0)
+//             {
+//                 // printk("directly return\n");
+//                 goto selectFinished;
+//             }
+//             // 需要判断是否结束
+//             else
+//             {
+//                 // 当 timeout 有一定值的时候，我们调度 10 次进行等待
+//                 static int times = 10;
+//                 if (times)
+//                 {
+//                     times--;
+//                     // printk("still need return %d times\n", times);
+//                     tf->epc -= 4;
+//                     callYield();
+//                 }
+//                 else
+//                 {
+//                     // printk("times == 0, return\n");
+//                     times = 10;
+//                     goto selectFinished;
+//                 }
+//             }
+//             // copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+//         }
+//         // 对应 timeout == NULL，需要无限期等待
+//         else
+//         {
+//             // printk("timeout == NULL, need wait pernamently\n");
+//             tf->epc -= 4;
+//             callYield();
+//         }
+//     }
+//     // cnt != 0，此时可以返回
+//     else
+//     {
+//         // 修改了这里
+//         goto selectFinished;
+//     }
+//     return;
+// selectFinished:
+//     if (read)
+//     {
+//         copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
+//     }
+
+//     tf->a0 = cnt;
+//     return;
+// }
+
 void syscallSelect()
 {
     Trapframe *tf = getHartTrapFrame();
@@ -1814,7 +1996,7 @@ void syscallSelect()
             u64 cur = i < 64 ? readSet.bits[0] & (1UL << i) : readSet.bits[1] & (1UL << (i - 64));
             if (!cur)
                 continue;
-            // printk("[select] selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
+            // printk("selecting read fd %d type %d\n", i, myProcess()->ofile[i]->type);
             file = myProcess()->ofile[i];
             if (!file)
                 continue;
@@ -1872,6 +2054,8 @@ void syscallSelect()
                     readSet_ready.bits[1] &= ~cur;
             }
         }
+        // 修改了这里
+        copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
     }
     // 这里默认写是永远就绪的，应该是不太对的，比如说对于管道，如果 buffer 满了，那么就是不能写的了
     if (write)
@@ -1880,7 +2064,6 @@ void syscallSelect()
         copyin(myProcess()->pgdir, (char *)&writeSet, write, sizeof(FdSet));
         for (int i = 0; i < nfd; i++)
         {
-            // printk("[select] selecting write fd %d type %d\n", i, myProcess()->ofile[i]->type);
             if (i >= 64)
             {
                 cnt += !!((1UL << (i - 64)) & writeSet.bits[1]);
@@ -1890,7 +2073,8 @@ void syscallSelect()
                 cnt += !!((1UL << (i)) & writeSet.bits[0]);
             }
         }
-        copyout(myProcess()->pgdir, write, (char *)&write, sizeof(FdSet));
+        copyout(myProcess()->pgdir, write, (char *)&write,
+                sizeof(FdSet));
     }
 
     // 这个默认没有异常
@@ -1916,58 +2100,24 @@ void syscallSelect()
         // 这里最后似乎处理成了所有的 timeout == 0 了
         if (timeout)
         {
-            struct TimeSpec ts;
-            copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
-            // 需要立刻结束
-            if (ts.microSecond == 0 && ts.second == 0)
-            {
-                // printk("directly return\n");
-                goto selectFinished;
-            }
-            // 需要判断是否结束
-            else
-            {
-                // 当 timeout 有一定值的时候，我们调度 10 次进行等待
-                static int times = 10;
-                if (times)
-                {
-                    times--;
-                    // printk("still need return %d times\n", times);
-                    tf->epc -= 4;
-                    callYield();
-                }
-                else
-                {
-                    // printk("times == 0, return\n");
-                    times = 10;
-                    goto selectFinished;
-                }
-            }
+            // struct TimeSpec ts;
+            // copyin(myProcess()->pgdir, (char *)&ts, timeout, sizeof(struct TimeSpec));
+            // if (ts.microSecond == 0 && ts.second == 0)
+            // {
+            //     goto selectFinish;
+            // }
             // copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
         }
-        // 对应 timeout == NULL，需要无限期等待
-        else
-        {
-            // printk("timeout == NULL, need wait pernamently\n");
-            tf->epc -= 4;
-            callYield();
-        }
+        // 这里的 epc -= 4 说的是多次重复执行 syscallSelect,重复检验是否 直到就绪为止，我忘记香老师为啥要注释掉这个了
+        // tf->epc -= 4;
+        // yield();
+        callYield();
     }
-    // cnt != 0，此时可以返回
-    else
-    {
-        // 修改了这里
-        goto selectFinished;
-    }
-    return;
-selectFinished:
-    if (read)
-    {
-        copyout(myProcess()->pgdir, read, (char *)&readSet_ready, sizeof(FdSet));
-    }
+    // selectFinish:
+    // 原来只在这里有 copyout，是错误的，这里应该冗余了
 
+    // printk("select end cnt %d\n", cnt);
     tf->a0 = cnt;
-    return;
 }
 
 void syscallPRead()

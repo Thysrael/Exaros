@@ -288,10 +288,10 @@ static u64 loadScript(DirMeta *srcMeta, char *path, char **argv)
             scriptArgv[script_argc++] = *(argv++);
         }
         scriptArgv[script_argc] = NULL;
-        for (int i = 0; i < script_argc; i++)
-        {
-            printk("argv[%d] is %s\n", i, scriptArgv[i]);
-        }
+        // for (int i = 0; i < script_argc; i++)
+        // {
+        //     printk("argv[%d] is %s\n", i, scriptArgv[i]);
+        // }
         return exec("/busybox", scriptArgv);
     }
     if (strncmp(interp_path, "/bin/busybox", 12) == 0)
@@ -699,12 +699,12 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 #define from_kuid_munged(x, y) (0)
 #define from_kgid_munged(x, y) (0)
 
-    u64 secureexec = 0;                                                // the default value is 1, 但是我不清楚哪些情况会把它变成 0
-    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);                                  // CPU 的 extension 信息
-    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE);                         // PAGE_SIZE
-    NEW_AUX_ENT(AT_PHDR, phdrAddr);                                    // Phdr * phdr_addr; 指向用户态。
-    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));                               // 每个 Phdr 的大小
-    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);                           // phdr的数量
+    u64 secureexec = 0;                        // the default value is 1, 但是我不清楚哪些情况会把它变成 0
+    NEW_AUX_ENT(AT_HWCAP, ELF_HWCAP);          // CPU 的 extension 信息
+    NEW_AUX_ENT(AT_PAGESZ, ELF_EXEC_PAGESIZE); // PAGE_SIZE
+    NEW_AUX_ENT(AT_PHDR, phdrAddr);            // Phdr * phdr_addr; 指向用户态。
+    NEW_AUX_ENT(AT_PHENT, sizeof(Phdr));       // 每个 Phdr 的大小
+    NEW_AUX_ENT(AT_PHNUM, elfHeader->phnum);   // phdr的数量
     NEW_AUX_ENT(AT_BASE, interpLoadAddr);
     NEW_AUX_ENT(AT_ENTRY, elfHeader->entry + interpOffset);            // 源程序的入口
     NEW_AUX_ENT(AT_UID, from_kuid_munged(cred->user_ns, cred->uid));   // 0
