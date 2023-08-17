@@ -87,7 +87,6 @@ lmbench_all lat_syscall -P 1 fstat /var/tmp/lmbench \n\
 lmbench_all lat_syscall -P 1 open /var/tmp/lmbench \n\
 lmbench_all lat_select -n 100 -P 1 file \n\
 lmbench_all lat_sig -P 1 install \n\
-lmbench_all lat_sig -P 1 catch \n\
 lmbench_all lat_pipe -P 1 \n\
 lmbench_all lat_proc -P 1 fork \n\
 lmbench_all lat_proc -P 1 exec \n\
@@ -106,6 +105,8 @@ busybox echo context switch overhead \n\
 lmbench_all lat_ctx -P 1 -s 32 2 4 8 16 24 32 64 96 \n\
 ";
 
+// lmbench_all lat_sig -P 1 catch \n
+
 void buildScript()
 {
     printk("building auto script.\n");
@@ -116,9 +117,9 @@ void buildScript()
     // metaWrite(script, false, (u64)autoTestContent, 0, sizeof(autoTestContent));
     // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
 
-    // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
-    // metaWrite(script, false, (u64)lmbench, sizeof(unixContentPass), sizeof(lmbench));
-    metaWrite(script, false, (u64)lmbench, 0, sizeof(lmbench));
+    metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
+    metaWrite(script, false, (u64)lmbench, sizeof(unixContentPass), sizeof(lmbench));
+    // metaWrite(script, false, (u64)lmbench, 0, sizeof(lmbench));
     // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
     // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
 
