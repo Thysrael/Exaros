@@ -663,7 +663,7 @@ static u64 initUserStack(char **argv, u64 phdrAddr, Ehdr *elfHeader, u64 interpL
 
     // 拷贝环境变量
     // char *envVariable[] = {"PATH=/"};
-    char *envVariable[] = {"LD_LIBRARY_PATH=.", "PATH=/opt/riscv64-linux-musl-native/bin/:/usr/bin:/bin"};
+    char *envVariable[] = {"LD_LIBRARY_PATH=.", "PATH=/opt/musl/bin/:/usr/bin:/bin"};
 
     int envCount = sizeof(envVariable) / sizeof(char *);
     for (int i = 0; i < envCount; i++)
