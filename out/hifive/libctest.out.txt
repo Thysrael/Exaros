@@ -1,0 +1,80 @@
+b_malloc_sparse (0)
+  time: 0.278328000, virt: 0, res: 0, dirty: 0
+
+b_malloc_bubble (0)
+  time: 0.244682000, virt: 0, res: 0, dirty: 0
+
+b_malloc_tiny1 (0)
+  time: 0.008103000, virt: 0, res: 0, dirty: 0
+
+b_malloc_tiny2 (0)
+  time: 0.005049000, virt: 0, res: 0, dirty: 0
+
+b_malloc_big1 (0)
+  time: 0.433860000, virt: 0, res: 0, dirty: 0
+
+b_malloc_big2 (0)
+  time: 0.434370000, virt: 0, res: 0, dirty: 0
+
+b_malloc_thread_stress (0)
+  time: 0.073561000, virt: 0, res: 0, dirty: 0
+
+b_malloc_thread_local (0)
+  time: 0.072940000, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("abcdefghijklmnopqrstuvwxyz")
+  time: 0.030674000, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("azbycxdwevfugthsirjqkplomn")
+  time: 0.043680000, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("aaaaaaaaaaaaaacccccccccccc")
+  time: 0.030678000, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("aaaaaaaaaaaaaaaaaaaaaaaaac")
+  time: 0.030763000, virt: 0, res: 0, dirty: 0
+
+b_string_strstr ("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaac")
+  time: 0.036055000, virt: 0, res: 0, dirty: 0
+
+b_string_memset (0)
+  time: 0.023822000, virt: 0, res: 0, dirty: 0
+
+b_string_strchr (0)
+  time: 0.064262000, virt: 0, res: 0, dirty: 0
+
+b_string_strlen (0)
+  time: 0.043337000, virt: 0, res: 0, dirty: 0
+
+b_pthread_createjoin_serial1 (0)
+  time: 0.920640000, virt: 0, res: 0, dirty: 0
+
+b_pthread_createjoin_serial2 (0)
+  time: 1.962088000, virt: 0, res: 0, dirty: 0
+
+b_pthread_create_serial1 (0)
+  time: 0.342484000, virt: 0, res: 0, dirty: 0
+
+b_pthread_uselesslock (0)
+  time: 0.050766000, virt: 0, res: 0, dirty: 0
+
+b_utf8_bigbuf (0)
+  time: 0.141363000, virt: 0, res: 0, dirty: 0
+
+b_utf8_onebyone (0)
+  time: 0.145308000, virt: 0, res: 0, dirty: 0
+
+b_stdio_putcgetc (0)
+  time: 0.272907000, virt: 0, res: 0, dirty: 0
+
+b_stdio_putcgetc_unlocked (0)
+  time: 0.226455000, virt: 0, res: 0, dirty: 0
+
+b_regex_compile ("(a|b|c)*d*b")
+  time: 0.153429000, virt: 0, res: 0, dirty: 0
+
+b_regex_search ("(a|b|c)*d*b")
+  time: 0.141006000, virt: 0, res: 0, dirty: 0
+
+b_regex_search ("a{25}b")
+  time: 0.233233000, virt: 0, res: 0, dirty: 0

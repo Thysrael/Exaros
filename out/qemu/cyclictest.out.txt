@@ -1,0 +1,49 @@
+====== cyclictest NO_STRESS_P1 begin ======
+WARN: stat /dev/cpu_dma_latency failed: No such file or directory
+uname failed: No such file or directory. Assuming not 2.6
+WARN: Running on unknown kernel version...YMMV
+WARN: High resolution timers not available
+T: 0 (15471614) P:99 I:1000 C:   1000 Min:     22 Act:   27 Avg:   28 Max:     124
+====== cyclictest NO_STRESS_P1 end: success ======
+====== cyclictest NO_STRESS_P8 begin ======
+WARN: stat /dev/cpu_dma_latency failed: No such file or directory
+uname failed: No such file or directory. Assuming not 2.6
+WARN: Running on unknown kernel version...YMMV
+WARN: High resolution timers not available
+T: 0 (15475710) P:99 I:1000 C:   1000 Min:     22 Act:   43 Avg:   44 Max:     491
+T: 1 (15477757) P:99 I:1500 C:    667 Min:     23 Act:  146 Avg:   46 Max:     146
+T: 2 (15479804) P:99 I:2000 C:    500 Min:     22 Act:  181 Avg:   42 Max:     181
+T: 3 (15481851) P:99 I:2500 C:    400 Min:     22 Act:  118 Avg:   47 Max:     270
+T: 4 (15483898) P:99 I:3000 C:    334 Min:     22 Act:   23 Avg:   41 Max:     118
+T: 5 (15485945) P:99 I:3500 C:    286 Min:     22 Act:   22 Avg:   53 Max:     155
+T: 6 (15487992) P:99 I:4000 C:    250 Min:     22 Act:   33 Avg:   46 Max:     236
+T: 7 (15490039) P:99 I:4500 C:    222 Min:     23 Act:  148 Avg:   43 Max:     148
+====== cyclictest NO_STRESS_P8 end: success ======
+====== start hackbench ======
+cyclictest_testcode.sh: line 19: sleep: not found
+====== cyclictest STRESS_P1 begin ======
+Running in process mode with 10 groups using 40 file descriptors each (== 400 tasks)
+Each sender will pass 100000000 messages of 100 bytes
+Creating fdpair (error: No error information)
+WARN: stat /dev/cpu_dma_latency failed: No such file or directory
+uname failed: No such file or directory. Assuming not 2.6
+WARN: Running on unknown kernel version...YMMV
+WARN: High resolution timers not available
+T: 0 (15496191) P:99 I:1000 C:   1000 Min:     22 Act:   26 Avg:   28 Max:      93
+====== cyclictest STRESS_P1 end: success ======
+====== cyclictest STRESS_P8 begin ======
+WARN: stat /dev/cpu_dma_latency failed: No such file or directory
+uname failed: No such file or directory. Assuming not 2.6
+WARN: Running on unknown kernel version...YMMV
+WARN: High resolution timers not available
+T: 0 (15500287) P:99 I:1000 C:   1000 Min:     22 Act:   71 Avg:   51 Max:     383
+T: 1 (15502329) P:99 I:1500 C:    667 Min:     23 Act:   26 Avg:   44 Max:     159
+T: 2 (15504376) P:99 I:2000 C:    500 Min:     23 Act:   40 Avg:   49 Max:     313
+T: 3 (15506429) P:99 I:2500 C:    400 Min:     22 Act:  314 Avg:   51 Max:     314
+T: 4 (15508475) P:99 I:3000 C:    334 Min:     22 Act:   23 Avg:   47 Max:     167
+T: 5 (15510524) P:99 I:3500 C:    286 Min:     23 Act:   26 Avg:   52 Max:     243
+T: 6 (15512567) P:99 I:4000 C:    250 Min:     23 Act:   23 Avg:   44 Max:     200
+T: 7 (15514622) P:99 I:4500 C:    222 Min:     22 Act:  409 Avg:   46 Max:     409
+====== cyclictest STRESS_P8 end: success ======
+cyclictest_testcode.sh: line 32: sleep: not found
+====== kill hackbench: success ======

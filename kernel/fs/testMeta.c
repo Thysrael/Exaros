@@ -61,7 +61,6 @@ UB_BINDIR=./ ./execl 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybo
 ./float 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk \'{print \"Unixbench FLOAT test(lps): \"$0}\'\n\
 ./double 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk \'{print \"Unixbench DOUBLE test(lps): \"$0}\'\n\
 ./hanoi 10 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk \'{print \"Unixbench HANOI test(lps): \"$0}\'\n\
-./looper 20 ./multi.sh 1 | ./busybox grep -o \"COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench SHELL1 test(lpm): \"$0}' \n\
 ./fstime -w -t 20 -b 256 -m 500 | ./busybox grep -o \"WRITE COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench FS_WRITE_SMALL test(KBps): \"$0}'\n\
 ./fstime -r -t 20 -b 256 -m 500 | ./busybox grep -o \"READ COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench FS_READ_SMALL test(KBps): \"$0}'\n\
 ./fstime -c -t 20 -b 256 -m 500 | ./busybox grep -o \"COPY COUNT|[[:digit:]]\\+|\" | ./busybox grep -o \"[[:digit:]]\\+\" | ./busybox awk '{print \"Unixbench FS_COPY_SMALL test(KBps): \"$0}'\n\
@@ -117,9 +116,9 @@ void buildScript()
     // metaWrite(script, false, (u64)autoTestContent, 0, sizeof(autoTestContent));
     // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
 
-    metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
-    metaWrite(script, false, (u64)lmbench, sizeof(unixContentPass), sizeof(lmbench));
-    // metaWrite(script, false, (u64)lmbench, 0, sizeof(lmbench));
+    // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
+    // metaWrite(script, false, (u64)lmbench, sizeof(unixContentPass), sizeof(lmbench));
+    metaWrite(script, false, (u64)lmbench, 0, sizeof(lmbench));
     // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
     // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
 

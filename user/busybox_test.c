@@ -50,65 +50,65 @@ void main()
         // exec("./time-test", timet);
     }
 
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvBusybox);
-    }
-    else
-    {
-        wait(0);
-    }
+    // pid = fork();
+    // if (pid == 0)
+    // {
+    //     exec("./busybox", argvBusybox);
+    // }
+    // else
+    // {
+    //     wait(0);
+    // }
 
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvLua);
-    }
-    else
-    {
-        wait(0);
-    }
+    // pid = fork();
+    // if (pid == 0)
+    // {
+    //     exec("./busybox", argvLua);
+    // }
+    // else
+    // {
+    //     wait(0);
+    // }
 
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvLibc);
-    }
-    else
-    {
-        wait(0);
-    }
+    // pid = fork();
+    // if (pid == 0)
+    // {
+    //     exec("./busybox", argvLibc);
+    // }
+    // else
+    // {
+    //     wait(0);
+    // }
 
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./libc-bench", argvLibcBench);
-    }
-    else
-    {
-        wait(0);
-    }
+    // pid = fork();
+    // if (pid == 0)
+    // {
+    //     exec("./libc-bench", argvLibcBench);
+    // }
+    // else
+    // {
+    //     wait(0);
+    // }
 
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvCyclic);
-    }
-    else
-    {
-        wait(0);
-    }
+    // pid = fork();
+    // if (pid == 0)
+    // {
+    //     exec("./busybox", argvCyclic);
+    // }
+    // else
+    // {
+    //     wait(0);
+    // }
 
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvIOZone);
-    }
-    else
-    {
-        wait(0);
-    }
+    // pid = fork();
+    // if (pid == 0)
+    // {
+    //     exec("./busybox", argvIOZone);
+    // }
+    // else
+    // {
+    //     wait(0);
+    // }
 
     exit(0);
 }

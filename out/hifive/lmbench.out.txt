@@ -1,0 +1,25 @@
+latency measurements
+Simple syscall: 1.1897 microseconds
+Simple read: 1.7625 microseconds
+Simple write: 1.3484 microseconds
+Simple stat: 4.5547 microseconds
+Simple fstat: 3.3073 microseconds
+Simple open/close: 4.3147 microseconds
+Select on 100 fd's: 2.6207 microseconds
+Signal handler installation: 2.2686 microseconds
+Pipe latency: 38.4633 microseconds
+Process fork+exit: 575.9000 microseconds
+Process fork+execve: 591.7000 microseconds
+Process fork+/bin/sh -c: 612.6667 microseconds
+File /var/tmp/XXX write bandwidth:120 KB/sec
+0.524288 4178
+file system latency
+Bandwidth measurements
+Pipe bandwidth: 27.73 MB/sec
+0.524288 158.54
+0.524288 158.20
+0.524288 2364.21
+0.524288 119.05
+context switch overhead
+
+"size=32k ovr=13.36

@@ -1,0 +1,32 @@
+====== cyclictest NO_STRESS_P1 begin ======
+T: 0 ( 8847) P:99 I:1000 C:   1000 Min:     63 Act:  275 Avg:  194 Max:     469
+====== cyclictest NO_STRESS_P1 end: success ======
+====== cyclictest NO_STRESS_P8 begin ======
+T: 0 ( 8849) P:99 I:1000 C:    999 Min:     52 Act:  148 Avg:  151 Max:     454
+T: 1 ( 8850) P:99 I:1500 C:    667 Min:     50 Act:  126 Avg:  116 Max:     386
+T: 2 ( 8851) P:99 I:2000 C:    500 Min:     58 Act:   79 Avg:  107 Max:     276
+T: 3 ( 8852) P:99 I:2500 C:    400 Min:     52 Act:   84 Avg:  128 Max:     413
+T: 4 ( 8853) P:99 I:3000 C:    334 Min:     56 Act:  112 Avg:  124 Max:     330
+T: 5 ( 8854) P:99 I:3500 C:    286 Min:     48 Act:   75 Avg:  123 Max:     337
+T: 6 ( 8855) P:99 I:4000 C:    250 Min:     52 Act:   91 Avg:   98 Max:     188
+T: 7 ( 8856) P:99 I:4500 C:    223 Min:     58 Act:  149 Avg:  112 Max:     337
+====== cyclictest NO_STRESS_P8 end: success ======
+====== start hackbench ======
+Running in process mode with 10 groups using 40 file descriptors each (== 400 tasks)
+Each sender will pass 100000000 messages of 100 bytes
+====== cyclictest STRESS_P1 begin ======
+T: 0 ( 9260) P:99 I:1000 C:   1000 Min:     63 Act:  105 Avg:   96 Max:     226
+====== cyclictest STRESS_P1 end: success ======
+====== cyclictest STRESS_P8 begin ======
+T: 0 ( 9262) P:99 I:1000 C:   1000 Min:     69 Act:   85 Avg:  121 Max:     372
+T: 1 ( 9263) P:99 I:1500 C:    632 Min:     68 Act:   81 Avg:  121 Max:     389
+T: 2 ( 9264) P:99 I:2000 C:    445 Min:     72 Act:   82 Avg:  118 Max:     453
+T: 3 ( 9265) P:99 I:2500 C:    333 Min:     74 Act:  124 Avg:  145 Max:     363
+T: 4 ( 9266) P:99 I:3000 C:    248 Min:     72 Act:   85 Avg:  140 Max:     435
+T: 5 ( 9267) P:99 I:3500 C:    159 Min:     74 Act:  134 Avg:  140 Max:     409
+T: 6 ( 9268) P:99 I:4000 C:    133 Min:     74 Act:  120 Avg:  141 Max:     337
+T: 7 ( 9269) P:99 I:4500 C:    107 Min:     67 Act:  141 Avg:  131 Max:     320
+====== cyclictest STRESS_P8 end: success ======
+signaling 400 worker threads to terminate
+Time: 11.152
+====== kill hackbench: success ======
