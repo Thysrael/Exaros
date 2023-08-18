@@ -4,14 +4,20 @@
 
 ![banner](./doc/img/banner.png)
 
-艾克萨罗斯（ExarOS）是一款北京航空航天大学计算机学院强生、陈凝香和曹宏墚采用 C 语言开发的基于 RISCV64 的操作系统。参加操作系统内核设计赛道区域赛并全部通过测试样例。成绩如下：
+艾克萨罗斯（ExarOS）是一款北京航空航天大学计算机学院强生、陈凝香和曹宏墚采用 C 语言开发的基于 RISCV64 的操作系统，提供部分 linux 系统调用。
 
-| 条目         | 内容                |
-| ------------ | ------------------- |
-| **rank**     | 102.0000            |
-| 提交次数     | 2                   |
-| 最后提交时间 | 2023-06-03 12:22:29 |
-| 排名         | 16                  |
+在功能方面，目前全国赛第一阶段只有 `lmbench` 3 个测试点尚未调通，`iperf, netperf` 网络测试功能不支持，其他测试样例均完全通过。具体通过情况见下表：
+
+| 测试     | busybox | libctest | lua  | libcbench | iozone | cyclictest | unixbench | lmbench | iperf | netperf |
+| -------- | ------- | -------- | ---- | --------- | ------ | ---------- | --------- | ------- | ----- | ------- |
+| 样例个数 | 54      | 220      | 9    | 27        | 8      | 4          | 27        | 24      | 6     | 5       |
+| 通过个数 | 54      | 220      | 9    | 27        | 8      | 4          | 27        | 21      | 0     | 0       |
+
+在性能方面，我们与 qemu 上运行的 linux 进行对比，取得了较为优异的表现，具体的数据可以参考[性能总结](./doc/perfomance.md)文档。
+
+此外，我们还移植了 musl-gcc。
+
+---
 
 
 
@@ -25,6 +31,8 @@
 | 开发板     | HiFive Unmatched 开发板 |        |
 | 调试器     | gdb-multiarch           | 12.1   |
 
+---
+
 
 
 ## 编译与运行
@@ -37,36 +45,42 @@
 make 
 ```
 
-然后运行如下命令生成磁盘镜像：
-
-```shell
-make fat
-```
-
-最后使用如下指令运行内核：
+使用如下指令在 qemu 上运行内核，此时 qemu 模拟的开发板是 hifive_u：
 
 ```shell
 make run
 ```
 
+如果希望 qemu 模拟的开发板是 virt，需要先修改 `Exraos/include/arch.h` 为如下内容
 
+```c
+#define QEMU
+#define VIRT
+```
 
-## 内核功能
+然后执行
 
-- [x] 内核启动
-- [x] printf
-- [x] 页表
-- [x] 虚拟内存
-- [x] 时钟中断
-- [x] S 态外部中断
-- [x] 异常处理
-- [x] 系统调用框架
-- [x] 进程调度管理
-- [x] virtio 块设备驱动
-- [x] FAT 文件系统
-- [x] 文件系统优化
-- [x] ThyShell 
-- [x] 测试遍历程序
+```shell
+make	  # compile
+make virt # run
+```
+
+如果希望上板测试，需要修改 `Exraos/include/arch.h` 为如下内容
+
+```c
+// #define QEMU
+// #define VIRT
+```
+
+然后编译
+
+```makefile
+make
+```
+
+我们采用的方式是利用 uboot 网络加载内核和初始 sd 卡，需要在宿主机上搭建 tftp 服务器，并在开发板的 uboot 上进行相关配置，具体的流程可以参考文档[board](./doc/board.md) 。
+
+---
 
 
 
@@ -82,11 +96,11 @@ ExarOS
 │   ├── driver (驱动)
 │   ├── entry (内核入口)
 │   ├── fs (文件系统)
-│   ├── lock (锁)
 │   ├── memory (内存)
+│   ├── net (网络)
+│   ├── process (进程管理)
 │   ├── trap (异常及加载)
-│   ├── util (辅助工具)
-│   └── yield (进程管理)
+│   └── util (辅助工具)
 ├── linkscript (链接脚本)
 ├── testcase (测试样例)
 │   └── mnt 
@@ -98,6 +112,8 @@ ExarOS
 └── utility (辅助工具)
 ```
 
+---
+
 
 
 ## 设计文档
@@ -105,7 +121,7 @@ ExarOS
 ### 软件管理
 
 - [软件规范](./doc/convention.md)：包括注释规范、代码风格规范、git commit 规范。
-- [docker环境](docker.md)：符合官方要求的工具链 docker，并增设了自动化脚本，方便本地调试。
+- [docker环境](./doc/docker.md)：符合官方要求的工具链 docker，并增设了自动化脚本，方便本地调试。
 - [开发资源](./doc/resource.md)：记录开发手册、参考代码、前人博客和视频等资源。
 
 ### 开发环境
@@ -113,6 +129,7 @@ ExarOS
 - [硬件平台](./doc/)：`machine virt` 平台的特性。
 - [构建脚本](./doc/make.md)：编译器参数、qemu 参数、自动化脚本、GUI 调试。
 - [SBI](./doc/sbi.md)：SBI 相关知识。
+- [开发板](./doc/board.md)：包括搭建 tftp 服务器和 uboot 启动。
 
 ### 内核设计
 
@@ -125,6 +142,22 @@ ExarOS
 - [FAT32](./doc/fat.md)：FAT32 文件系统基础理论介绍。
 - [文件系统](./doc/fs.md)：分层文件系统各层次介绍。
 - [多核启动](./doc/multicore.md)：多核启动相关。
+- [信号](./doc/signal.md)：信号的相关概念和设计。
+- [调度](./doc/sched.md)：新型调度方案，实现了 linux 相关的系统调用。
+- [动态链接](./doc/dynamic.md)：动态链接的概念，需求，设计，实现。
+- [线程](./doc/thread.md)：线程相关。
+- [套接字](./doc/socket.md)：套接字的概念、时序逻辑和接口。
+- [网络协议栈](./doc/net.md)：网络协议栈的设计和实现思路，未能完成的教训。
+- [网卡驱动](./doc/macb.md)：macb 网卡驱动的实现思路。
+- [共享内存](./doc/shm.md)：共享内存的设计和实现。
+
+### 内核优化
+
+- [懒加载](./doc/lazyload.md)：只在用户进程需要的时候，将数据加载入内存，节省了加载的开支。
+- [外存写回](./doc/extern.md)：外存优化，包括缓存的设计和写回策略的选择。
+- [FAT优化](./doc/fatopt.md)：在内存中维护 FAT 目录结构和簇的占用情况，减少了对于外存文件系统的查询。
+- [临时文件](./doc/tmpfile.md)：在 `/tmp/` 文件夹下的文件为临时文件，不在放到 SD 卡内，而是在内存中进行维护。
+- [UART移植](./uart.md)：将 UART 移植到 S 级，避免了陷入 M 级的时间。
 
 ### 用户程序
 
@@ -135,3 +168,5 @@ ExarOS
 
 - [赛题分析](precomp.md)：测试形式和样例的分析。
 - [测试设计](./doc/test.md)：包括官方样例测试和模块测试。
+- [bug](./bug.md)：记录开发过程中遇到的十分困难或者离奇的 bug。
+- [TODO](./todo.md)：记录内核还需要完善和拓展的地方。
