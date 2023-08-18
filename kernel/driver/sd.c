@@ -61,7 +61,7 @@ int sdRead(u8 *buf, u64 startBlock, u64 blockNumber)
 begin:;
     // command & response
     u8 *p = (void *)buf;
-#ifdef QEMU
+#if defined VIRT || defined QEMU
     if (sdCmd(18, startBlock * 512, 0xE1))
 #else
     if (sdCmd(18, startBlock, 0xE1))
@@ -119,7 +119,7 @@ begin:;
     u64 block = blockNumber;
     do {
         // command & response
-#ifdef QEMU
+#if defined VIRT || defined QEMU
         if (sdCmd(24, startBlock * 512, 0))
 #else
         if (sdCmd(24, startBlock, 0))
@@ -485,7 +485,7 @@ int sdCmd55()
  */
 int sdCmd58()
 {
-#ifdef QEMU
+#if defined VIRT || defined QEMU
     response[4] = sdCmd(58, 0, 0xFD);
     response[3] = spiReceive();
     response[2] = spiReceive();

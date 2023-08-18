@@ -52,7 +52,7 @@
 #define EXTERNAL_TRAP 1
 #define UNKNOWN_DEVICE 0
 
-#ifdef QEMU
+#if defined VIRT || defined QEMU
 #define UART_IRQ 10
 #define DISK_IRQ 1
 #else
@@ -63,19 +63,19 @@
 inline static u32 interruptServed()
 {
     u64 hart = readTp(); // thread id
-#ifndef QEMU
-    return *(u32 *)PLIC_MCLAIM(hart);
-#else
+#if defined VIRT || defined QEMU
     return *(u32 *)PLIC_SCLAIM(hart);
+#else
+    return *(u32 *)PLIC_MCLAIM(hart);
 #endif
 }
 inline static void interruptCompleted(int irq)
 {
     int hart = readTp();
-#ifndef QEMU
-    *(u32 *)PLIC_MCLAIM(hart) = irq;
-#else
+#if defined VIRT || defined QEMU
     *(u32 *)PLIC_SCLAIM(hart) = irq;
+#else
+    *(u32 *)PLIC_MCLAIM(hart) = irq;
 #endif
 }
 
