@@ -1,35 +1,78 @@
-# 进程
+# 进程和线程
 
 ## 进程控制块
 
-进程控制块中存放着进程的基本信息，以及运行时必须要保存的内容。
+进程控制块中存放着进程的基本信息，包括进程的基本信息，进程的页表等。
 
 ```c
+// 进程控制块
 typedef struct Process
 {
-    Trapframe trapframe; // 进程异常时保存寄存器的地方
+    // Trapframe trapframe; // 进程异常时保存寄存器的地方
     struct ProcessTime processTime;
     CpuTimes cpuTime;
     ProcessListEntry link;
-    ProcessListEntry scheduleLink;
-    u64 awakeTime; // 进程应该醒来的时间
     u64 *pgdir;    // 进程页表地址
     u32 processId; // 进程 id
     u32 parentId;  // 父进程 id
     u32 priority;            // 优先级
     enum ProcessState state; // 进程状态
     Spinlock lock;
-    DirMeta *cwd;            // 进程所在的路径
-    File *ofile[NOFILE];     // 进程打开的文件
-    u64 channel;             // 等待队列
-    u64 currentKernelSp;
-    int reason;
+    DirMeta *cwd;        // 进程所在的路径
+    File *ofile[NOFILE]; // 进程打开的文件
     u32 retValue; // 进程返回值
     u64 brkHeapTop;
     u64 mmapHeapTop;
-    DirMeta *execFile; 
+    u64 shmHeapTop;
+    DirMeta *execFile;
+    int threadCount;
+    struct ResourceLimit fileDescription;
+    u32 pgid;
+    u32 sid;
+    SegmentMap *segmentMapHead; // 记录着这个进程的所有 segment 映射信息
+    int ktime;
+    int utime;
 } Process;
 ```
+
+## 线程控制块
+
+
+线程的控制块需要保存的基本信息： 
+
+* 寄存器上下文 trapframe
+* 线程属于的进程
+* 与调度相关的信息
+
+```c
+typedef struct Thread
+{
+    Trapframe trapframe;
+    u64 awakeTime;
+    u32 threadId;
+    ThreadListEntry link;         // free thread
+    ThreadListEntry scheduleLink; // yield(old)
+    ThreadListEntry priSchedLink; // yield(with priority)
+    enum ProcessState state;
+    struct Spinlock lock;
+    u64 channel; // wait Object
+    u64 currentKernelSp;
+    int reason;
+    u32 retValue;
+    u64 clearChildTid;
+    Process *process;
+    cpu_set_t cpuset;                 // CPU 亲和集
+    int schedPolicy;                  // 调度策略
+    sched_param schedParam;           // 调度参数
+    bool killed;                      // 信号 SIGKILL
+    SignalSet blocked;                // 屏蔽的信号集合（事实上是阻塞）
+    u64 setAlarm;
+    SignalContextList pendingSignal;  // 未决 = 仍然未处理的信号，最近的一条在最后面
+    SignalContextList handlingSignal; // 正在处理的信号（同样的信号将被忽略），最近的一条在最前面
+} Thread;
+```
+
+
 ## 进程管理初始化
 
 ```c
@@ -63,7 +106,7 @@ void processInit()
 
 ![](img/process-0.png)
 
-## 创建进程
+## 创建
 
 
 函数 `processCreatePriority()`根据传入的 `binary` 创建新的进程，其中 `binary` 为进程的二进制文件。
@@ -102,7 +145,7 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
 ```
 
 
-## 进程销毁
+## 销毁
 
 首先调用 `processFree()`，该函数做以下操作：
 
@@ -115,23 +158,23 @@ void processCreatePriority(u8 *binary, u32 size, u32 priority)
 调度下一个进程。
 
 
-## 运行进程
+## 运行线程
 
-`processRun(Process* p)` 运行  `p` 进程。
+`ThreadRun(Thread * th)` 运行  `th` 线程。
 
 - 如果之前该 cpu 正在运行其它进程，则将 `TRAMPOLINE` 中保存的寄存器信息拷贝到刚才运行的进程控制块中
-- `p->state = RUNNING;`
-- 接下来判断让出 cpu 使用权的原因，若 `p->reason == 1` 表示该进程主动让出（因为 pipe 阻塞）。
+- `th->state = RUNNING;`
+- 接下来判断该线程之前让出 cpu 使用权的原因，若 `th->reason == 1` 表示该线程主动让出（sleep）。
   - 将当前进程的进程控制块的  Trapframe 拷贝到 trampoline 中的 Trapframe
   - 调用 `sleepRec()`，该函数从进程的内核态栈中读读取上下文并恢复执行
-- 若 `p->reason == 0` ，则将
+- 若 `p->reason == 0` ，则说明该线程之前不是通过 sleep 让出 cpu 的，
   - 将当前进程的进程控制块的  Trapframe 拷贝到 trampoline 中的 Trapframe
   - 设置内核栈
   - 调用 `userTrapReturn()` 函数恢复上下文。该函数的详细信息参见 **Trap** 部分。
 
 ## 进程调度
 
-`yield` 函数的功能是让当前进程让出 CPU，然后切换并运行下一个进程。
+`yield` 函数的功能是让当前线程让出 CPU，然后切换并运行另一个可以运行的线程。
 
 ```c
 /**
@@ -194,7 +237,7 @@ void yield()
 
 ### Sleep
 
-进程在内核态进入睡眠，需要先将进程控制块的状态设置为 `SLEEP`，`reason` 设置为 `1` 用来区分通过 sleep 让出 CPU 的进程和通过其他方式陷入内核的进程。
+线程在内核态进入睡眠，需要先将进程控制块的状态设置为 `SLEEP`，`reason` 设置为 `1` 用来区分通过 sleep 让出 CPU 的进程和通过其他方式陷入内核的线程。
 
 最后将此时的寄存器状态保存在栈中，将当前的 sp 指针值存入 `proceee->currentKernelSp`, 然后调用 `SleepSave` 将寄存器保存在栈中。
 
