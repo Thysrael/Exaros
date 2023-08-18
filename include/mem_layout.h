@@ -114,7 +114,11 @@
 // 用于分配给用户程序的内存
 // 修改内存大小的时候需要同时修改 qemu -m 参数
 #define PHYSICAL_MEMORY_BASE (0x80000000ULL)
+#ifdef VIRT
+#define PHYSICAL_MEMORY_SIZE (0x08000000ULL)
+#else
 #define PHYSICAL_MEMORY_SIZE (0x20000000ULL)
+#endif
 #define PHYSICAL_MEMORY_END (PHYSICAL_MEMORY_BASE + PHYSICAL_MEMORY_SIZE)
 
 /**
