@@ -19,6 +19,7 @@ char *tmp[] = {"./busybox", "sh", "tmp.sh", 0};
 char *ababa[] = {"./busybox", "./iozone", "-a", "-r", "1k", "-s", "4m", 0};
 
 char *argvAuto[] = {"/busybox", "sh", "auto.sh", 0};
+char *argvAuto2[] = {"/busybox", "sh", "auto2.sh", 0};
 
 void main()
 {
@@ -50,65 +51,75 @@ void main()
         // exec("./time-test", timet);
     }
 
-    // pid = fork();
-    // if (pid == 0)
-    // {
-    //     exec("./busybox", argvBusybox);
-    // }
-    // else
-    // {
-    //     wait(0);
-    // }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvBusybox);
+    }
+    else
+    {
+        wait(0);
+    }
 
-    // pid = fork();
-    // if (pid == 0)
-    // {
-    //     exec("./busybox", argvLua);
-    // }
-    // else
-    // {
-    //     wait(0);
-    // }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvLua);
+    }
+    else
+    {
+        wait(0);
+    }
 
-    // pid = fork();
-    // if (pid == 0)
-    // {
-    //     exec("./busybox", argvLibc);
-    // }
-    // else
-    // {
-    //     wait(0);
-    // }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvLibc);
+    }
+    else
+    {
+        wait(0);
+    }
 
-    // pid = fork();
-    // if (pid == 0)
-    // {
-    //     exec("./libc-bench", argvLibcBench);
-    // }
-    // else
-    // {
-    //     wait(0);
-    // }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./libc-bench", argvLibcBench);
+    }
+    else
+    {
+        wait(0);
+    }
 
-    // pid = fork();
-    // if (pid == 0)
-    // {
-    //     exec("./busybox", argvCyclic);
-    // }
-    // else
-    // {
-    //     wait(0);
-    // }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvCyclic);
+    }
+    else
+    {
+        wait(0);
+    }
 
-    // pid = fork();
-    // if (pid == 0)
-    // {
-    //     exec("./busybox", argvIOZone);
-    // }
-    // else
-    // {
-    //     wait(0);
-    // }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvIOZone);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvAuto2);
+    }
+    else
+    {
+        wait(0);
+    }
 
     exit(0);
 }

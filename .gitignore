@@ -9,3 +9,5 @@ kernel-qemu
 *.b.c
 sdcard.img
 os.bin
+log.txt 
+os_2023_config.json

@@ -116,9 +116,9 @@ void buildScript()
     // metaWrite(script, false, (u64)autoTestContent, 0, sizeof(autoTestContent));
     // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
 
-    // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
+    metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
     // metaWrite(script, false, (u64)lmbench, sizeof(unixContentPass), sizeof(lmbench));
-    metaWrite(script, false, (u64)lmbench, 0, sizeof(lmbench));
+    // metaWrite(script, false, (u64)lmbench, 0, sizeof(lmbench));
     // metaWrite(script, false, (u64)unixContentPass, sizeof(autoTestContent), sizeof(unixContentPass));
     // metaWrite(script, false, (u64)unixContentPass, 0, sizeof(unixContentPass));
 
