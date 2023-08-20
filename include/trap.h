@@ -122,5 +122,5 @@ IntervalTimer getTimer();
 void plicinit(void);
 void plicinithart(void);
 
-void updateInterruptsString();
+int updateInterruptsString();
 #endif
