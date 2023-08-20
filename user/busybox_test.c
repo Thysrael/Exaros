@@ -34,21 +34,22 @@ void main()
     pid = fork();
     if (pid == 0)
     {
-        exec("./busybox", argvAuto2);
-    }
-    else
-    {
-        wait(0);
-    }
-    pid = fork();
-    if (pid == 0)
-    {
         exec("./time-test", argvTime);
     }
     else
     {
         wait(0);
         // exec("./time-test", timet);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvAuto2);
+    }
+    else
+    {
+        wait(0);
     }
 
     pid = fork();
