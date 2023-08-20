@@ -130,6 +130,8 @@
 #define SYS_prlimit64 261
 #define SYS_renameat2 276
 
+#define SYS_copy_file_range 285
+
 #define MAX_SYSCALL 350
 
 void syscallGetProcessId();
@@ -227,7 +229,7 @@ void syscallMlock();
 void syscallMprotect();
 void syscallMsync();
 void syscallReadlinkat();
-// void syscallRenameat2();
+void syscallRenameat2();
 void syscallStatfs();
 void syscallFchmodat();
 void syscallFsync();
@@ -259,6 +261,7 @@ void syscallNanosleep();
 void syscallGetrusage();
 
 void syscallClockNanosleep();
+void syscallCopyFileRange();
 
 extern void (*syscallVector[])(void);
 
