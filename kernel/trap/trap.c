@@ -12,6 +12,9 @@
 #include <thread.h>
 #include <signal.h>
 
+char interruptsString[512];
+int interruptRecoder[20];
+
 Trapframe *getHartTrapFrame()
 {
     return (Trapframe *)(TRAPFRAME + getTp() * sizeof(Trapframe));
@@ -62,6 +65,7 @@ int handleInterrupt()
     assert(scause & SCAUSE_INTERRUPT);
     // printk("%lx\n", exceptionCode);
     // 处理中断
+    interruptRecoder[exceptionCode] += 1;
     switch (exceptionCode)
     {
     case INTERRUPT_SEI:;
@@ -388,4 +392,45 @@ void plicinithart(void)
 
     // set this hart's S-mode priority threshold to 0.
     *(u32 *)PLIC_SPRIORITY(hart) = 0;
+}
+
+int printNum(int i, char *buf)
+{
+    int length = 0;
+    int tmpi = i;
+    while (tmpi)
+    {
+        tmpi /= 10;
+        length++;
+    }
+    tmpi = i;
+    buf[length] = '\0';
+
+    int l = length;
+    while (tmpi)
+    {
+        buf[l - 1] = tmpi % 10 + '0';
+        l--;
+        tmpi /= 10;
+    }
+    return length;
+}
+
+void updateInterruptsString()
+{
+    char *buf = interruptsString;
+    for (int i = 0; i < 20; i++)
+    {
+        if (interruptRecoder[i])
+        {
+            int len = printNum(i, buf);
+            buf[len] = ':';
+            buf[len + 1] = ' ';
+            buf += (len + 2);
+            len = printNum(interruptRecoder[i], buf);
+            buf[len] = '\n';
+            buf += (len + 1);
+        }
+    }
+    buf[0] = '\0';
 }
