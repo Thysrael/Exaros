@@ -12,7 +12,7 @@
 // #define NET_DEBUG_
 // #define SOCKET_DEBUG_
 // #define SHM_DEBUG_
-#define TMPF_DEBUG_
+// #define TMPF_DEBUG_
 
 #ifdef CNX_DEBUG_
 #define CNX_DEBUG(...)       \

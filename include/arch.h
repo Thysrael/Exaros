@@ -1,2 +1,2 @@
-// #define QEMU
+#define QEMU
 // #define VIRT

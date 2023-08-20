@@ -23,7 +23,7 @@ char *argvAuto2[] = {"/busybox", "sh", "auto2.sh", 0};
 char *argvCp1[] = {"/copy-file-range-test-1", 0};
 char *argvCp2[] = {"/copy-file-range-test-2", 0};
 char *argvCp3[] = {"/copy-file-range-test-3", 0};
-
+char *argvCp4[] = {"/copy-file-range-test-4", 0};
 char *argvInterruptsTest1[] = {"./interrupts-test-1", 0};
 char *argvInterruptsTest2[] = {"./interrupts-test-2", 0};
 void main()
@@ -48,7 +48,29 @@ void main()
     pid = fork();
     if (pid == 0)
     {
+        exec("./busybox", shell);
+        // exec("./time-test", timet);
+    }
+    else
+    {
+        wait(0);
+        // exec("./time-test", timet);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
         exec("./busybox", argvAuto2);
+    }
+    else
+    {
+        wait(0);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvBusybox);
     }
     else
     {
@@ -70,11 +92,15 @@ void main()
     {
         exec("./interrupts-test-2", argvInterruptsTest2);
     }
+    else
+    {
+        wait(0);
+    }
 
     pid = fork();
     if (pid == 0)
     {
-        exec("/copy-file-range-test-2", argvCp1);
+        exec("/copy-file-range-test-1", argvCp1);
         // exec("./time-test", timet);
     }
     else
@@ -108,23 +134,13 @@ void main()
     pid = fork();
     if (pid == 0)
     {
-        exec("./busybox", argvAuto);
+        exec("/copy-file-range-test-4", argvCp4);
         // exec("./time-test", timet);
     }
     else
     {
         wait(0);
         // exec("./time-test", timet);
-    }
-
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvBusybox);
-    }
-    else
-    {
-        wait(0);
     }
 
     pid = fork();
