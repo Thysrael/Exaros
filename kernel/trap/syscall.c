@@ -458,7 +458,7 @@ void syscallOpenAt(void)
         tf->a0 = -1;
         return;
     }
-    printk("[syscall openat] open path is %s\n", path);
+    // printk("[syscall openat] open path is %s\n", path);
     if (strncmp(path, "/tmp/tmpfile", 12) == 0)
     {
         tmpfileOpenAt();
@@ -3238,7 +3238,7 @@ void syscallCopyFileRange()
 {
     Trapframe *tf = getHartTrapFrame();
     int fd_in, fd_out, r;
-    u64 off_in, off_out, len;
+    u64 off_in, off_out, len, off_in_v, off_out_v;
     fd_in = tf->a0;
     off_in = tf->a1;
     fd_out = tf->a2;
@@ -3246,60 +3246,71 @@ void syscallCopyFileRange()
     len = tf->a4;
     // flags = tf->a5;
 
-    printk("[syscall cpfile] len: %d, inoff: %d, outoff: %d\n", len, off_in, off_out);
+    // printk("[syscall cpfile] len: %d, inoff: %d, outoff: %d\n", len, off_in, off_out);
 
     File *file_in = myProcess()->ofile[fd_in];
     File *file_out = myProcess()->ofile[fd_out];
 
+    Process *p = myProcess();
+
     // 若读取 fd_in 时的文件偏移超过其大小，则直接返回 0
-    if (file_in->meta->fileSize < fd_in + len)
+    int in_offset;
+    if (off_in == NULL)
+    {
+        in_offset = file_in->off;
+    }
+    else
+    {
+        copyin(p->pgdir, (char *)&in_offset, off_in, sizeof(u64));
+    }
+
+    if (file_in->meta->fileSize <= in_offset)
     {
         tf->a0 = 0;
-        printk("*1");
         return;
     }
+
+    int totlen = 0;
 
     while (len)
     {
         if (off_in == NULL)
         {
             r = metaRead(file_in->meta, false, (u64)buffer, file_in->off, MIN(len, bufSize));
+            file_in->off += r;
         }
         else
         {
-            u32 tmpoff = file_in->off;
-            r = metaRead(file_in->meta, false, (u64)buffer, off_in, MIN(len, bufSize));
-            file_in->off = tmpoff;
-        }
-        if (r != MIN(len, bufSize))
-        {
-            printk("*2");
-            tf->a0 = -1;
-            return;
+            copyin(p->pgdir, (char *)&off_in_v, off_in, sizeof(u64));
+            r = metaRead(file_in->meta, false, (u64)buffer, off_in_v, MIN(len, bufSize));
+            off_in_v += r;
+            copyout(p->pgdir, off_in, (char *)&(off_in_v), sizeof(u64));
         }
 
         if (off_out == NULL)
         {
-            r = metaWrite(file_out->meta, false, (u64)buffer, file_out->off, MIN(len, bufSize));
+            r = metaWrite(file_out->meta, false, (u64)buffer, file_out->off, r);
+            file_out->off += r;
         }
         else
         {
-            u32 tmpoff = file_out->off;
-            r = metaWrite(file_out->meta, false, (u64)buffer, off_in, MIN(len, bufSize));
-            file_out->off = tmpoff;
+            copyin(p->pgdir, (char *)&off_out_v, off_out, sizeof(u64));
+            r = metaWrite(file_out->meta, false, (u64)buffer, off_out_v, r);
+            off_out_v += r;
+            copyout(p->pgdir, off_out, (char *)&(off_out_v), sizeof(u64));
         }
+
+        totlen += r;
 
         if (r != MIN(len, bufSize))
         {
-            printk("*3");
-            tf->a0 = -1;
+            tf->a0 = totlen;
             return;
         }
 
         len -= MIN(len, bufSize);
     }
 
-    printk("[syscall cpfile end] len: %d\n", tf->a4);
-    tf->a0 = tf->a4;
+    tf->a0 = totlen;
     return;
 }
