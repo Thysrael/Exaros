@@ -138,6 +138,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_SHM_DT] syscallSHMDt,
     [SYSCALL_getrusage] syscallGetrusage,
     [SYS_clock_nanosleep] syscallClockNanosleep,
+    [SYSCALL_INTERPFILE] syscallCreateInterpFile,
     [MAX_SYSCALL] 0,
 };
 
@@ -434,6 +435,62 @@ bad:
     return;
 }
 
+static void interpfileOpenAt()
+{
+    printk("interpfile open at\n");
+    Trapframe *tf = getHartTrapFrame();
+    int flags = tf->a2;
+    char path[FAT32_MAX_PATH];
+    if (fetchstr(tf->a1, path, FAT32_MAX_PATH) < 0)
+    {
+        tf->a0 = -1;
+        return;
+    }
+
+    Interpfile *entryPoint;
+    // 创建一个文件
+    if (flags & O_CREATE)
+    {
+        interpfileAlloc(path, &entryPoint);
+    }
+    // 否则是打开文件
+    else
+    {
+        // 按照名字查找文件
+        if ((entryPoint = InterpfileName(path)) == NULL)
+        {
+            tf->a0 = -ENOENT; /*must be -ENOENT */
+            goto bad;
+        }
+    }
+
+    File *file;
+    int fd;
+    // 分配出一个 file 和一个 fd
+    if ((file = filealloc()) == NULL || (fd = fdalloc(file)) < 0)
+    {
+        // 分配失败 fd，但是没有分配失败 file 的情况
+        if (file)
+        {
+            fileclose(file);
+        }
+        tf->a0 = -24;
+        goto bad;
+    }
+
+    file->type = FD_INTERPFILE;
+    file->interpfile = entryPoint;
+    // 设置初始偏移量
+    file->interpfile->offset = (flags & O_APPEND) ? entryPoint->fileSize : 0;
+    file->off = 0; // 我们不使用这个偏移量
+    file->readable = true;
+    file->writable = false;
+
+    tf->a0 = fd;
+bad:
+    return;
+}
+
 /**
  * @brief 在指定目录打开或者创建文件，最终是生成一个 File
  *
@@ -461,6 +518,11 @@ void syscallOpenAt(void)
     if (strncmp(path, "/tmp/tmpfile", 12) == 0)
     {
         tmpfileOpenAt();
+        return;
+    }
+    if (strncmp(path, "/proc/interrupts", 16) == 0)
+    {
+        interpfileOpenAt();
         return;
     }
     DirMeta *entryPoint;
@@ -703,6 +765,36 @@ void syscallDevice(void)
 
     tf->a0 = fd;
     QS_DEBUG("[syscall] Device %d open\n", fd);
+    return;
+
+bad:
+    tf->a0 = -1;
+}
+
+void syscallCreateInterpFile(void)
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd;
+    struct File *f;
+
+    if ((f = filealloc()) == NULL || (fd = fdalloc(f)) < 0)
+    {
+        if (f)
+            fileclose(f);
+        goto bad;
+    }
+
+    f->type = FD_DEVICE;
+    f->off = 0;
+    f->meta = 0;
+    f->major = DEV_INTPFILE;
+    f->readable = true;
+    f->writable = false;
+
+    tf->a0 = fd;
+    extern int interpfilefd;
+    interpfilefd = fd;
+    printk("interp file create, fd is %d\n", interpfilefd);
     return;
 
 bad:

@@ -61,4 +61,6 @@ void sigreturn();
 
 int shmget(int key, long long size, int shmflg);
 uintptr_t shmat(int shmid, long long addr, int shmflg);
+
+int createInterpFile();
 #endif // __UNISTD_H__

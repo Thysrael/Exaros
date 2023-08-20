@@ -14,10 +14,12 @@
 #include "pipe.h"
 #include "socket.h"
 #include "tmpfile.h"
+#include "interpfile.h"
 
 #define NDEV 4
 #define DEV_SD 0
 #define DEV_CONSOLE 1
+#define DEV_INTPFILE 2
 #define NFILE 512 // Number of fd that all process can open
 
 // map major device number to device functions.
@@ -43,17 +45,19 @@ typedef struct File
         FD_ENTRY,
         FD_DEVICE,
         FD_SOCKET,
-        FD_TMPFILE
+        FD_TMPFILE,
+        FD_INTERPFILE
     } type;
     int ref; // reference count
     char readable;
     char writable;
-    Pipe *pipe;        // FD_PIPE
-    DirMeta *meta;     // FD_ENTRY, 用于存储文件的信息
-    u32 off;           // FD_ENTRY，读取文件的偏移
-    short major;       // FD_DEVICE
-    Socket *socket;    // FD_SOCKET
-    Tmpfile *tmpfile;  // FD_TMPFILE
+    Pipe *pipe;       // FD_PIPE
+    DirMeta *meta;    // FD_ENTRY, 用于存储文件的信息
+    u32 off;          // FD_ENTRY，读取文件的偏移
+    short major;      // FD_DEVICE
+    Socket *socket;   // FD_SOCKET
+    Tmpfile *tmpfile; // FD_TMPFILE
+    Interpfile *interpfile;
     DirMeta *curChild; // current child for getDirmeta
 } File;
 

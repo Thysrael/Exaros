@@ -49,7 +49,10 @@
 		"syslog.h": "c",
 		"shm.h": "c",
 		"lock.h": "c",
-		"sched.h": "c"
+		"sched.h": "c",
+		"tmpfile.h": "c",
+		"socket.h": "c",
+		"interpfile.h": "c"
 	},
 	"doxdocgen.file.fileOrder": [
 		"file",

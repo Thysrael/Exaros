@@ -129,7 +129,7 @@
 #define SYSCALL_WAIT 260
 #define SYS_prlimit64 261
 #define SYS_renameat2 276
-
+#define SYSCALL_INTERPFILE 349
 #define MAX_SYSCALL 350
 
 void syscallGetProcessId();
@@ -257,6 +257,7 @@ void syscallSchedSetaffinity();
 void syscallSchedGetaffinity();
 void syscallNanosleep();
 void syscallGetrusage();
+void syscallCreateInterpFile(void);
 
 void syscallClockNanosleep();
 
