@@ -258,6 +258,7 @@ void syscallSchedGetaffinity();
 void syscallNanosleep();
 void syscallGetrusage();
 void syscallCreateInterpFile(void);
+void syscallRenameat2();
 
 void syscallClockNanosleep();
 

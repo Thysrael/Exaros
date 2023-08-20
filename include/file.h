@@ -57,7 +57,7 @@ typedef struct File
     short major;      // FD_DEVICE
     Socket *socket;   // FD_SOCKET
     Tmpfile *tmpfile; // FD_TMPFILE
-    Interpfile *interpfile;
+    InterpFile *interpfile;
     DirMeta *curChild; // current child for getDirmeta
 } File;
 

@@ -437,7 +437,7 @@ bad:
 
 static void interpfileOpenAt()
 {
-    printk("interpfile open at\n");
+    // printk("interpfile open at\n");
     Trapframe *tf = getHartTrapFrame();
     int flags = tf->a2;
     char path[FAT32_MAX_PATH];
@@ -447,7 +447,7 @@ static void interpfileOpenAt()
         return;
     }
 
-    Interpfile *entryPoint;
+    InterpFile *entryPoint;
     // 创建一个文件
     if (flags & O_CREATE)
     {
@@ -457,7 +457,7 @@ static void interpfileOpenAt()
     else
     {
         // 按照名字查找文件
-        if ((entryPoint = InterpfileName(path)) == NULL)
+        if ((entryPoint = interpfileName(path)) == NULL)
         {
             tf->a0 = -ENOENT; /*must be -ENOENT */
             goto bad;
@@ -773,32 +773,32 @@ bad:
 
 void syscallCreateInterpFile(void)
 {
-    Trapframe *tf = getHartTrapFrame();
-    int fd;
-    struct File *f;
+    //     Trapframe *tf = getHartTrapFrame();
+    //     int fd;
+    //     struct File *f;
 
-    if ((f = filealloc()) == NULL || (fd = fdalloc(f)) < 0)
-    {
-        if (f)
-            fileclose(f);
-        goto bad;
-    }
+    //     if ((f = filealloc()) == NULL || (fd = fdalloc(f)) < 0)
+    //     {
+    //         if (f)
+    //             fileclose(f);
+    //         goto bad;
+    //     }
 
-    f->type = FD_DEVICE;
-    f->off = 0;
-    f->meta = 0;
-    f->major = DEV_INTPFILE;
-    f->readable = true;
-    f->writable = false;
+    //     f->type = FD_DEVICE;
+    //     f->off = 0;
+    //     f->meta = 0;
+    //     f->major = DEV_INTPFILE;
+    //     f->readable = true;
+    //     f->writable = false;
 
-    tf->a0 = fd;
-    extern int interpfilefd;
-    interpfilefd = fd;
-    printk("interp file create, fd is %d\n", interpfilefd);
-    return;
+    //     tf->a0 = fd;
+    //     extern int interpfilefd;
+    //     interpfilefd = fd;
+    //     printk("interp file create, fd is %d\n", interpfilefd);
+    //     return;
 
-bad:
-    tf->a0 = -1;
+    // bad:
+    //     tf->a0 = -1;
 }
 
 /**
@@ -2889,6 +2889,10 @@ void syscallLseek()
         {
             off += file->tmpfile->offset;
         }
+        else if (file->type == FD_INTERPFILE)
+        {
+            off += file->interpfile->offset;
+        }
         // 对应的是 FD_ENTRY 的情况
         else
         {
@@ -2909,6 +2913,10 @@ void syscallLseek()
             off += file->tmpfile->fileSize;
             TMPF_DEBUG("lseek the offset at the end %d\n", off);
         }
+        else if (file->type == FD_INTERPFILE)
+        {
+            off += file->interpfile->fileSize;
+        }
         else
         {
             panic("Exaros doesn't support this file seek end\n");
@@ -2928,6 +2936,10 @@ void syscallLseek()
     if (file->type == FD_TMPFILE)
     {
         file->tmpfile->offset = off;
+    }
+    else if (file->type == FD_INTERPFILE)
+    {
+        file->interpfile->offset = off;
     }
     // if (file->type != FD_ENTRY) {
     //     file->off = off;

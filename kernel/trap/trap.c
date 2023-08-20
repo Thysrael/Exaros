@@ -245,7 +245,7 @@ void userHandler()
             tf->epc += 4;
             // if (tf->a7 != 63 && tf->a7 != 64)
             // if (tf->a7 != 63)
-            // printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
+            //     printk("ecall: %d, epc: %lx, tid:%lx, code: %lx\n", tf->a7, tf->epc, myThread()->threadId, *((u64 *)va2PA(myProcess()->pgdir, tf->epc + 4, 0)));
 
             if (syscallVector[tf->a7] == 0)
             {
@@ -398,6 +398,11 @@ int printNum(int i, char *buf)
 {
     int length = 0;
     int tmpi = i;
+    if (i == 0)
+    {
+        buf[0] = '0';
+        return 1;
+    }
     while (tmpi)
     {
         tmpi /= 10;
@@ -421,7 +426,7 @@ int updateInterruptsString()
     char *buf = interruptsString;
     for (int i = 0; i < 20; i++)
     {
-        if (interruptRecoder[i])
+        if (interruptRecoder[i] || i == 5 || i == 8)
         {
             int len = printNum(i, buf);
             buf[len] = ':';
@@ -432,6 +437,8 @@ int updateInterruptsString()
             buf += (len + 1);
         }
     }
+
     buf[0] = '\0';
+    // printk("interrupt string is\n %s\n", interruptsString);
     return buf - interruptsString + 1;
 }

@@ -118,6 +118,13 @@ int filestat(File *f, u64 addr)
             return -1;
         return 0;
     }
+    else if (f->type == FD_INTERPFILE)
+    {
+        interpfileStat(&st);
+        if (copyout(p->pgdir, addr, (char *)&st, sizeof(st)) < 0)
+            return -1;
+        return 0;
+    }
     return -1;
 }
 
@@ -156,6 +163,9 @@ int fileread(File *f, bool isUser, u64 addr, int n)
         break;
     case FD_TMPFILE:
         r = tmpfileRead(f->tmpfile, isUser, addr, n);
+        break;
+    case FD_INTERPFILE:
+        r = interpfileRead(isUser, addr, n);
         break;
     default:
         panic("fileread not implement.\n");
@@ -226,6 +236,10 @@ int filewrite(File *f, bool isUser, u64 addr, int n)
     else if (f->type == FD_TMPFILE)
     {
         ret = tmpfileWrite(f->tmpfile, isUser, addr, n);
+    }
+    else if (f->type == FD_INTERPFILE)
+    {
+        ret = interpfileWrite();
     }
     else
     {

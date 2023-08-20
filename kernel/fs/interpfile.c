@@ -9,6 +9,7 @@ InterpFile interpfile;
 
 void interpfileAlloc()
 {
+    // printk("interp alloc\n");
     interpfile.used = true;
     interpfile.fileSize = 0;
     interpfile.offset = 0;
@@ -16,25 +17,27 @@ void interpfileAlloc()
 
 InterpFile *interpfileName(char *path)
 {
-    if (interpfile.used)
-    {
-        return &interpfile;
-    }
-    else
-    {
-        return NULL;
-    }
+    interpfile.fileSize = 0;
+    interpfile.offset = 0;
+    return &interpfile;
+}
+
+void interpfileClose()
+{
 }
 
 int interpfileRead(bool isUser, u64 dst, u32 n)
 {
+    // printk("[interpfileRead] expect read len is %d\n", n);
     interpfile.fileSize = updateInterruptsString();
+    // printk("[interpfileRead] interpfile size is %d, interpfile offset is %d", interpfile.fileSize, interpfile.offset);
     if (interpfile.offset + n > interpfile.fileSize)
     {
         n = interpfile.fileSize - interpfile.offset;
     }
+    // printk("[interpfileRead] acutal read len is %d\n", n);
     copyout(myProcess()->pgdir, dst, interruptsString + interpfile.offset, n);
-
+    interpfile.offset += n;
     return n;
 }
 
@@ -43,7 +46,7 @@ int interpfileWrite()
     return -1;
 }
 
-void tmpfileStat(struct kstat *st)
+void interpfileStat(struct kstat *st)
 {
     st->st_dev = 0; // DEV_SD = 0
     st->st_size = interpfile.fileSize;

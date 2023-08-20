@@ -21,6 +21,8 @@ char *ababa[] = {"./busybox", "./iozone", "-a", "-r", "1k", "-s", "4m", 0};
 char *argvAuto[] = {"/busybox", "sh", "auto.sh", 0};
 char *argvAuto2[] = {"/busybox", "sh", "auto2.sh", 0};
 
+char *argvInterruptsTest1[] = {"./interrupts-test-1", 0};
+char *argvInterruptsTest2[] = {"./interrupts-test-2", 0};
 void main()
 {
     dev(1, O_RDWR); // stdin
@@ -28,10 +30,41 @@ void main()
     dup(0);         // stderr
     printf("busybox test begin.\n");
     int pid;
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./busybox", argvAuto2);
+    }
+    else
+    {
+        wait(0);
+    }
     pid = fork();
     if (pid == 0)
     {
         exec("./time-test", argvTime);
+    }
+    else
+    {
+        wait(0);
+        // exec("./time-test", timet);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./interrupts-test-1", argvInterruptsTest1);
+    }
+    else
+    {
+        wait(0);
+        // exec("./time-test", timet);
+    }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("./interrupts-test-2", argvInterruptsTest2);
     }
     else
     {
@@ -105,16 +138,6 @@ void main()
     if (pid == 0)
     {
         exec("./busybox", argvIOZone);
-    }
-    else
-    {
-        wait(0);
-    }
-
-    pid = fork();
-    if (pid == 0)
-    {
-        exec("./busybox", argvAuto2);
     }
     else
     {

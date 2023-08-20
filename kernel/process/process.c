@@ -522,12 +522,15 @@ void fifoSched()
     threadRun(th);
 }
 
+extern int interruptRecoder[20];
+
 /**
  * @brief 主动调用 yield 放弃 cpu
  *
  */
 void callYield()
 {
+    interruptRecoder[5] += 1;
     Thread *th = myThread();
     if (th == NULL || th->state != RUNNING) { fifoSched(); } // Destory, Sleep
     else
