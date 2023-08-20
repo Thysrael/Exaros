@@ -416,7 +416,7 @@ int printNum(int i, char *buf)
     return length;
 }
 
-void updateInterruptsString()
+int updateInterruptsString()
 {
     char *buf = interruptsString;
     for (int i = 0; i < 20; i++)
@@ -433,4 +433,5 @@ void updateInterruptsString()
         }
     }
     buf[0] = '\0';
+    return buf - interruptsString + 1;
 }

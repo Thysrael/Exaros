@@ -107,7 +107,7 @@ void (*syscallVector[])(void) = {
     [SYS_mprotect] syscallMprotect,
     [SYS_msync] syscallMsync,
     [SYS_readlinkat] syscallReadlinkat,
-    // [SYS_renameat2] syscallRenameat2,
+    [SYS_renameat2] syscallRenameat2,
     [SYS_statfs] syscallStatfs,
     [SYS_fsync] syscallFsync,
     [SYS_prlimit64] syscallPrlimit64,
@@ -3311,4 +3311,10 @@ void syscallClockNanosleep()
         printk("unsupported flag\n");
         tf->a0 = -1;
     }
+}
+
+void syscallRenameat2()
+{
+    Trapframe *tf = getHartTrapFrame();
+    tf->a0 = -1;
 }
