@@ -139,6 +139,7 @@ void (*syscallVector[])(void) = {
     [SYSCALL_getrusage] syscallGetrusage,
     [SYS_clock_nanosleep] syscallClockNanosleep,
     [SYSCALL_INTERPFILE] syscallCreateInterpFile,
+    [SYS_copy_file_range] syscallCopyFileRange,
     [MAX_SYSCALL] 0,
 };
 
@@ -3329,4 +3330,80 @@ void syscallRenameat2()
 {
     Trapframe *tf = getHartTrapFrame();
     tf->a0 = -1;
+}
+
+// ssize_t copy_file_range(int fd_in, off64_t *_Nullable off_in,
+//                                int fd_out, off64_t *_Nullable off_out,
+//                                size_t len, unsigned int flags);
+#define bufSize 1024
+char buffer[bufSize];
+
+void syscallCopyFileRange()
+{
+    Trapframe *tf = getHartTrapFrame();
+    int fd_in, fd_out, r;
+    u64 off_in, off_out, len;
+    fd_in = tf->a0;
+    off_in = tf->a1;
+    fd_out = tf->a2;
+    off_out = tf->a3;
+    len = tf->a4;
+    // flags = tf->a5;
+
+    printk("[syscall cpfile] len: %d, inoff: %d, outoff: %d\n", len, off_in, off_out);
+
+    File *file_in = myProcess()->ofile[fd_in];
+    File *file_out = myProcess()->ofile[fd_out];
+
+    // 若读取 fd_in 时的文件偏移超过其大小，则直接返回 0
+    if (file_in->meta->fileSize < fd_in + len)
+    {
+        tf->a0 = 0;
+        printk("*1");
+        return;
+    }
+
+    while (len)
+    {
+        if (off_in == NULL)
+        {
+            r = metaRead(file_in->meta, false, (u64)buffer, file_in->off, MIN(len, bufSize));
+        }
+        else
+        {
+            u32 tmpoff = file_in->off;
+            r = metaRead(file_in->meta, false, (u64)buffer, off_in, MIN(len, bufSize));
+            file_in->off = tmpoff;
+        }
+        if (r != MIN(len, bufSize))
+        {
+            printk("*2");
+            tf->a0 = -1;
+            return;
+        }
+
+        if (off_out == NULL)
+        {
+            r = metaWrite(file_out->meta, false, (u64)buffer, file_out->off, MIN(len, bufSize));
+        }
+        else
+        {
+            u32 tmpoff = file_out->off;
+            r = metaWrite(file_out->meta, false, (u64)buffer, off_in, MIN(len, bufSize));
+            file_out->off = tmpoff;
+        }
+
+        if (r != MIN(len, bufSize))
+        {
+            printk("*3");
+            tf->a0 = -1;
+            return;
+        }
+
+        len -= MIN(len, bufSize);
+    }
+
+    printk("[syscall cpfile end] len: %d\n", tf->a4);
+    tf->a0 = tf->a4;
+    return;
 }

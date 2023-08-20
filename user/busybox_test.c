@@ -20,6 +20,9 @@ char *ababa[] = {"./busybox", "./iozone", "-a", "-r", "1k", "-s", "4m", 0};
 
 char *argvAuto[] = {"/busybox", "sh", "auto.sh", 0};
 char *argvAuto2[] = {"/busybox", "sh", "auto2.sh", 0};
+char *argvCp1[] = {"/copy-file-range-test-1", 0};
+char *argvCp2[] = {"/copy-file-range-test-2", 0};
+char *argvCp3[] = {"/copy-file-range-test-3", 0};
 
 char *argvInterruptsTest1[] = {"./interrupts-test-1", 0};
 char *argvInterruptsTest2[] = {"./interrupts-test-2", 0};
@@ -66,6 +69,35 @@ void main()
     if (pid == 0)
     {
         exec("./interrupts-test-2", argvInterruptsTest2);
+    }
+
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("/copy-file-range-test-2", argvCp1);
+        // exec("./time-test", timet);
+    }
+    else
+    {
+        wait(0);
+        // exec("./time-test", timet);
+    }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("/copy-file-range-test-2", argvCp2);
+        // exec("./time-test", timet);
+    }
+    else
+    {
+        wait(0);
+        // exec("./time-test", timet);
+    }
+    pid = fork();
+    if (pid == 0)
+    {
+        exec("/copy-file-range-test-3", argvCp3);
+        // exec("./time-test", timet);
     }
     else
     {
