@@ -48,7 +48,7 @@ void main()
     pid = fork();
     if (pid == 0)
     {
-        exec("./busybox", shell);
+        exec("./busybox", argvAuto);
         // exec("./time-test", timet);
     }
     else

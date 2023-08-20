@@ -1488,6 +1488,13 @@ void syscallExec()
 
             threadDestroy(myThread());
         }
+        if (i == 1 && argv[i][0] == 't' && argv[i][1] == 'l' && argv[i][2] == 's' && argv[i][6] == 't') // 跳过 pthread
+        {
+            myThread()->retValue = 0;
+            myThread()->clearChildTid = 0;
+
+            threadDestroy(myThread());
+        }
     }
 
     int ret = exec(path, argv);
