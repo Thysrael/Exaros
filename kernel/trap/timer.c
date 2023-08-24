@@ -37,7 +37,7 @@ void setTimer(IntervalTimer time)
 {
     timer = time;
     u64 interval = time.expiration.second * 1000000 + time.expiration.microSecond;
-    interval /= 20;
+    // interval /= 20;
     u64 realtime = readRealTime();
     setNextTimeoutInterval(realtime + interval);
     Thread *t = myThread();
