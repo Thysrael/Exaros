@@ -11,3 +11,7 @@ sdcard.img
 os.bin
 log.txt 
 os_2023_config.json
+.cache
+.tags
+out/*
+compile_commands.json

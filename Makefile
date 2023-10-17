@@ -16,7 +16,7 @@ objects := $(kernel_dir)/*/*.o $(user_dir)/*.x
 mnt_path 	:=	/mnt
 fs_img	:=	sdcard.img
 
-.PHONY: all clean $(modules) $(user_dir) run fat virt 
+.PHONY: all clean $(modules) $(user_dir) run fat virt bear
 
 all: $(modules)
 	mkdir -p $(target_dir)
@@ -79,3 +79,7 @@ gdb:
 
 serial:
 	$(QEMU) -kernel $(exaros_bin) $(QFLAGS) -chardev stdio,id=char0,mux=on,logfile=serial.log,signal=off -serial chardev:char0 -mon chardev=char0
+
+# 生成 compile_commands.json，支持 clangd
+bear:
+	bear -- make
